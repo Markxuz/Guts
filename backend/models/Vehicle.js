@@ -13,6 +13,9 @@ module.exports = (sequelize) => {
 		vehicle_type: {
 			type: DataTypes.STRING(50),
 			allowNull: true,
+			validate: {
+				isIn: [["Sedan", "Motorcycle", "Car", "Motor"]],
+			},
 		},
 		created_at: {
 			type: DataTypes.DATE,

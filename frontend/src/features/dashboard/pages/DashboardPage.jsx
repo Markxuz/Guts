@@ -17,18 +17,6 @@ import { useReportOverview } from "../hooks/useReportOverview";
 import { useScheduleMonthStatus } from "../hooks/useScheduleMonthStatus";
 import { formatDateToISO, parseDateValue } from "../../../shared/utils/date";
 
-function toMonthPeriodLabel(startDate, endDate) {
-  const start = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
-  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
-
-  if (sameMonth) {
-    return `${start.toLocaleDateString("en-US", { month: "long" })} ${start.getDate()} - ${end.getDate()}, ${end.getFullYear()}`;
-  }
-
-  return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
-}
-
 function getDateRangeFromPreset(preset, customStartDate, customEndDate) {
   const now = new Date();
 
@@ -320,6 +308,8 @@ export default function DashboardPage() {
         monthlyEnrollment={reportOverview?.monthlyEnrollment || []}
         dailyTransactions={unfilteredDailyReports}
         recentActivities={unfilteredRecentActivities}
+        maintenanceSummary={reportOverview?.maintenanceSummary}
+        fuelSummary={reportOverview?.fuelSummary}
         generatedBy={generatedBy}
         printedAt={printedAt}
       />

@@ -120,6 +120,8 @@ export default function PrintReport({
   monthlyEnrollment,
   dailyTransactions,
   recentActivities,
+  maintenanceSummary,
+  fuelSummary,
   generatedBy,
   printedAt,
   className = "",
@@ -157,6 +159,16 @@ export default function PrintReport({
             <SummaryCard label="This Month Enrollments" value={stats.thisMonth} />
             <SummaryCard label="PDC-B" value={stats.pdcBeginner || 0} />
             <SummaryCard label="PDC-E" value={stats.pdcExperience || 0} />
+          </div>
+        </section>
+
+        <section className="mb-3 break-inside-avoid">
+          <p className="mb-1.5 text-sm font-bold uppercase tracking-wide text-[#800000]">Vehicle Operations Cost Summary</p>
+          <div className="grid grid-cols-4 gap-3">
+            <SummaryCard label="Maintenance Records" value={maintenanceSummary?.totalRecords || 0} />
+            <SummaryCard label="Maintenance Cost" value={`PHP ${Number(maintenanceSummary?.totalCost || 0).toFixed(2)}`} />
+            <SummaryCard label="Fuel Entries" value={fuelSummary?.totalEntries || 0} />
+            <SummaryCard label="Fuel Expense" value={`PHP ${Number(fuelSummary?.totalExpense || 0).toFixed(2)}`} />
           </div>
         </section>
 

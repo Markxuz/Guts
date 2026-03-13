@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, GraduationCap, LoaderCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import EnrollmentTypeSwitcher, { getEnrollmentTypeLabel } from "../components/EnrollmentTypeSwitcher";
+import EnrollmentTypeSwitcher from "../components/EnrollmentTypeSwitcher";
+import { getEnrollmentTypeLabel } from "../components/enrollmentTypeOptions";
 import { AddressSection, PersonalInfoSection } from "../components/sections/CommonSections";
 import PdcFormSections from "../components/sections/PdcFormSections";
 import PromoFormSections from "../components/sections/PromoFormSections";

@@ -59,12 +59,18 @@ export default function AddScheduleModal({
 
   useEffect(() => {
     if (isOpen) {
-      setForm((current) => ({
-        ...INITIAL_FORM,
-        slot: availability.find((item) => !item.full)?.slot || "morning",
-        remarks: current.remarks,
-      }));
+      const timer = window.setTimeout(() => {
+        setForm((current) => ({
+          ...INITIAL_FORM,
+          slot: availability.find((item) => !item.full)?.slot || "morning",
+          remarks: current.remarks,
+        }));
+      }, 0);
+
+      return () => window.clearTimeout(timer);
     }
+
+    return undefined;
   }, [isOpen, selectedDate, availability]);
 
   const courseOptions = useMemo(
@@ -84,6 +90,16 @@ export default function AddScheduleModal({
   );
 
   const selectedDateLabel = selectedDate ? formatReadableDate(selectedDate) : "Selected date";
+  const selectedSlotDetails = availability.find((item) => item.slot === form.slot) || null;
+  const hasAvailableSlot = availability.some((item) => !item.full);
+  const isFormComplete = Boolean(form.course_id && form.instructor_id && form.vehicle_id && form.slot);
+  const isSubmitDisabled =
+    loadingResources ||
+    loadingAvailability ||
+    createScheduleMutation.isPending ||
+    !hasAvailableSlot ||
+    !isFormComplete ||
+    selectedSlotDetails?.full;
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -144,7 +160,16 @@ export default function AddScheduleModal({
             <ResourceField label="Vehicle" name="vehicle_id" value={form.vehicle_id} onChange={updateField} options={vehicleOptions} disabled={loadingResources} />
 
             <div>
-              <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Session Slot</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Session Slot</p>
+                <p className="text-[11px] text-slate-500">
+                  {selectedSlotDetails
+                    ? selectedSlotDetails.full
+                      ? "Selected slot is full"
+                      : `${selectedSlotDetails.available} slot${selectedSlotDetails.available === 1 ? "" : "s"} left`
+                    : "Choose an available slot"}
+                </p>
+              </div>
               <div className="mt-2 grid gap-3 sm:grid-cols-2">
                 {availability.map((item) => (
                   <button
@@ -167,6 +192,11 @@ export default function AddScheduleModal({
                   </button>
                 ))}
               </div>
+              {!loadingAvailability && !hasAvailableSlot ? (
+                <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  No schedule slots are available for this date. Pick another day from the calendar.
+                </p>
+              ) : null}
             </div>
 
             <label className="flex flex-col gap-1">
@@ -181,6 +211,15 @@ export default function AddScheduleModal({
               />
             </label>
 
+            {selectedSlotDetails && !selectedSlotDetails.full ? (
+              <div className="rounded-2xl border border-[#d9c9a0] bg-white/90 px-4 py-3 text-sm text-slate-700">
+                <p className="font-semibold text-slate-900">Ready to schedule</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {selectedSlotDetails.slotLabel} on {selectedDateLabel}. Select a course, instructor, and vehicle to enable saving.
+                </p>
+              </div>
+            ) : null}
+
             {createScheduleMutation.isError ? (
               <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {createScheduleMutation.error.message}
@@ -193,7 +232,7 @@ export default function AddScheduleModal({
               </button>
               <button
                 type="submit"
-                disabled={loadingResources || loadingAvailability || createScheduleMutation.isPending || availability.every((item) => item.full)}
+                disabled={isSubmitDisabled}
                 className="rounded-xl bg-[#800000] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#650000] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {createScheduleMutation.isPending ? "Saving..." : "Save Schedule"}

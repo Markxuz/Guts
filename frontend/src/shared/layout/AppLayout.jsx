@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, FileText, LayoutDashboard, LogOut, Settings, UserRound, Users, Users2 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/hooks/useAuth";
@@ -29,23 +29,15 @@ export default function AppLayout() {
   const { pathname } = useLocation();
   const { logout, auth, role } = useAuth();
   const isInSettingsSection = pathname.startsWith("/settings/");
-  const [isSettingsOpen, setIsSettingsOpen] = useState(isInSettingsSection);
+  const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = buildNavItems(role || "staff");
   const showSettings = role === "admin" || role === "sub_admin";
-
-  useEffect(() => {
-    if (!isCollapsed && isInSettingsSection) {
-      setIsSettingsOpen(true);
-    }
-  }, [isCollapsed, isInSettingsSection]);
-
-  useEffect(() => {
-    if (isCollapsed) {
-      setIsSettingsOpen(false);
-    }
-  }, [isCollapsed]);
+  const isSettingsOpen = useMemo(
+    () => !isCollapsed && (isInSettingsSection || isSettingsExpanded),
+    [isCollapsed, isInSettingsSection, isSettingsExpanded]
+  );
 
   function handleSettingsToggle(event) {
     event.preventDefault();
@@ -53,11 +45,11 @@ export default function AppLayout() {
 
     if (isCollapsed) {
       setIsCollapsed(false);
-      setIsSettingsOpen(true);
+      setIsSettingsExpanded(true);
       return;
     }
 
-    setIsSettingsOpen((prev) => !prev);
+    setIsSettingsExpanded((prev) => !prev);
   }
 
   return (

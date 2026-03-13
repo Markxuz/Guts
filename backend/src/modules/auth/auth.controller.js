@@ -1,5 +1,6 @@
 const service = require("./auth.service");
 const { recordActivity } = require("../activity-logs/activity-logs.service");
+const { sendHttpError } = require("../../shared/http/response");
 
 async function login(req, res) {
   try {
@@ -10,8 +11,7 @@ async function login(req, res) {
     });
     return res.status(200).json(payload);
   } catch (error) {
-    const status = error.status || 401;
-    return res.status(status).json({ message: error.message });
+    return sendHttpError(res, error, 401, "Invalid credentials");
   }
 }
 
@@ -20,8 +20,7 @@ async function register(req, res) {
     const payload = await service.register(req.body);
     return res.status(201).json(payload);
   } catch (error) {
-    const status = error.status || 400;
-    return res.status(status).json({ message: error.message });
+    return sendHttpError(res, error, 400, "Registration failed");
   }
 }
 
@@ -30,8 +29,7 @@ async function me(req, res) {
     const payload = await service.getProfile(req.user.id);
     return res.status(200).json(payload);
   } catch (error) {
-    const status = error.status || 500;
-    return res.status(status).json({ message: error.message });
+    return sendHttpError(res, error, 500, "Failed to fetch current user");
   }
 }
 

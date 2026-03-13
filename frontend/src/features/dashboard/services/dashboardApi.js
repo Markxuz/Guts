@@ -1,5 +1,9 @@
 import { api } from "../../../services/api";
 
+function unwrapScheduleResponse(payload) {
+  return payload?.data || payload;
+}
+
 export async function fetchDashboardSummary(course = "overall") {
   const query = course && course !== "overall" ? `?course=${encodeURIComponent(course)}` : "";
   return api.get(`/dashboard/summary${query}`);
@@ -22,11 +26,13 @@ export async function fetchDailyReports(filter) {
 }
 
 export async function fetchScheduleMonthStatus({ year, month }) {
-  return api.get(`/schedules/month-status?year=${year}&month=${month}`);
+  const payload = await api.get(`/schedules/month-status?year=${year}&month=${month}`);
+  return unwrapScheduleResponse(payload);
 }
 
 export async function createSchedule(payload) {
-  return api.post("/schedules", payload);
+  const response = await api.post("/schedules", payload);
+  return unwrapScheduleResponse(response);
 }
 
 export async function fetchActivityLogs({ dateIso, limit = 10 } = {}) {

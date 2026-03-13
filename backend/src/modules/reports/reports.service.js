@@ -138,6 +138,62 @@ function buildMonthlySeries(rows) {
   return buckets;
 }
 
+function toNumber(value) {
+  const numeric = Number(value || 0);
+  if (Number.isNaN(numeric)) return 0;
+  return numeric;
+}
+
+function durationHours(startTime, endTime) {
+  if (!startTime || !endTime) return 0;
+
+  const [startHour = 0, startMinute = 0] = String(startTime).split(":").map((value) => Number(value));
+  const [endHour = 0, endMinute = 0] = String(endTime).split(":").map((value) => Number(value));
+
+  const startMinutes = startHour * 60 + startMinute;
+  const endMinutes = endHour * 60 + endMinute;
+
+  if (endMinutes <= startMinutes) return 0;
+  return (endMinutes - startMinutes) / 60;
+}
+
+function buildUsageByVehicle(rows) {
+  const bucket = new Map();
+
+  rows.forEach((row) => {
+    const membership = getCourseMembership(row);
+    const isPdcRecord = membership.has("pdc_beginner") || membership.has("pdc_experience");
+    if (!isPdcRecord) return;
+
+    const vehicle = row?.Schedule?.Vehicle;
+    const vehicleId = vehicle?.id;
+    if (!vehicleId) return;
+
+    const key = String(vehicleId);
+    if (!bucket.has(key)) {
+      bucket.set(key, {
+        vehicleId,
+        vehicleName: vehicle.vehicle_name || `Vehicle #${vehicleId}`,
+        vehicleType: vehicle.vehicle_type || "Vehicle",
+        plateNumber: vehicle.plate_number || "",
+        completedSessions: 0,
+        totalTrainingHours: 0,
+      });
+    }
+
+    const current = bucket.get(key);
+    current.completedSessions += 1;
+    current.totalTrainingHours += durationHours(row?.Schedule?.start_time, row?.Schedule?.end_time);
+  });
+
+  return Array.from(bucket.values())
+    .map((item) => ({
+      ...item,
+      totalTrainingHours: Number(item.totalTrainingHours.toFixed(2)),
+    }))
+    .sort((a, b) => b.totalTrainingHours - a.totalTrainingHours);
+}
+
 async function getDailyReports({ date, startDate, endDate }) {
   const effectiveStartDate = date || startDate;
   const effectiveEndDate = date || endDate;
@@ -172,9 +228,12 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
   const end = new Date(`${endDate}T00:00:00.000Z`);
   end.setUTCDate(end.getUTCDate() + 1);
 
-  const [enrollments, activityLogs] = await Promise.all([
+  const [enrollments, activityLogs, maintenanceLogs, fuelLogs, completedWithVehicle] = await Promise.all([
     repository.findEnrollmentsByDateRange(start, end),
     repository.findActivityLogsByDateRange(start, end, 30),
+    repository.findMaintenanceLogsByDateRange(start, end),
+    repository.findFuelLogsByDateRange(start, end),
+    repository.findCompletedEnrollmentsWithVehicleByDateRange(start, end),
   ]);
 
   const normalizedFilter = String(courseFilter || "overall").toLowerCase();
@@ -205,6 +264,26 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
   const pdcExperience = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_experience").length;
 
   const totalStudentsForFilter = new Set(filteredEnrollments.map((row) => row.student_id).filter(Boolean)).size;
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const maintenanceSummary = {
+    totalRecords: maintenanceLogs.length,
+    totalCost: Number(
+      maintenanceLogs.reduce((sum, log) => sum + toNumber(log.maintenance_cost), 0).toFixed(2)
+    ),
+    overdueCount: maintenanceLogs.filter((log) => {
+      const nextDate = String(log.next_schedule_date || "");
+      return Boolean(nextDate) && nextDate < todayIso;
+    }).length,
+  };
+
+  const fuelSummary = {
+    totalEntries: fuelLogs.length,
+    totalLiters: Number(fuelLogs.reduce((sum, log) => sum + toNumber(log.liters), 0).toFixed(2)),
+    totalExpense: Number(fuelLogs.reduce((sum, log) => sum + toNumber(log.amount_spent), 0).toFixed(2)),
+  };
+
+  const usageByVehicle = buildUsageByVehicle(completedWithVehicle);
 
   return {
     reportRange: {
@@ -225,6 +304,9 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
       .filter(Boolean),
     dailyTransactions: transactions,
     recentActivities: activities,
+    maintenanceSummary,
+    fuelSummary,
+    usageByVehicle,
   };
 }
 

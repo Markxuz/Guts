@@ -14,6 +14,8 @@ const Enrollment = require("./Enrollment")(sequelize);
 const Payment = require("./Payment")(sequelize);
 const Certificate = require("./Certificate")(sequelize);
 const ActivityLog = require("./ActivityLog")(sequelize);
+const MaintenanceLog = require("./MaintenanceLog")(sequelize);
+const FuelLog = require("./FuelLog")(sequelize);
 
 // Associations
 
@@ -31,6 +33,15 @@ Schedule.belongsTo(Instructor, { foreignKey: "instructor_id" });
 
 Vehicle.hasMany(Schedule, { foreignKey: "vehicle_id" });
 Schedule.belongsTo(Vehicle, { foreignKey: "vehicle_id" });
+
+Vehicle.hasMany(Instructor, { foreignKey: "assigned_vehicle_id", as: "assignedInstructors" });
+Instructor.belongsTo(Vehicle, { foreignKey: "assigned_vehicle_id", as: "assignedVehicle" });
+
+Vehicle.hasMany(MaintenanceLog, { foreignKey: "vehicle_id", as: "maintenanceLogs" });
+MaintenanceLog.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
+
+Vehicle.hasMany(FuelLog, { foreignKey: "vehicle_id", as: "fuelLogs" });
+FuelLog.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
 
 Schedule.hasMany(Enrollment, { foreignKey: "schedule_id" });
 Enrollment.belongsTo(Schedule, { foreignKey: "schedule_id" });
@@ -69,4 +80,6 @@ module.exports = {
   Certificate,
   ActivityLog,
   Notification,
+  MaintenanceLog,
+  FuelLog,
 };

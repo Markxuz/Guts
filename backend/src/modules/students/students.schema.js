@@ -43,7 +43,12 @@ const studentUpdateSchema = Joi.object({
   }),
 }).min(1);
 
+const enrollmentStatusUpdateSchema = Joi.object({
+  enrollmentStatus: Joi.string().valid("pending", "confirmed", "completed").required(),
+});
+
 module.exports = {
   studentCreateSchema,
   studentUpdateSchema,
+  enrollmentStatusUpdateSchema,
 };

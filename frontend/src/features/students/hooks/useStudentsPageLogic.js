@@ -22,7 +22,7 @@ export function useStudentsPageLogic() {
   const [toasts, setToasts] = useState([]);
 
   const { data, isLoading, isError, error } = useStudentsList();
-  const students = data || [];
+  const students = useMemo(() => data || [], [data]);
 
   const addToast = (message, type = "success") => {
     const id = `${Date.now()}-${Math.random()}`;

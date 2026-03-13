@@ -159,7 +159,15 @@ async function addSchedule(payload) {
 
     await transaction.commit();
     const fresh = await repository.findSchedulesByDate(payload.schedule_date);
-    return fresh.find((item) => item.id === created.id);
+    const createdRow = fresh.find((item) => item.id === created.id);
+
+    if (!createdRow) {
+      const error = new Error("Created schedule could not be reloaded");
+      error.status = 500;
+      throw error;
+    }
+
+    return mapSchedule(createdRow);
   } catch (error) {
     await transaction.rollback();
     throw error;

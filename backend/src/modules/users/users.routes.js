@@ -1,6 +1,8 @@
 const express = require("express");
 const controller = require("./users.controller");
 const { authenticateToken, authorizeRoles } = require("../../shared/middleware/auth");
+const { validateRequest } = require("../../shared/middleware/validateRequest");
+const { userCreateSchema, userRoleUpdateSchema, idParamSchema } = require("./users.schema");
 
 const router = express.Router();
 
@@ -9,8 +11,8 @@ router.use(authenticateToken);
 router.use(authorizeRoles("admin"));
 
 router.get("/", controller.list);
-router.post("/", controller.create);
-router.patch("/:id/role", controller.updateRole);
-router.delete("/:id", controller.remove);
+router.post("/", validateRequest(userCreateSchema), controller.create);
+router.patch("/:id/role", validateRequest(idParamSchema, "params"), validateRequest(userRoleUpdateSchema), controller.updateRole);
+router.delete("/:id", validateRequest(idParamSchema, "params"), controller.remove);
 
 module.exports = router;

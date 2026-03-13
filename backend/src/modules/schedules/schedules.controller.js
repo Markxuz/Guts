@@ -1,21 +1,36 @@
 const service = require("./schedules.service");
 const { recordActivity } = require("../activity-logs/activity-logs.service");
+const { sendHttpError } = require("../../shared/http/response");
+const { sendSuccess } = require("../../shared/http/success");
 
 async function getSchedulesByDate(req, res) {
   try {
     const payload = await service.listSchedulesByDate(req.query.date);
-    return res.status(200).json(payload);
+    return sendSuccess(res, payload, {
+      meta: {
+        date: req.query.date,
+        type: "schedule-day",
+      },
+    });
   } catch (error) {
-    return res.status(500).json({ message: "Failed to fetch schedules", error: error.message });
+    return sendHttpError(res, error, 500, "Failed to fetch schedules");
   }
 }
 
 async function getMonthStatus(req, res) {
   try {
     const rows = await service.listMonthStatus(req.query.year, req.query.month);
-    return res.status(200).json({ items: rows });
+    return sendSuccess(res, {
+      year: Number(req.query.year),
+      month: Number(req.query.month),
+      items: rows,
+    }, {
+      meta: {
+        type: "schedule-month-status",
+      },
+    });
   } catch (error) {
-    return res.status(500).json({ message: "Failed to fetch schedule month status", error: error.message });
+    return sendHttpError(res, error, 500, "Failed to fetch schedule month status");
   }
 }
 
@@ -26,10 +41,18 @@ async function createSchedule(req, res) {
       userId: req.user?.id,
       action: `Created schedule for ${req.body.schedule_date} (${req.body.slot})`,
     });
-    return res.status(201).json(created);
+    return sendSuccess(res, {
+      item: created,
+    }, {
+      status: 201,
+      meta: {
+        type: "schedule-create",
+        date: req.body.schedule_date,
+        slot: req.body.slot,
+      },
+    });
   } catch (error) {
-    const status = error.status || 400;
-    return res.status(status).json({ message: error.message });
+    return sendHttpError(res, error, 400, "Failed to create schedule");
   }
 }
 

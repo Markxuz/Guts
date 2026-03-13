@@ -28,6 +28,10 @@
 		margin: 10mm;
 	}
 
+	.no-print {
+		display: none !important;
+	}
+
 	.print-report-root {
 		-webkit-print-color-adjust: exact;
 		print-color-adjust: exact;

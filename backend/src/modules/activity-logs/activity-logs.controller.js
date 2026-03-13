@@ -1,4 +1,5 @@
 const service = require("./activity-logs.service");
+const { sendHttpError } = require("../../shared/http/response");
 
 async function getActivityLogs(req, res) {
   try {
@@ -8,7 +9,7 @@ async function getActivityLogs(req, res) {
     });
     return res.status(200).json({ date: req.query.date || null, items: rows });
   } catch (error) {
-    return res.status(500).json({ message: "Failed to fetch activity logs", error: error.message });
+    return sendHttpError(res, error, 500, "Failed to fetch activity logs");
   }
 }
 

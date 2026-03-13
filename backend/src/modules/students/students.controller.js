@@ -1,13 +1,14 @@
 const service = require("./students.service");
 const { recordActivity } = require("../activity-logs/activity-logs.service");
 const { create: createNotification } = require("../notifications/notifications.service");
+const { sendHttpError } = require("../../shared/http/response");
 
 async function getAllStudents(req, res) {
   try {
     const rows = await service.listStudents();
     return res.status(200).json(rows);
   } catch (error) {
-    return res.status(500).json({ message: "Failed to fetch students", error: error.message });
+    return sendHttpError(res, error, 500, "Failed to fetch students");
   }
 }
 
@@ -16,8 +17,7 @@ async function getStudentById(req, res) {
     const row = await service.getStudent(req.params.id);
     return res.status(200).json(row);
   } catch (error) {
-    const status = error.status || 500;
-    return res.status(status).json({ message: error.message });
+    return sendHttpError(res, error, 500, "Failed to fetch student");
   }
 }
 
@@ -36,8 +36,7 @@ async function createStudent(req, res) {
     }
     return res.status(201).json(created);
   } catch (error) {
-    const status = error.status || 500;
-    return res.status(status).json({ message: error.message });
+    return sendHttpError(res, error, 500, "Failed to create student");
   }
 }
 
@@ -50,8 +49,7 @@ async function updateStudent(req, res) {
     });
     return res.status(200).json(updated);
   } catch (error) {
-    const status = error.status || 500;
-    return res.status(status).json({ message: error.message });
+    return sendHttpError(res, error, 500, "Failed to update student");
   }
 }
 
@@ -64,8 +62,7 @@ async function deleteStudent(req, res) {
     });
     return res.status(200).json({ message: "Student deleted successfully" });
   } catch (error) {
-    const status = error.status || 500;
-    return res.status(status).json({ message: error.message });
+    return sendHttpError(res, error, 500, "Failed to delete student");
   }
 }
 
@@ -84,8 +81,7 @@ async function updateEnrollmentStatus(req, res) {
     }
     return res.status(200).json(updated);
   } catch (error) {
-    const status = error.status || 500;
-    return res.status(status).json({ message: error.message });
+    return sendHttpError(res, error, 500, "Failed to update enrollment status");
   }
 }
 

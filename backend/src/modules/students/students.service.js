@@ -171,6 +171,14 @@ async function updateEnrollmentStatus(studentId, { enrollmentStatus }) {
     return getStudent(studentId);
   } catch (error) {
     await transaction.rollback();
+
+    if (error.name === "SequelizeValidationError" || error.name === "SequelizeDatabaseError") {
+      error.status = 400;
+      if (!error.message || error.message.toLowerCase().includes("validation")) {
+        error.message = "Invalid enrollmentStatus value";
+      }
+    }
+
     throw error;
   }
 }

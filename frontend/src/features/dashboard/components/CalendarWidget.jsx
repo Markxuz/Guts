@@ -47,9 +47,12 @@ export default function CalendarWidget({
   return (
     <div className="rounded-xl border-t-2 border-t-[#D4AF37] border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
-        <p className="inline-flex items-center gap-2 text-sm font-bold text-slate-900">
-          <CalendarDays size={15} className="text-[#D4AF37]" /> Calendar
-        </p>
+        <div>
+          <p className="inline-flex items-center gap-2 text-sm font-bold text-slate-900">
+            <CalendarDays size={15} className="text-[#D4AF37]" /> Calendar
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500">Single-click to view the day. Double-click to open the schedule modal.</p>
+        </div>
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
           <button type="button" onClick={onPrevMonth} className="rounded-md border border-slate-300 px-2">
             &lt;

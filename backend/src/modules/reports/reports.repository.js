@@ -1,5 +1,15 @@
 const { Op } = require("sequelize");
-const { Enrollment, Student, DLCode, ActivityLog, User } = require("../../../models");
+const {
+  Enrollment,
+  Student,
+  DLCode,
+  ActivityLog,
+  User,
+  Schedule,
+  Vehicle,
+  MaintenanceLog,
+  FuelLog,
+} = require("../../../models");
 
 async function findStudentsByDateRange(start, end) {
   return Student.findAll({
@@ -49,8 +59,82 @@ async function findActivityLogsByDateRange(start, end, limit = 30) {
   });
 }
 
+async function findMaintenanceLogsByDateRange(start, end) {
+  return MaintenanceLog.findAll({
+    where: {
+      date_of_service: {
+        [Op.gte]: start,
+        [Op.lt]: end,
+      },
+    },
+    include: [
+      {
+        model: Vehicle,
+        as: "vehicle",
+        attributes: ["id", "vehicle_name", "vehicle_type", "plate_number"],
+        required: false,
+      },
+    ],
+    order: [["date_of_service", "DESC"], ["id", "DESC"]],
+  });
+}
+
+async function findFuelLogsByDateRange(start, end) {
+  return FuelLog.findAll({
+    where: {
+      logged_at: {
+        [Op.gte]: start,
+        [Op.lt]: end,
+      },
+    },
+    include: [
+      {
+        model: Vehicle,
+        as: "vehicle",
+        attributes: ["id", "vehicle_name", "vehicle_type", "plate_number"],
+        required: false,
+      },
+    ],
+    order: [["logged_at", "DESC"], ["id", "DESC"]],
+  });
+}
+
+async function findCompletedEnrollmentsWithVehicleByDateRange(start, end) {
+  return Enrollment.findAll({
+    where: {
+      status: "completed",
+      created_at: {
+        [Op.gte]: start,
+        [Op.lt]: end,
+      },
+      schedule_id: {
+        [Op.not]: null,
+      },
+    },
+    include: [
+      { model: DLCode, attributes: ["id", "code", "description"] },
+      {
+        model: Schedule,
+        attributes: ["id", "schedule_date", "start_time", "end_time", "vehicle_id"],
+        required: true,
+        include: [
+          {
+            model: Vehicle,
+            attributes: ["id", "vehicle_name", "vehicle_type", "plate_number"],
+            required: false,
+          },
+        ],
+      },
+    ],
+    order: [["created_at", "DESC"], ["id", "DESC"]],
+  });
+}
+
 module.exports = {
   findStudentsByDateRange,
   findEnrollmentsByDateRange,
   findActivityLogsByDateRange,
+  findMaintenanceLogsByDateRange,
+  findFuelLogsByDateRange,
+  findCompletedEnrollmentsWithVehicleByDateRange,
 };

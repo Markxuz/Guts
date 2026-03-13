@@ -1,4 +1,5 @@
 const service = require("./reports.service");
+const { sendHttpError } = require("../../shared/http/response");
 
 async function getDailyReports(req, res) {
   try {
@@ -9,7 +10,7 @@ async function getDailyReports(req, res) {
     });
     return res.status(200).json(payload);
   } catch (error) {
-    return res.status(500).json({ message: "Failed to fetch daily reports", error: error.message });
+    return sendHttpError(res, error, 500, "Failed to fetch daily reports");
   }
 }
 
@@ -22,7 +23,7 @@ async function getOverviewReports(req, res) {
     });
     return res.status(200).json(payload);
   } catch (error) {
-    return res.status(500).json({ message: "Failed to fetch reports overview", error: error.message });
+    return sendHttpError(res, error, 500, "Failed to fetch reports overview");
   }
 }
 
