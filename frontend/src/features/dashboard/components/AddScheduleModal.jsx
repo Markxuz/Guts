@@ -130,9 +130,10 @@ export default function AddScheduleModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f1111]/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-[#d4af37]/30 bg-[linear-gradient(180deg,#fffdf7_0%,#f8f2e4_100%)] shadow-[0_32px_80px_rgba(40,8,8,0.45)]">
-        <div className="flex items-start justify-between border-b border-[#e6d7b6] bg-[#800000] px-6 py-5 text-white">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-[#1f1111]/70 p-4 backdrop-blur-sm">
+      <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-[#d4af37]/30 bg-[linear-gradient(180deg,#fffdf7_0%,#f8f2e4_100%)] shadow-[0_32px_80px_rgba(40,8,8,0.45)]">
+        {/* Fixed Header */}
+        <div className="flex shrink-0 items-start justify-between border-b border-[#e6d7b6] bg-[#800000] px-6 py-5 text-white">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f0d78a]">Calendar Schedule</p>
             <h2 className="mt-2 text-2xl font-bold">Add Schedule</h2>
@@ -143,8 +144,9 @@ export default function AddScheduleModal({
           </button>
         </div>
 
-        <div className="grid gap-0 md:grid-cols-[1.1fr_0.9fr]">
-          <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
+        {/* Scrollable Two-Column Body */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[1.1fr_0.9fr]">
+          <form onSubmit={handleSubmit} className="overflow-y-auto space-y-5 px-6 py-6">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-1 md:col-span-2">
                 <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Date</span>
@@ -240,7 +242,7 @@ export default function AddScheduleModal({
             </div>
           </form>
 
-          <aside className="border-l border-[#e6d7b6] bg-[#fff7ea] px-6 py-6">
+          <aside className="overflow-y-auto border-l border-[#e6d7b6] bg-[#fff7ea] px-6 py-6">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#800000]">Availability</p>
             <div className="mt-4 space-y-3">
               {availability.map((item) => (
