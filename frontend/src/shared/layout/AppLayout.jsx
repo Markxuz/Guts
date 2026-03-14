@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, FileText, LayoutDashboard, LogOut, Settings, UserRound, Users, Users2 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/hooks/useAuth";
@@ -30,22 +30,57 @@ export default function AppLayout() {
   const { logout, auth, role } = useAuth();
   const isInSettingsSection = pathname.startsWith("/settings/");
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
+  const [isSettingsPopoverOpen, setIsSettingsPopoverOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const settingsContainerRef = useRef(null);
 
   const navItems = buildNavItems(role || "staff");
   const showSettings = role === "admin" || role === "sub_admin";
+  const settingsItems = useMemo(() => {
+    const items = [
+      { to: "/settings/instructors", label: "Instructors" },
+      { to: "/settings/vehicles", label: "Vehicles" },
+    ];
+
+    if (role === "admin") {
+      items.push({ to: "/settings/users", label: "Manage Users", icon: Users2 });
+    }
+
+    return items;
+  }, [role]);
   const isSettingsOpen = useMemo(
     () => !isCollapsed && (isInSettingsSection || isSettingsExpanded),
     [isCollapsed, isInSettingsSection, isSettingsExpanded]
   );
+
+  useEffect(() => {
+    if (!isCollapsed) {
+      setIsSettingsPopoverOpen(false);
+    }
+  }, [isCollapsed]);
+
+  useEffect(() => {
+    if (!isSettingsPopoverOpen) return undefined;
+
+    function handleOutsideClick(event) {
+      if (!settingsContainerRef.current?.contains(event.target)) {
+        setIsSettingsPopoverOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isSettingsPopoverOpen]);
 
   function handleSettingsToggle(event) {
     event.preventDefault();
     event.stopPropagation();
 
     if (isCollapsed) {
-      setIsCollapsed(false);
-      setIsSettingsExpanded(true);
+      setIsSettingsPopoverOpen((prev) => !prev);
       return;
     }
 
@@ -110,7 +145,7 @@ export default function AppLayout() {
                   isCollapsed ? "justify-center px-2" : "gap-3 px-5"
                 } ${
                   isActive
-                    ? "border-[#D4AF37] bg-gradient-to-r from-[#6d1224]/30 to-transparent font-semibold text-[#D4AF37]"
+                    ? "border-[#D4AF37] bg-linear-to-r from-[#6d1224]/30 to-transparent font-semibold text-[#D4AF37]"
                     : "border-transparent text-[#c4c8cd] hover:bg-white/5"
                 }`}
               >
@@ -121,7 +156,10 @@ export default function AppLayout() {
           })}
 
           {showSettings && (
-            <div className="mt-1">
+            <div
+              ref={settingsContainerRef}
+              className="relative mt-1"
+            >
               <button
                 type="button"
                 onClick={handleSettingsToggle}
@@ -130,10 +168,10 @@ export default function AppLayout() {
                   isCollapsed ? "justify-center px-2" : "gap-3 px-5"
                 } ${
                   isInSettingsSection
-                    ? "border-[#D4AF37] bg-gradient-to-r from-[#6d1224]/30 to-transparent font-semibold text-[#D4AF37]"
+                    ? "border-[#D4AF37] bg-linear-to-r from-[#6d1224]/30 to-transparent font-semibold text-[#D4AF37]"
                     : "border-transparent text-[#c4c8cd] hover:bg-white/5"
                 }`}
-                aria-expanded={!isCollapsed && isSettingsOpen}
+                aria-expanded={isCollapsed ? isSettingsPopoverOpen : isSettingsOpen}
                 aria-controls="settings-submenu"
               >
                 <Settings size={15} />
@@ -146,37 +184,45 @@ export default function AppLayout() {
                 ) : null}
               </button>
 
+              {isCollapsed && isSettingsPopoverOpen ? (
+                <div
+                  id="settings-submenu"
+                  className="absolute left-full top-0 z-60 ml-2 w-56 overflow-hidden rounded-xl border border-white/15 bg-[#1b1823] py-1 shadow-2xl"
+                >
+                  {settingsItems.map(({ to, label, icon: Icon }) => (
+                    <Link
+                      key={to}
+                      to={to}
+                      onClick={() => setIsSettingsPopoverOpen(false)}
+                      className={`flex items-center gap-2 px-4 py-2.5 text-sm transition ${
+                        pathname === to
+                          ? "bg-linear-to-r from-[#6d1224]/35 to-transparent font-semibold text-[#D4AF37]"
+                          : "text-[#c4c8cd] hover:bg-white/10 hover:text-[#e8e5e0]"
+                      }`}
+                    >
+                      {Icon ? <Icon size={13} /> : null}
+                      <span>{label}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+
               {!isCollapsed && isSettingsOpen ? (
                 <div id="settings-submenu" className="mt-1 space-y-0.5 overflow-visible">
-                  {[
-                    { to: "/settings/instructors", label: "Instructors" },
-                    { to: "/settings/vehicles", label: "Vehicles" },
-                  ].map(({ to, label }) => (
+                  {settingsItems.map(({ to, label, icon: Icon }) => (
                     <Link
                       key={to}
                       to={to}
                       className={`ml-5 flex items-center border-l-2 py-2 pl-5 pr-4 text-sm transition ${
                         pathname === to
-                          ? "border-[#D4AF37] bg-gradient-to-r from-[#6d1224]/25 to-transparent font-semibold text-[#D4AF37]"
+                          ? "border-[#D4AF37] bg-linear-to-r from-[#6d1224]/25 to-transparent font-semibold text-[#D4AF37]"
                           : "border-transparent text-[#b0b5bc] hover:bg-white/5 hover:text-[#e8e5e0]"
                       }`}
                     >
+                      {Icon ? <Icon size={13} className="mr-2" /> : null}
                       {label}
                     </Link>
                   ))}
-                  {role === "admin" && (
-                    <Link
-                      to="/settings/users"
-                      className={`ml-5 flex items-center gap-2 border-l-2 py-2 pl-5 pr-4 text-sm transition ${
-                        pathname === "/settings/users"
-                          ? "border-[#D4AF37] bg-gradient-to-r from-[#6d1224]/25 to-transparent font-semibold text-[#D4AF37]"
-                          : "border-transparent text-[#b0b5bc] hover:bg-white/5 hover:text-[#e8e5e0]"
-                      }`}
-                    >
-                      <Users2 size={13} />
-                      Manage Users
-                    </Link>
-                  )}
                 </div>
               ) : null}
             </div>
