@@ -102,6 +102,28 @@ test.describe("Schedules API contract", () => {
     cleanup.scheduleIds.push(response.body.data.item.id);
   });
 
+  test("POST /api/schedules accepts course_type and returns canonical course label", async () => {
+    const { instructor, vehicle } = await createScheduleDependencies();
+
+    const response = await client
+      .post("/api/schedules")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        course_type: "tdc",
+        instructor_id: instructor.id,
+        vehicle_id: vehicle.id,
+        schedule_date: "2026-03-22",
+        slot: "morning",
+        remarks: "Type-based schedule",
+      });
+
+    assert.equal(response.status, 201);
+    assert.equal(response.body.meta?.type, "schedule-create");
+    assert.equal(response.body.data?.item?.course, "TDC");
+
+    cleanup.scheduleIds.push(response.body.data.item.id);
+  });
+
   test("GET /api/schedules/day returns wrapped day payload", async () => {
     const { course, instructor, vehicle } = await createScheduleDependencies();
 
