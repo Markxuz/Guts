@@ -1,13 +1,14 @@
 const Joi = require("joi");
 
 const scheduleCreateSchema = Joi.object({
-  course_id: Joi.number().integer().required(),
+  course_id: Joi.number().integer(),
+  course_type: Joi.string().valid("tdc", "pdc_beginner", "pdc_experience"),
   instructor_id: Joi.number().integer().required(),
   vehicle_id: Joi.number().integer().required(),
   schedule_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   slot: Joi.string().valid("morning", "afternoon").required(),
   remarks: Joi.string().trim().allow("", null),
-});
+}).or("course_id", "course_type");
 
 const scheduleDayQuerySchema = Joi.object({
   date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),

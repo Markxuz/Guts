@@ -5,12 +5,18 @@ import { resourceServices } from "../../../services/resources";
 import { formatDateToISO, formatReadableDate } from "../../../shared/utils/date";
 
 const INITIAL_FORM = {
-  course_id: "",
+  course_type: "",
   instructor_id: "",
   vehicle_id: "",
   slot: "morning",
   remarks: "",
 };
+
+const COURSE_TYPE_OPTIONS = [
+  { value: "tdc", label: "TDC" },
+  { value: "pdc_beginner", label: "PDC Beginner" },
+  { value: "pdc_experience", label: "PDC Experience" },
+];
 
 function ResourceField({ label, name, value, onChange, options, disabled = false }) {
   return (
@@ -45,13 +51,12 @@ export default function AddScheduleModal({
   const { data: resources, isLoading: loadingResources } = useQuery({
     queryKey: ["schedule-modal-resources"],
     queryFn: async () => {
-      const [courses, instructors, vehicles] = await Promise.all([
-        resourceServices.courses.list(),
+      const [instructors, vehicles] = await Promise.all([
         resourceServices.instructors.list(),
         resourceServices.vehicles.list(),
       ]);
 
-      return { courses, instructors, vehicles };
+      return { instructors, vehicles };
     },
     staleTime: 5 * 60 * 1000,
     enabled: isOpen,
@@ -73,10 +78,7 @@ export default function AddScheduleModal({
     return undefined;
   }, [isOpen, selectedDate, availability]);
 
-  const courseOptions = useMemo(
-    () => (resources?.courses || []).map((item) => ({ value: String(item.id), label: item.course_name })),
-    [resources]
-  );
+  const courseOptions = COURSE_TYPE_OPTIONS;
   const instructorOptions = useMemo(
     () => (resources?.instructors || []).map((item) => ({ value: String(item.id), label: item.name })),
     [resources]
@@ -92,7 +94,7 @@ export default function AddScheduleModal({
   const selectedDateLabel = selectedDate ? formatReadableDate(selectedDate) : "Selected date";
   const selectedSlotDetails = availability.find((item) => item.slot === form.slot) || null;
   const hasAvailableSlot = availability.some((item) => !item.full);
-  const isFormComplete = Boolean(form.course_id && form.instructor_id && form.vehicle_id && form.slot);
+  const isFormComplete = Boolean(form.course_type && form.instructor_id && form.vehicle_id && form.slot);
   const isSubmitDisabled =
     loadingResources ||
     loadingAvailability ||
@@ -111,7 +113,7 @@ export default function AddScheduleModal({
     if (!selectedDate) return;
 
     createScheduleMutation.mutate({
-      course_id: Number(form.course_id),
+      course_type: form.course_type,
       instructor_id: Number(form.instructor_id),
       vehicle_id: Number(form.vehicle_id),
       schedule_date: formatDateToISO(selectedDate),
@@ -156,7 +158,7 @@ export default function AddScheduleModal({
                   className="h-11 rounded-xl border border-[#d9c9a0] bg-slate-50 px-3 text-sm text-slate-800 outline-none"
                 />
               </label>
-              <ResourceField label="Course" name="course_id" value={form.course_id} onChange={updateField} options={courseOptions} disabled={loadingResources} />
+              <ResourceField label="Course" name="course_type" value={form.course_type} onChange={updateField} options={courseOptions} disabled={loadingResources} />
               <ResourceField label="Instructor" name="instructor_id" value={form.instructor_id} onChange={updateField} options={instructorOptions} disabled={loadingResources} />
             </div>
             <ResourceField label="Vehicle" name="vehicle_id" value={form.vehicle_id} onChange={updateField} options={vehicleOptions} disabled={loadingResources} />

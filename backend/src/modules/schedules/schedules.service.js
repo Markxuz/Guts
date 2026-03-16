@@ -1,4 +1,4 @@
-const { sequelize } = require("../../../models");
+const { sequelize, Course } = require("../../../models");
 const repository = require("./schedules.repository");
 
 const SLOT_MAP = {
@@ -13,6 +13,51 @@ const SLOT_MAP = {
     label: "01:00 PM - 05:00 PM",
   },
 };
+
+const COURSE_TYPE_TO_NAME = {
+  tdc: "TDC",
+  pdc_beginner: "PDC Beginner",
+  pdc_experience: "PDC Experience",
+};
+
+const COURSE_TYPE_TO_DESCRIPTION = {
+  tdc: "Theoretical Driving Course",
+  pdc_beginner: "Practical Driving Course - Beginner",
+  pdc_experience: "Practical Driving Course - Experience",
+};
+
+function normalizeCourseType(rawType) {
+  return String(rawType || "").trim().toLowerCase();
+}
+
+async function resolveCourseId(payload, transaction) {
+  if (Number.isInteger(payload.course_id) && payload.course_id > 0) {
+    return payload.course_id;
+  }
+
+  const normalizedType = normalizeCourseType(payload.course_type);
+  const courseName = COURSE_TYPE_TO_NAME[normalizedType];
+
+  if (!courseName) {
+    const error = new Error("course_id or valid course_type is required");
+    error.status = 400;
+    throw error;
+  }
+
+  let course = await Course.findOne({
+    where: { course_name: courseName },
+    transaction,
+  });
+
+  if (!course) {
+    course = await Course.create({
+      course_name: courseName,
+      description: COURSE_TYPE_TO_DESCRIPTION[normalizedType],
+    }, { transaction });
+  }
+
+  return course.id;
+}
 
 function capacityFromResources(instructorCount, vehicleCount) {
   return Math.max(0, Math.min(instructorCount, vehicleCount));
@@ -115,6 +160,8 @@ async function addSchedule(payload) {
   const transaction = await sequelize.transaction();
 
   try {
+    const resolvedCourseId = await resolveCourseId(payload, transaction);
+
     const [existing, instructorCount, vehicleCount] = await Promise.all([
       repository.findSchedulesByDateAndTime(payload.schedule_date, slotConfig.startTime, slotConfig.endTime),
       repository.countInstructors(),
@@ -147,7 +194,7 @@ async function addSchedule(payload) {
     }
 
     const created = await repository.createSchedule({
-      course_id: payload.course_id,
+      course_id: resolvedCourseId,
       instructor_id: payload.instructor_id,
       vehicle_id: payload.vehicle_id,
       schedule_date: payload.schedule_date,

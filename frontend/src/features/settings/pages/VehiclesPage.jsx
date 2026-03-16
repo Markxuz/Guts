@@ -435,7 +435,7 @@ export default function VehiclesPage() {
                   activeTab === "all" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600"
                 }`}
               >
-                All Fleet
+                All Vehicle
               </button>
               <button
                 type="button"
@@ -444,7 +444,7 @@ export default function VehiclesPage() {
                   activeTab === "sedans" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600"
                 }`}
               >
-                Sedans
+                Four Wheels
               </button>
               <button
                 type="button"
