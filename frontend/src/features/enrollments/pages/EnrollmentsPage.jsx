@@ -175,6 +175,34 @@ function scheduleCourseLabel(courseType) {
   return "Select course details above";
 }
 
+function isMotorcycleVehicleType(vehicleType) {
+  const normalized = normalizeText(vehicleType);
+  return normalized === "motorcycle" || normalized === "motor";
+}
+
+function isCarVehicleType(vehicleType) {
+  const normalized = normalizeText(vehicleType);
+  return normalized === "car" || normalized === "sedan";
+}
+
+function matchesVehicleTarget(vehicleType, targetVehicle) {
+  const normalizedTarget = normalizeText(targetVehicle);
+
+  if (!normalizedTarget) {
+    return true;
+  }
+
+  if (normalizedTarget === "motor" || normalizedTarget === "motorcycle") {
+    return isMotorcycleVehicleType(vehicleType);
+  }
+
+  if (normalizedTarget === "car") {
+    return isCarVehicleType(vehicleType);
+  }
+
+  return true;
+}
+
 const ENROLLMENT_TYPE_CARDS = [
   { value: "TDC", label: "TDC", description: "Theoretical Driving Course" },
   { value: "PDC", label: "PDC", description: "Practical Driving Course" },
@@ -249,16 +277,67 @@ export default function EnrollmentsPage() {
       .map((item) => ({ value: String(item.id), label: item.name }));
   }, [scheduleResources, scheduleCourseType]);
 
-  const vehicleOptions = useMemo(
-    () => (scheduleResources?.vehicles || []).map((item) => ({
+  const vehicleOptions = useMemo(() => {
+    const rows = scheduleResources?.vehicles || [];
+    const filtered = rows.filter((item) => matchesVehicleTarget(item.vehicle_type, form.enrollment.target_vehicle));
+
+    return filtered.map((item) => ({
       value: String(item.id),
       label: `${item.vehicle_name || item.plate_number} (${item.vehicle_type || "Vehicle"})`,
-    })),
-    [scheduleResources]
+    }));
+  }, [scheduleResources, form.enrollment.target_vehicle]);
+
+  const selectedScheduleVehicle = useMemo(
+    () => (scheduleResources?.vehicles || []).find((item) => String(item.id) === String(form.schedule.vehicle_id)) || null,
+    [scheduleResources, form.schedule.vehicle_id]
   );
 
+  const isMotorcycleWholeDaySchedule =
+    scheduleCourseType === "pdc_experience" && isMotorcycleVehicleType(selectedScheduleVehicle?.vehicle_type);
+
+  const activeScheduleSlotKey = isMotorcycleWholeDaySchedule ? "morning" : form.schedule.slot;
+
   const scheduleSlots = scheduleAvailability?.availability || [];
-  const selectedScheduleSlot = scheduleSlots.find((item) => item.slot === form.schedule.slot) || null;
+  const selectedScheduleSlot = scheduleSlots.find((item) => item.slot === activeScheduleSlotKey) || null;
+
+  useEffect(() => {
+    if (!isMotorcycleWholeDaySchedule) {
+      return;
+    }
+
+    setForm((current) => {
+      if (current.schedule.slot === "morning") {
+        return current;
+      }
+
+      return {
+        ...current,
+        schedule: {
+          ...current.schedule,
+          slot: "morning",
+        },
+      };
+    });
+  }, [isMotorcycleWholeDaySchedule]);
+
+  useEffect(() => {
+    if (isScheduleTdc) {
+      return;
+    }
+
+    const existsInOptions = vehicleOptions.some((item) => item.value === String(form.schedule.vehicle_id));
+    if (existsInOptions || !form.schedule.vehicle_id) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      schedule: {
+        ...current.schedule,
+        vehicle_id: "",
+      },
+    }));
+  }, [vehicleOptions, form.schedule.vehicle_id, isScheduleTdc]);
 
   useEffect(() => {
     return () => {
@@ -649,6 +728,9 @@ export default function EnrollmentsPage() {
                         <option key={item.value} value={item.value}>{item.label}</option>
                       ))}
                     </select>
+                    {!loadingScheduleResources && vehicleOptions.length === 0 ? (
+                      <span className="text-xs text-red-600">No vehicles found for the selected vehicle type.</span>
+                    ) : null}
                   </label>
                 ) : (
                   <div className="rounded-xl border border-[#d9c9a0] bg-white px-4 py-3 text-sm text-slate-600">
@@ -659,9 +741,15 @@ export default function EnrollmentsPage() {
 
               <div className="mt-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Time Slot</p>
+                  <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">
+                    {isMotorcycleWholeDaySchedule ? "Session Type" : "Time Slot"}
+                  </p>
                   <p className="text-[11px] text-slate-500">
-                    {selectedScheduleSlot
+                    {isMotorcycleWholeDaySchedule
+                      ? selectedScheduleSlot?.full
+                        ? "Fully booked for the day"
+                        : "Whole-day reservation"
+                      : selectedScheduleSlot
                       ? selectedScheduleSlot.full
                         ? "Fully booked"
                         : `${selectedScheduleSlot.available} slot${selectedScheduleSlot.available === 1 ? "" : "s"} left`
@@ -669,35 +757,44 @@ export default function EnrollmentsPage() {
                   </p>
                 </div>
 
-                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  {[
-                    { slot: "morning", slotLabel: "08:00 AM - 12:00 PM", full: false, available: 0 },
-                    { slot: "afternoon", slotLabel: "01:00 PM - 05:00 PM", full: false, available: 0 },
-                  ].map((fallback) => {
-                    const item = scheduleSlots.find((slot) => slot.slot === fallback.slot) || fallback;
-                    const selected = form.schedule.slot === item.slot;
-                    return (
-                      <button
-                        key={item.slot}
-                        type="button"
-                        disabled={Boolean(item.full)}
-                        onClick={() => handleFieldChange("schedule", "slot", item.slot)}
-                        className={`rounded-2xl border px-4 py-4 text-left transition ${
-                          item.full
-                            ? "border-red-300 bg-red-50 text-red-700"
-                            : selected
-                              ? "border-[#800000] bg-[#800000] text-white shadow-lg"
-                              : "border-[#d9c9a0] bg-white text-slate-800 hover:border-[#800000]"
-                        }`}
-                      >
-                        <p className="text-sm font-semibold">{item.slotLabel}</p>
-                        <p className={`mt-1 text-xs ${item.full ? "text-red-600" : selected ? "text-white/80" : "text-slate-500"}`}>
-                          {item.full ? (item.fullLabel || "Fully Booked") : `${item.available} slot${item.available === 1 ? "" : "s"} left`}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
+                {isMotorcycleWholeDaySchedule ? (
+                  <div className={`mt-2 rounded-2xl border px-4 py-4 ${selectedScheduleSlot?.full ? "border-red-300 bg-red-50 text-red-700" : "border-[#d9c9a0] bg-white text-slate-800"}`}>
+                    <p className="text-sm font-semibold">Whole Day (08:00 AM - 05:00 PM)</p>
+                    <p className={`mt-1 text-xs ${selectedScheduleSlot?.full ? "text-red-600" : "text-slate-500"}`}>
+                      {selectedScheduleSlot?.full ? (selectedScheduleSlot.fullLabel || "Fully Booked") : "Reserved as whole-day motorcycle session"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    {[
+                      { slot: "morning", slotLabel: "08:00 AM - 12:00 PM", full: false, available: 0 },
+                      { slot: "afternoon", slotLabel: "01:00 PM - 05:00 PM", full: false, available: 0 },
+                    ].map((fallback) => {
+                      const item = scheduleSlots.find((slot) => slot.slot === fallback.slot) || fallback;
+                      const selected = form.schedule.slot === item.slot;
+                      return (
+                        <button
+                          key={item.slot}
+                          type="button"
+                          disabled={Boolean(item.full)}
+                          onClick={() => handleFieldChange("schedule", "slot", item.slot)}
+                          className={`rounded-2xl border px-4 py-4 text-left transition ${
+                            item.full
+                              ? "border-red-300 bg-red-50 text-red-700"
+                              : selected
+                                ? "border-[#800000] bg-[#800000] text-white shadow-lg"
+                                : "border-[#d9c9a0] bg-white text-slate-800 hover:border-[#800000]"
+                          }`}
+                        >
+                          <p className="text-sm font-semibold">{item.slotLabel}</p>
+                          <p className={`mt-1 text-xs ${item.full ? "text-red-600" : selected ? "text-white/80" : "text-slate-500"}`}>
+                            {item.full ? (item.fullLabel || "Fully Booked") : `${item.available} slot${item.available === 1 ? "" : "s"} left`}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {loadingScheduleAvailability ? (
                   <p className="mt-3 text-sm text-slate-500">Checking schedule availability...</p>
@@ -711,7 +808,9 @@ export default function EnrollmentsPage() {
 
                 {scheduleCourseType === "pdc_experience" ? (
                   <p className="mt-3 rounded-xl border border-[#d9c9a0] bg-white px-3 py-2 text-sm text-slate-700">
-                    Experience scheduling reserves the whole day for the selected instructor and vehicle.
+                    {isMotorcycleWholeDaySchedule
+                      ? "Motorcycle experience scheduling automatically reserves the whole day for the selected instructor and vehicle."
+                      : "Experience scheduling reserves the selected time slot for the selected instructor and vehicle."}
                   </p>
                 ) : null}
               </div>

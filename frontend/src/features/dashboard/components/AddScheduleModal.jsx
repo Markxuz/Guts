@@ -80,6 +80,34 @@ function courseLabelFromType(courseType) {
   return "Unknown Course";
 }
 
+function isMotorcycleVehicleType(vehicleType) {
+  const normalized = normalizeText(vehicleType);
+  return normalized === "motorcycle" || normalized === "motor";
+}
+
+function isCarVehicleType(vehicleType) {
+  const normalized = normalizeText(vehicleType);
+  return normalized === "car" || normalized === "sedan";
+}
+
+function matchesVehicleTarget(vehicleType, targetVehicle) {
+  const normalizedTarget = normalizeText(targetVehicle);
+
+  if (!normalizedTarget) {
+    return true;
+  }
+
+  if (normalizedTarget === "motor" || normalizedTarget === "motorcycle") {
+    return isMotorcycleVehicleType(vehicleType);
+  }
+
+  if (normalizedTarget === "car") {
+    return isCarVehicleType(vehicleType);
+  }
+
+  return true;
+}
+
 function statusLabel(status) {
   const normalized = normalizeText(status);
   if (normalized === "confirmed") return "Confirmed";
@@ -242,20 +270,29 @@ export default function AddScheduleModal({
       .map((item) => ({ value: String(item.id), label: item.name })),
     [resources]
   );
-  const vehicleOptions = useMemo(
-    () => (resources?.vehicles || []).map((item) => ({
+  const vehicleOptions = useMemo(() => {
+    const rows = resources?.vehicles || [];
+    const targetVehicle = selectedEnrollmentRow?.target_vehicle || "";
+    const filtered = rows.filter((item) => matchesVehicleTarget(item.vehicle_type, targetVehicle));
+
+    return filtered.map((item) => ({
       value: String(item.id),
       label: `${item.vehicle_name || item.plate_number} (${item.vehicle_type || "Vehicle"})`,
-    })),
-    [resources]
-  );
+    }));
+  }, [resources, selectedEnrollmentRow]);
 
   const selectedDateLabel = selectedDate ? formatReadableDate(selectedDate) : "Selected date";
   const dayRestriction = availabilityByCourse?.dayRestriction || null;
   const beginnerSecondDay = availabilityByCourse?.beginnerSecondDay || null;
   const experiencedWholeDayLock = Boolean(availabilityByCourse?.wholeDayLock);
+  const selectedVehicle = useMemo(
+    () => (resources?.vehicles || []).find((item) => String(item.id) === String(form.vehicle_id)) || null,
+    [resources, form.vehicle_id]
+  );
+  const isMotorcycleWholeDaySchedule =
+    form.course_type === "pdc_experience" && isMotorcycleVehicleType(selectedVehicle?.vehicle_type);
   const activeSlotDetails = effectiveAvailability.find((item) => item.slot === activeAvailabilitySlot) || null;
-  const selectedSlotDetails = effectiveAvailability.find((item) => item.slot === form.slot) || null;
+  const selectedSlotDetails = effectiveAvailability.find((item) => item.slot === (isMotorcycleWholeDaySchedule ? "morning" : form.slot)) || null;
   const hasAvailableSlot = effectiveAvailability.some((item) => !item.full);
   const isFormComplete = Boolean(
     form.enrollment_id &&
@@ -274,6 +311,39 @@ export default function AddScheduleModal({
     !hasAvailableSlot ||
     !isFormComplete ||
     selectedSlotDetails?.full;
+
+  useEffect(() => {
+    if (!isMotorcycleWholeDaySchedule) {
+      return;
+    }
+
+    setForm((current) => {
+      if (current.slot === "morning") {
+        return current;
+      }
+
+      return {
+        ...current,
+        slot: "morning",
+      };
+    });
+  }, [isMotorcycleWholeDaySchedule]);
+
+  useEffect(() => {
+    if (isTdcCourse) {
+      return;
+    }
+
+    const existsInOptions = vehicleOptions.some((item) => item.value === String(form.vehicle_id));
+    if (existsInOptions || !form.vehicle_id) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      vehicle_id: "",
+    }));
+  }, [vehicleOptions, form.vehicle_id, isTdcCourse]);
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -520,6 +590,11 @@ export default function AddScheduleModal({
               <>
                 <ResourceField label="Care Of" name="care_of_instructor_id" value={form.care_of_instructor_id} onChange={updateField} options={careOfOptions} disabled={loadingResources} />
                 <ResourceField label="Vehicle" name="vehicle_id" value={form.vehicle_id} onChange={updateField} options={vehicleOptions} disabled={loadingResources} />
+                {!loadingResources && vehicleOptions.length === 0 ? (
+                  <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    No vehicles match this enrollment vehicle type.
+                  </p>
+                ) : null}
               </>
             ) : (
               <p className="rounded-2xl border border-[#d9c9a0] bg-[#fff7ea] px-4 py-3 text-sm text-[#800000]">
@@ -529,9 +604,15 @@ export default function AddScheduleModal({
 
             <div>
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Session Slot</p>
+                <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">
+                  {isMotorcycleWholeDaySchedule ? "Session Type" : "Session Slot"}
+                </p>
                 <p className="text-[11px] text-slate-500">
-                  {selectedSlotDetails
+                  {isMotorcycleWholeDaySchedule
+                    ? selectedSlotDetails?.full
+                      ? "Whole-day slot is fully booked"
+                      : "Whole-day reservation"
+                    : selectedSlotDetails
                     ? selectedSlotDetails.full
                       ? "Selected slot is fully booked"
                       : isTdcCourse
@@ -540,33 +621,42 @@ export default function AddScheduleModal({
                     : "Choose an available slot"}
                 </p>
               </div>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                {effectiveAvailability.map((item) => (
-                  <button
-                    key={item.slot}
-                    type="button"
-                    disabled={item.full}
-                    title={slotOccupancySummary(item)}
-                    onClick={() => setForm((current) => ({ ...current, slot: item.slot }))}
-                    className={`rounded-2xl border px-4 py-4 text-left transition ${
-                      item.full
-                        ? "border-red-300 bg-red-50 text-red-700"
-                        : form.slot === item.slot
-                          ? "border-[#800000] bg-[#800000] text-white shadow-lg"
-                          : "border-[#d9c9a0] bg-white text-slate-800 hover:border-[#800000]"
-                    }`}
-                  >
-                    <p className="text-sm font-semibold">{item.slotLabel}</p>
-                    <p className={`mt-1 text-xs ${item.full ? "text-red-600" : form.slot === item.slot ? "text-white/80" : "text-slate-500"}`}>
-                      {item.full
-                        ? (item.fullLabel || "Fully Booked")
-                        : isTdcCourse
-                          ? "High-capacity lecture session"
-                          : `${item.available} slot${item.available === 1 ? "" : "s"} left`}
-                    </p>
-                  </button>
-                ))}
-              </div>
+              {isMotorcycleWholeDaySchedule ? (
+                <div className={`mt-2 rounded-2xl border px-4 py-4 ${selectedSlotDetails?.full ? "border-red-300 bg-red-50 text-red-700" : "border-[#d9c9a0] bg-white text-slate-800"}`}>
+                  <p className="text-sm font-semibold">Whole Day (08:00 AM - 05:00 PM)</p>
+                  <p className={`mt-1 text-xs ${selectedSlotDetails?.full ? "text-red-600" : "text-slate-500"}`}>
+                    {selectedSlotDetails?.full ? (selectedSlotDetails.fullLabel || "Fully Booked") : "Reserved as whole-day motorcycle session"}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  {effectiveAvailability.map((item) => (
+                    <button
+                      key={item.slot}
+                      type="button"
+                      disabled={item.full}
+                      title={slotOccupancySummary(item)}
+                      onClick={() => setForm((current) => ({ ...current, slot: item.slot }))}
+                      className={`rounded-2xl border px-4 py-4 text-left transition ${
+                        item.full
+                          ? "border-red-300 bg-red-50 text-red-700"
+                          : form.slot === item.slot
+                            ? "border-[#800000] bg-[#800000] text-white shadow-lg"
+                            : "border-[#d9c9a0] bg-white text-slate-800 hover:border-[#800000]"
+                      }`}
+                    >
+                      <p className="text-sm font-semibold">{item.slotLabel}</p>
+                      <p className={`mt-1 text-xs ${item.full ? "text-red-600" : form.slot === item.slot ? "text-white/80" : "text-slate-500"}`}>
+                        {item.full
+                          ? (item.fullLabel || "Fully Booked")
+                          : isTdcCourse
+                            ? "High-capacity lecture session"
+                            : `${item.available} slot${item.available === 1 ? "" : "s"} left`}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
               {dayRestriction && !dayRestriction.operational ? (
                 <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                   {dayRestriction.message}
@@ -574,7 +664,9 @@ export default function AddScheduleModal({
               ) : null}
               {form.course_type === "pdc_experience" ? (
                 <p className="mt-3 rounded-xl border border-[#d9c9a0] bg-[#fff7ea] px-3 py-2 text-sm text-[#800000]">
-                  Experienced booking reserves both AM and PM slots for the selected instructor and vehicle.
+                  {isMotorcycleWholeDaySchedule
+                    ? "Motorcycle experience booking reserves both AM and PM slots for the selected instructor and vehicle."
+                    : "Select a session slot for PDC Experience four-wheel scheduling."}
                 </p>
               ) : null}
 
