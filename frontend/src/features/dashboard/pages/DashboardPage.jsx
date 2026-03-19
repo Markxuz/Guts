@@ -6,16 +6,25 @@ import CalendarWidget from "../components/CalendarWidget";
 import DashboardGrid from "../components/DashboardGrid";
 import DailyReportsCard from "../components/DailyReportsCard";
 import MonthlyEnrollmentCard from "../components/MonthlyEnrollmentCard";
+import PendingApprovalsCard from "../components/PendingApprovalsCard";
 import PrintReport from "../components/PrintReport";
 import QuickActionsCard from "../components/QuickActionsCard";
 import RecentActivitiesCard from "../components/RecentActivitiesCard";
 import StatsGrid from "../components/StatsGrid";
 import TopControls from "../components/TopControls";
 import { useCreateSchedule } from "../hooks/useCreateSchedule";
+import { useCancelSchedule } from "../hooks/useCancelSchedule";
+import {
+  useApproveScheduleChangeRequest,
+  useCreateScheduleChangeRequest,
+  usePendingScheduleChangeRequests,
+  useRejectScheduleChangeRequest,
+} from "../hooks/useScheduleChangeRequests";
 import { useDailyReports } from "../hooks/useDailyReports";
 import { useReportOverview } from "../hooks/useReportOverview";
 import { useScheduleMonthStatus } from "../hooks/useScheduleMonthStatus";
 import { formatDateToISO, parseDateValue } from "../../../shared/utils/date";
+import ToastStack from "../../students/components/ToastStack";
 
 function getDateRangeFromPreset(preset, customStartDate, customEndDate) {
   const now = new Date();
@@ -148,7 +157,9 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { auth } = useAuth();
   const [activeFilter, setActiveFilter] = useState("overall");
+  const [scheduleCourseType, setScheduleCourseType] = useState("tdc");
   const [search, setSearch] = useState("");
+  const [toasts, setToasts] = useState([]);
   const [printedAt, setPrintedAt] = useState(new Date());
   const initialFilter = useMemo(() => buildReportFilter("thisMonth", "", ""), []);
   const [reportFilter, setReportFilter] = useState(initialFilter);
@@ -172,6 +183,19 @@ export default function DashboardPage() {
   const { data: dailyReportData, isLoading: dailyLoading, isError: dailyError } = useDailyReports(reportFilter);
   const { data: monthStatusData } = useScheduleMonthStatus(calendarView);
   const createScheduleMutation = useCreateSchedule();
+  const cancelScheduleMutation = useCancelSchedule();
+  const requestScheduleChangeMutation = useCreateScheduleChangeRequest();
+  const approveScheduleChangeMutation = useApproveScheduleChangeRequest();
+  const rejectScheduleChangeMutation = useRejectScheduleChangeRequest();
+  const { data: pendingRequestsData, isLoading: pendingRequestsLoading } = usePendingScheduleChangeRequests(auth?.user?.role === "admin");
+
+  function addToast(message, type = "success") {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setToasts((current) => [...current, { id, message, type }]);
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+    }, 4500);
+  }
 
   const unfilteredDailyReports = dailyReportData?.items || [];
   const unfilteredRecentActivities = reportOverview?.recentActivities || [];
@@ -226,6 +250,8 @@ export default function DashboardPage() {
             <>
               <CalendarWidget
                 view={calendarView}
+                courseFilter={scheduleCourseType}
+                onCourseFilterChange={setScheduleCourseType}
                 reportFilter={reportFilter}
                 onSelectDate={(date) => {
                   const dateIso = formatDateToISO(date);
@@ -296,6 +322,16 @@ export default function DashboardPage() {
                 onNewEnrollment={() => navigate("/enrollments")}
                 onViewReports={() => navigate("/reports")}
               />
+              {auth?.user?.role === "admin" ? (
+                <PendingApprovalsCard
+                  rows={pendingRequestsData?.items || []}
+                  loading={pendingRequestsLoading}
+                  approveMutation={approveScheduleChangeMutation}
+                  rejectMutation={rejectScheduleChangeMutation}
+                  onApproved={(row) => addToast(`Approved schedule change for ${row.currentSchedule?.studentName || "student"}.`, "success")}
+                  onRejected={(row) => addToast(`Rejected schedule change for ${row.currentSchedule?.studentName || "student"}.`, "success")}
+                />
+              ) : null}
             </>
           )}
         />
@@ -317,13 +353,26 @@ export default function DashboardPage() {
       <AddScheduleModal
         isOpen={scheduleModalOpen}
         selectedDate={selectedDate}
+        defaultCourseType={scheduleCourseType}
         availability={dailyReportData?.availability || []}
         loadingAvailability={dailyLoading}
         createScheduleMutation={createScheduleMutation}
+        cancelScheduleMutation={cancelScheduleMutation}
+        requestScheduleChangeMutation={requestScheduleChangeMutation}
+        onScheduleSaved={(message) => addToast(message, "success")}
+        onScheduleCancelled={(message) => addToast(message, "success")}
+        onScheduleChangeRequested={(message) => addToast(message, "success")}
         onClose={() => {
           createScheduleMutation.reset();
+          cancelScheduleMutation.reset();
+          requestScheduleChangeMutation.reset();
           setScheduleModalOpen(false);
         }}
+      />
+
+      <ToastStack
+        toasts={toasts}
+        onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))}
       />
     </>
   );

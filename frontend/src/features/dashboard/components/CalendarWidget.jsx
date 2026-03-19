@@ -23,8 +23,31 @@ function buildCalendar(year, month) {
   return [...Array(firstDay).fill(null), ...Array.from({ length: totalDays }, (_, i) => i + 1)];
 }
 
+function isDateAllowedForCourse(date, courseFilter) {
+  const normalized = String(courseFilter || "overall").toLowerCase();
+  const day = date.getDay();
+
+  if (normalized === "tdc") {
+    return day !== 0;
+  }
+
+  if (normalized === "pdc" || normalized === "pdc_beginner" || normalized === "pdc_experience") {
+    return day >= 1 && day <= 4;
+  }
+
+  return true;
+}
+
+function isPastDate(date) {
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return date < todayStart;
+}
+
 export default function CalendarWidget({
   view,
+  courseFilter = "tdc",
+  onCourseFilterChange,
   onPrevMonth,
   onNextMonth,
   reportFilter,
@@ -53,7 +76,20 @@ export default function CalendarWidget({
           </p>
           <p className="mt-1 text-[11px] text-slate-500">Single-click to view the day. Double-click to open the schedule modal.</p>
         </div>
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Booking Course
+            <select
+              value={courseFilter}
+              onChange={(event) => onCourseFilterChange?.(event.target.value)}
+              className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold normal-case tracking-normal text-slate-700 outline-none"
+            >
+              <option value="tdc">TDC</option>
+              <option value="pdc_beginner">PDC Beginner</option>
+              <option value="pdc_experience">PDC Experience</option>
+            </select>
+          </label>
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
           <button type="button" onClick={onPrevMonth} className="rounded-md border border-slate-300 px-2">
             &lt;
           </button>
@@ -61,6 +97,7 @@ export default function CalendarWidget({
           <button type="button" onClick={onNextMonth} className="rounded-md border border-slate-300 px-2">
             &gt;
           </button>
+          </div>
         </div>
       </div>
 
@@ -77,6 +114,8 @@ export default function CalendarWidget({
           const hasActivity = activityDates.some((date) => isSameDay(date, current));
           const isSelected = selectedDate ? isSameDay(current, selectedDate) : false;
           const isInRange = isInActiveRange(current);
+          const isPast = isPastDate(current);
+          const isAllowed = isDateAllowedForCourse(current, courseFilter);
           const isoDate = `${view.year}-${String(view.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const dayStatus = monthStatusMap.get(isoDate);
           const isFull = Boolean(dayStatus?.dayFull);
@@ -85,20 +124,27 @@ export default function CalendarWidget({
             <button
               key={`${view.month}-${day}`}
               type="button"
-              onClick={() => onSelectDate(current)}
+              disabled={!isAllowed}
+              onClick={() => {
+                if (!isAllowed) return;
+                onSelectDate(current);
+              }}
               onDoubleClick={() => {
+                if (!isAllowed) return;
                 onSelectDate(current);
                 onOpenSchedule(current);
               }}
               className={`relative h-9 rounded-md text-sm font-semibold ${
-                isSelected
+                !isAllowed
+                  ? "cursor-not-allowed bg-slate-100 text-slate-300"
+                  : isSelected
                   ? "bg-[#800000] text-white"
                   : isInRange
                     ? "cursor-pointer bg-[#D4AF37]/20 text-[#800000] hover:bg-[#D4AF37]/30"
                   : isFull
                     ? "cursor-pointer border border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
                     : "cursor-pointer text-slate-700 hover:bg-slate-100"
-              }`}
+              } ${isPast && !isSelected ? "opacity-55" : ""}`}
             >
               {day}
               {isFull ? (

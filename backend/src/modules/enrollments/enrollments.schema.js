@@ -7,6 +7,7 @@ const transmissionSchema = Joi.string().valid("Manual", "Automatic").allow("", n
 const educationalAttainmentSchema = Joi.string().valid("High School", "College").allow("", null);
 const tdcTrainingMethodSchema = Joi.string().valid("Onsite", "Online").allow("", null);
 const pdcTrainingMethodSchema = Joi.string().valid("Onsite").allow("", null);
+const scheduleSlotSchema = Joi.string().valid("morning", "afternoon");
 
 const enrollmentCreateSchema = Joi.object({
   enrollment_type: Joi.string().valid("TDC", "PDC", "PROMO").required(),
@@ -59,8 +60,17 @@ const enrollmentCreateSchema = Joi.object({
     score: optionalText,
     status: Joi.string().valid("pending", "confirmed", "completed").default("pending"),
   }).default({}),
+  schedule: Joi.object({
+    enabled: Joi.boolean().default(false),
+    schedule_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow("", null),
+    slot: scheduleSlotSchema.allow("", null),
+    instructor_id: Joi.number().integer().positive().allow(null),
+    care_of_instructor_id: Joi.number().integer().positive().allow(null),
+    vehicle_id: Joi.number().integer().positive().allow(null),
+  }).default({ enabled: false }),
 }).custom((value, helpers) => {
   const hasPdcSelection = Boolean(value.enrollment?.pdc_category || value.enrollment?.pdc_type);
+  const scheduleEnabled = Boolean(value.schedule?.enabled);
 
   if (value.enrollment_type === "PDC" && !hasPdcSelection) {
     return helpers.error("any.custom", {
@@ -98,6 +108,33 @@ const enrollmentCreateSchema = Joi.object({
     return helpers.error("any.custom", {
       message: "pdc_category is required for PROMO enrollments",
     });
+  }
+
+  if (scheduleEnabled) {
+    if (!value.schedule?.schedule_date) {
+      return helpers.error("any.custom", {
+        message: "schedule.schedule_date is required when scheduling during enrollment",
+      });
+    }
+
+    if (!value.schedule?.slot) {
+      return helpers.error("any.custom", {
+        message: "schedule.slot is required when scheduling during enrollment",
+      });
+    }
+
+    if (!value.schedule?.instructor_id) {
+      return helpers.error("any.custom", {
+        message: "schedule.instructor_id is required when scheduling during enrollment",
+      });
+    }
+
+    const requiresVehicle = value.enrollment_type !== "TDC";
+    if (requiresVehicle && !value.schedule?.vehicle_id) {
+      return helpers.error("any.custom", {
+        message: "schedule.vehicle_id is required for PDC scheduling during enrollment",
+      });
+    }
   }
 
   return value;

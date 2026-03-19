@@ -17,6 +17,9 @@ export async function fetchDailyReports(filter) {
   const params = new URLSearchParams();
   if (filter?.mode === "day" && filter?.date) {
     params.set("date", filter.date);
+    if (filter?.courseType) params.set("courseType", filter.courseType);
+    if (filter?.instructorId) params.set("instructorId", String(filter.instructorId));
+    if (filter?.vehicleId) params.set("vehicleId", String(filter.vehicleId));
   } else {
     if (filter?.startDate) params.set("startDate", filter.startDate);
     if (filter?.endDate) params.set("endDate", filter.endDate);
@@ -32,6 +35,31 @@ export async function fetchScheduleMonthStatus({ year, month }) {
 
 export async function createSchedule(payload) {
   const response = await api.post("/schedules", payload);
+  return unwrapScheduleResponse(response);
+}
+
+export async function cancelSchedule({ scheduleId, scope = "single" }) {
+  const response = await api.delete(`/schedules/${scheduleId}?scope=${encodeURIComponent(scope)}`);
+  return unwrapScheduleResponse(response);
+}
+
+export async function createScheduleChangeRequest(payload) {
+  const response = await api.post("/schedule-change-requests", payload);
+  return unwrapScheduleResponse(response);
+}
+
+export async function fetchPendingScheduleChangeRequests() {
+  const response = await api.get("/schedule-change-requests/pending");
+  return unwrapScheduleResponse(response);
+}
+
+export async function approveScheduleChangeRequest(id) {
+  const response = await api.post(`/schedule-change-requests/${id}/approve`, {});
+  return unwrapScheduleResponse(response);
+}
+
+export async function rejectScheduleChangeRequest({ id, reviewer_note = null }) {
+  const response = await api.post(`/schedule-change-requests/${id}/reject`, { reviewer_note });
   return unwrapScheduleResponse(response);
 }
 

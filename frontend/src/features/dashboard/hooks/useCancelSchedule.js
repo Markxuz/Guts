@@ -1,13 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createSchedule } from "../services/dashboardApi";
+import { cancelSchedule } from "../services/dashboardApi";
 
-export function useCreateSchedule() {
+export function useCancelSchedule() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: createSchedule,
+    mutationFn: cancelSchedule,
     onSuccess: async (_data, variables) => {
-      const dateIso = variables?.schedule_date;
+      const dateIso = variables?.scheduleDate;
       const date = dateIso ? new Date(`${dateIso}T00:00:00`) : null;
 
       await Promise.all([

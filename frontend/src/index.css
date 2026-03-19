@@ -40,4 +40,38 @@
 	.print-page-number::after {
 		content: "Page " counter(page) " of " counter(pages);
 	}
+
+	/* Hide specific report blocks only in print/PDF output. */
+	.print-report-root .print-recent-activities-section {
+		display: none !important;
+	}
+
+	/*
+	Enable this too if you want to hide the Daily Enrollment and Schedule Report section.
+	.print-report-root .print-daily-enrollment-section {
+		display: none !important;
+	}
+	*/
+
+	/* Keep chart renderers (svg/canvas) inside their card bounds in print/PDF output. */
+	.print-report-root .print-chart-boundary {
+		position: relative;
+		width: 100% !important;
+		max-width: 100% !important;
+		min-width: 0 !important;
+		overflow: hidden !important;
+	}
+
+	.print-report-root .print-chart-boundary > * {
+		max-width: 100% !important;
+		min-width: 0 !important;
+	}
+
+	.print-report-root .print-chart-boundary canvas,
+	.print-report-root .print-chart-boundary svg {
+		display: block !important;
+		width: 100% !important;
+		max-width: 100% !important;
+		height: auto !important;
+	}
 }

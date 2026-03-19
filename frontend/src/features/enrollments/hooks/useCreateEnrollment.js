@@ -10,8 +10,10 @@ export function useCreateEnrollment() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] }),
         queryClient.invalidateQueries({ queryKey: ["reports"] }),
+        queryClient.invalidateQueries({ queryKey: ["reports", "daily"] }),
         queryClient.invalidateQueries({ queryKey: ["activity-logs"] }),
         queryClient.invalidateQueries({ queryKey: ["enrollments"] }),
+        queryClient.invalidateQueries({ queryKey: ["schedules", "month-status"] }),
       ]);
     },
   });

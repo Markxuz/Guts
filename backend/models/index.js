@@ -10,6 +10,7 @@ const DLCode = require("./DLCode")(sequelize);
 const Instructor = require("./Instructor")(sequelize);
 const Vehicle = require("./Vehicle")(sequelize);
 const Schedule = require("./Schedule")(sequelize);
+const ScheduleChangeRequest = require("./ScheduleChangeRequest")(sequelize);
 const Enrollment = require("./Enrollment")(sequelize);
 const Payment = require("./Payment")(sequelize);
 const Certificate = require("./Certificate")(sequelize);
@@ -31,6 +32,9 @@ Schedule.belongsTo(Course, { foreignKey: "course_id" });
 Instructor.hasMany(Schedule, { foreignKey: "instructor_id" });
 Schedule.belongsTo(Instructor, { foreignKey: "instructor_id" });
 
+Instructor.hasMany(Schedule, { foreignKey: "care_of_instructor_id", as: "careOfSchedules" });
+Schedule.belongsTo(Instructor, { foreignKey: "care_of_instructor_id", as: "careOfInstructor" });
+
 Vehicle.hasMany(Schedule, { foreignKey: "vehicle_id" });
 Schedule.belongsTo(Vehicle, { foreignKey: "vehicle_id" });
 
@@ -45,6 +49,18 @@ FuelLog.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
 
 Schedule.hasMany(Enrollment, { foreignKey: "schedule_id" });
 Enrollment.belongsTo(Schedule, { foreignKey: "schedule_id" });
+
+Enrollment.hasMany(Schedule, { foreignKey: "enrollment_id", as: "scheduledSessions" });
+Schedule.belongsTo(Enrollment, { foreignKey: "enrollment_id", as: "selectedEnrollment" });
+
+Student.hasMany(Schedule, { foreignKey: "student_id", as: "scheduledSessions" });
+Schedule.belongsTo(Student, { foreignKey: "student_id", as: "scheduledStudent" });
+
+Schedule.hasMany(ScheduleChangeRequest, { foreignKey: "schedule_id", as: "changeRequests", constraints: false });
+ScheduleChangeRequest.belongsTo(Schedule, { foreignKey: "schedule_id", as: "schedule", constraints: false });
+
+Enrollment.hasMany(ScheduleChangeRequest, { foreignKey: "enrollment_id", as: "scheduleChangeRequests" });
+ScheduleChangeRequest.belongsTo(Enrollment, { foreignKey: "enrollment_id", as: "enrollment" });
 
 Package.hasMany(Enrollment, { foreignKey: "package_id" });
 Enrollment.belongsTo(Package, { foreignKey: "package_id" });
@@ -64,6 +80,12 @@ ActivityLog.belongsTo(User, { foreignKey: "userId" });
 User.hasMany(Notification, { foreignKey: "actor_id" });
 Notification.belongsTo(User, { foreignKey: "actor_id", as: "actor" });
 
+User.hasMany(ScheduleChangeRequest, { foreignKey: "requested_by_user_id", as: "requestedScheduleChanges" });
+ScheduleChangeRequest.belongsTo(User, { foreignKey: "requested_by_user_id", as: "requester" });
+
+User.hasMany(ScheduleChangeRequest, { foreignKey: "reviewed_by_user_id", as: "reviewedScheduleChanges" });
+ScheduleChangeRequest.belongsTo(User, { foreignKey: "reviewed_by_user_id", as: "reviewer" });
+
 module.exports = {
   sequelize,
   User,
@@ -75,6 +97,7 @@ module.exports = {
   Instructor,
   Vehicle,
   Schedule,
+  ScheduleChangeRequest,
   Enrollment,
   Payment,
   Certificate,

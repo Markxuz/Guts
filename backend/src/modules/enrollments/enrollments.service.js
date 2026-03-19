@@ -1,5 +1,6 @@
 const { sequelize } = require("../../../models");
 const repository = require("./enrollments.repository");
+const schedulesService = require("../schedules/schedules.service");
 
 const ENROLLMENT_TYPE_MAP = {
   TDC: {
@@ -95,6 +96,39 @@ function normalizeEnrollmentPayload(enrollment = {}, extras = {}, studentId, dlC
   };
 }
 
+function toPositiveIntegerOrNull(value) {
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric) || numeric <= 0) {
+    return null;
+  }
+
+  return numeric;
+}
+
+function scheduleCourseTypeFromEnrollmentPayload(payload) {
+  if (payload.enrollment_type === "TDC") {
+    return "tdc";
+  }
+
+  const pdcType = normalizePdcType(payload.enrollment?.pdc_type, payload.enrollment?.pdc_category);
+  return pdcType === "experience" ? "pdc_experience" : "pdc_beginner";
+}
+
+function normalizeSchedulePayload(schedule = {}, payload = {}, enrollment = null) {
+  const courseType = scheduleCourseTypeFromEnrollmentPayload(payload);
+
+  return {
+    enrollment_id: enrollment?.id || null,
+    course_type: courseType,
+    instructor_id: toPositiveIntegerOrNull(schedule.instructor_id),
+    care_of_instructor_id: toPositiveIntegerOrNull(schedule.care_of_instructor_id),
+    vehicle_id: courseType === "tdc" ? null : toPositiveIntegerOrNull(schedule.vehicle_id),
+    schedule_date: normalizeText(schedule.schedule_date),
+    slot: normalizeText(schedule.slot),
+    remarks: null,
+  };
+}
+
 async function resolveStudent(studentPayload, transaction) {
   if (studentPayload.id) {
     const existingStudent = await repository.findStudentById(studentPayload.id, transaction);
@@ -183,8 +217,37 @@ async function addEnrollment(payload) {
       transaction
     );
 
+    let schedule = null;
+    if (payload.schedule?.enabled) {
+      enrollment.Student = student;
+      enrollment.DLCode = dlCode;
+
+      schedule = await schedulesService.addSchedule(
+        normalizeSchedulePayload(payload.schedule, payload, enrollment),
+        {
+          transaction,
+          selectedEnrollment: enrollment,
+          allowPendingEnrollment: true,
+        }
+      );
+    }
+
     await transaction.commit();
-    return repository.findEnrollmentById(enrollment.id);
+    const savedEnrollment = await repository.findEnrollmentById(enrollment.id);
+    if (!schedule) {
+      return savedEnrollment;
+    }
+
+    return {
+      ...(savedEnrollment?.toJSON ? savedEnrollment.toJSON() : savedEnrollment),
+      schedule: {
+        item: schedule.item,
+        createdItems: schedule.createdItems,
+        reservedDates: schedule.reservedDates,
+        slot: schedule.slot,
+        courseType: schedule.courseType,
+      },
+    };
   } catch (error) {
     await transaction.rollback();
     throw error;

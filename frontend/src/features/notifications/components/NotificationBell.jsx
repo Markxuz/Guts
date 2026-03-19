@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { useNotifications, useMarkNotificationRead } from "../hooks/useNotifications";
+import { useAuth } from "../../auth/hooks/useAuth";
 
 function timeAgo(dateStr) {
   if (!dateStr) return "";
@@ -13,11 +15,31 @@ function timeAgo(dateStr) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function resolveNotificationTarget(item, role) {
+  // Allow direct route/path fields if backend adds them later.
+  if (typeof item?.route === "string" && item.route.startsWith("/")) return item.route;
+  if (typeof item?.path === "string" && item.path.startsWith("/")) return item.path;
+
+  const text = String(item?.message || "").toLowerCase();
+
+  if (/student/.test(text)) return "/students";
+  if (/enroll/.test(text)) return "/enrollments";
+  if (/schedule|calendar/.test(text)) return "/";
+  if (/report/.test(text)) return role === "staff" ? "/" : "/reports";
+  if (/vehicle/.test(text)) return role === "staff" ? "/" : "/settings/vehicles";
+  if (/instructor/.test(text)) return role === "staff" ? "/" : "/settings/instructors";
+  if (/user|admin/.test(text)) return role === "admin" ? "/settings/users" : "/";
+
+  return "/";
+}
+
 export default function NotificationBell({
   buttonClassName,
   dropdownClassName,
   iconSize = 20,
 }) {
+  const navigate = useNavigate();
+  const { role } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const { data, isLoading } = useNotifications();
@@ -77,7 +99,11 @@ export default function NotificationBell({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => markRead(item.id)}
+                  onClick={() => {
+                    markRead(item.id);
+                    setOpen(false);
+                    navigate(resolveNotificationTarget(item, role));
+                  }}
                   className={`w-full px-4 py-3 text-left transition hover:bg-slate-50 ${
                     !item.is_read ? "bg-amber-50/60" : ""
                   }`}

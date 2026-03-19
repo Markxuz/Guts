@@ -8,6 +8,7 @@ import {
   Fuel,
   Plus,
   Search,
+  Trash2,
   UserRound,
   UserRoundCog,
   Wrench,
@@ -25,6 +26,7 @@ const STATUS_STYLES = {
   Available: "bg-emerald-100 text-emerald-700 border border-emerald-300",
   "In Service": "bg-amber-100 text-amber-700 border border-amber-300",
   Maintenance: "bg-rose-100 text-rose-700 border border-rose-300",
+  Archived: "bg-slate-200 text-slate-700 border border-slate-300",
 };
 
 function normalizeVehicleType(type, name) {
@@ -42,9 +44,14 @@ function normalizeVehicleType(type, name) {
   return "Sedan";
 }
 
+function vehicleTypeLabel(type) {
+  return type === "Sedan" ? "Four Wheels" : type;
+}
+
 function normalizeVehicleStatus(value) {
   const raw = String(value || "").toLowerCase();
 
+  if (raw.includes("arch")) return "Archived";
   if (raw.includes("maint")) return "Maintenance";
   if (raw.includes("service")) return "In Service";
   return "Available";
@@ -68,7 +75,7 @@ function buildLatestMaintenanceByVehicle(logs = []) {
 }
 
 function resolveStatusFromMaintenance(baseStatus, latestLog) {
-  if (baseStatus === "Maintenance" || baseStatus === "In Service") {
+  if (baseStatus === "Archived" || baseStatus === "Maintenance" || baseStatus === "In Service") {
     return baseStatus;
   }
 
@@ -86,6 +93,7 @@ function emptyVehicleForm() {
     vehicle_name: "",
     plate_number: "",
     vehicle_type: "Sedan",
+    transmission_type: "Automatic",
   };
 }
 
@@ -149,6 +157,7 @@ export default function VehiclesPage() {
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState("");
   const [usageRows, setUsageRows] = useState([]);
+  const [vehicleActionLoadingId, setVehicleActionLoadingId] = useState(null);
 
   const userMenuRef = useRef(null);
 
@@ -184,6 +193,7 @@ export default function VehiclesPage() {
           makeModel: item.make_model || "Fleet Unit",
           plateNumber: item.plate_number || "No Plate",
           vehicleType: type,
+          transmissionType: item.transmission_type || "Automatic",
           status,
           maintainedBy: item.maintained_by || "Fleet Manager",
         };
@@ -213,10 +223,11 @@ export default function VehiclesPage() {
           .some((value) => String(value).toLowerCase().includes(keyword));
 
       const matchesTab =
-        activeTab === "all" ||
+        (activeTab === "all" && row.status !== "Archived") ||
         (activeTab === "sedans" && row.vehicleType === "Sedan") ||
         (activeTab === "motorcycles" && row.vehicleType === "Motorcycle") ||
-        (activeTab === "maintenance" && row.status === "Maintenance");
+        (activeTab === "maintenance" && row.status === "Maintenance") ||
+        (activeTab === "archived" && row.status === "Archived");
 
       return matchesSearch && matchesTab;
     });
@@ -241,6 +252,7 @@ export default function VehiclesPage() {
   const safePage = Math.min(page, totalPages);
   const startIndex = (safePage - 1) * PAGE_SIZE;
   const pagedRows = filteredRows.slice(startIndex, startIndex + PAGE_SIZE);
+  const activeVehicleOptions = rows.filter((row) => row.status !== "Archived");
 
   async function submitVehicle(event) {
     event.preventDefault();
@@ -255,6 +267,7 @@ export default function VehiclesPage() {
         vehicle_name: form.vehicle_name.trim(),
         plate_number: form.plate_number.trim(),
         vehicle_type: form.vehicle_type,
+        transmission_type: form.transmission_type,
       });
       setIsModalOpen(false);
       setForm(emptyVehicleForm());
@@ -338,6 +351,54 @@ export default function VehiclesPage() {
       setUsageRows([]);
     } finally {
       setUsageLoading(false);
+    }
+  }
+
+  async function archiveVehicle(row) {
+    if (!row || vehicleActionLoadingId) return;
+
+    const shouldArchive = window.confirm(`Archive vehicle ${row.nickname}?`);
+    if (!shouldArchive) return;
+
+    setVehicleActionLoadingId(row.id);
+    try {
+      await resourceServices.vehicles.update(row.id, { status: "Archived" });
+      await loadVehicles();
+    } catch (archiveError) {
+      window.alert(archiveError?.message || "Failed to archive vehicle.");
+    } finally {
+      setVehicleActionLoadingId(null);
+    }
+  }
+
+  async function restoreVehicle(row) {
+    if (!row || vehicleActionLoadingId) return;
+
+    setVehicleActionLoadingId(row.id);
+    try {
+      await resourceServices.vehicles.update(row.id, { status: "Available" });
+      await loadVehicles();
+    } catch (restoreError) {
+      window.alert(restoreError?.message || "Failed to restore vehicle.");
+    } finally {
+      setVehicleActionLoadingId(null);
+    }
+  }
+
+  async function deleteArchivedVehicle(row) {
+    if (!row || vehicleActionLoadingId) return;
+
+    const shouldDelete = window.confirm(`Delete archived vehicle ${row.nickname}? This cannot be undone.`);
+    if (!shouldDelete) return;
+
+    setVehicleActionLoadingId(row.id);
+    try {
+      await resourceServices.vehicles.remove(row.id);
+      await loadVehicles();
+    } catch (deleteError) {
+      window.alert(deleteError?.message || "Failed to delete vehicle.");
+    } finally {
+      setVehicleActionLoadingId(null);
     }
   }
 
@@ -464,6 +525,15 @@ export default function VehiclesPage() {
               >
                 Under Maintenance
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("archived")}
+                className={`rounded-lg px-4 py-2 text-xs font-semibold ${
+                  activeTab === "archived" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                Archived
+              </button>
             </div>
 
             {error ? (
@@ -508,11 +578,48 @@ export default function VehiclesPage() {
                             <span className="font-semibold text-slate-800">Plate:</span> {row.plateNumber}
                           </p>
                           <p>
-                            <span className="font-semibold text-slate-800">Type:</span> {row.vehicleType}
+                            <span className="font-semibold text-slate-800">Type:</span> {vehicleTypeLabel(row.vehicleType)}
+                          </p>
+                          <p>
+                            <span className="font-semibold text-slate-800">Transmission:</span> {row.transmissionType || "Automatic"}
                           </p>
                           <p>
                             <span className="font-semibold text-slate-800">Maintained By:</span> {row.maintainedBy}
                           </p>
+                        </div>
+
+                        <div className="mt-3 flex gap-2">
+                          {row.status === "Archived" ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => restoreVehicle(row)}
+                                disabled={vehicleActionLoadingId === row.id}
+                                className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 disabled:opacity-60"
+                              >
+                                Restore
+                              </button>
+                              {activeTab === "archived" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => deleteArchivedVehicle(row)}
+                                  disabled={vehicleActionLoadingId === row.id}
+                                  className="inline-flex items-center gap-1 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 disabled:opacity-60"
+                                >
+                                  <Trash2 size={12} /> Delete
+                                </button>
+                              ) : null}
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => archiveVehicle(row)}
+                              disabled={vehicleActionLoadingId === row.id}
+                              className="rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 disabled:opacity-60"
+                            >
+                              Archive
+                            </button>
+                          )}
                         </div>
                       </article>
                     );
@@ -564,7 +671,7 @@ export default function VehiclesPage() {
               onClick={() => {
                 setMaintenanceForm((current) => ({
                   ...current,
-                  vehicle_id: rows[0]?.id ? String(rows[0].id) : "",
+                  vehicle_id: activeVehicleOptions[0]?.id ? String(activeVehicleOptions[0].id) : "",
                 }));
                 setIsMaintenanceOpen(true);
               }}
@@ -580,7 +687,7 @@ export default function VehiclesPage() {
               onClick={() => {
                 setFuelForm((current) => ({
                   ...current,
-                  vehicle_id: rows[0]?.id ? String(rows[0].id) : "",
+                  vehicle_id: activeVehicleOptions[0]?.id ? String(activeVehicleOptions[0].id) : "",
                 }));
                 setIsFuelOpen(true);
               }}
@@ -651,11 +758,23 @@ export default function VehiclesPage() {
                     onChange={(event) => setForm((current) => ({ ...current, vehicle_type: event.target.value }))}
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#800000]"
                   >
-                    <option value="Sedan">Sedan</option>
+                    <option value="Sedan">Four Wheels</option>
                     <option value="Motorcycle">Motorcycle</option>
                   </select>
                 </label>
               </div>
+
+              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
+                Transmission Type
+                <select
+                  value={form.transmission_type}
+                  onChange={(event) => setForm((current) => ({ ...current, transmission_type: event.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#800000]"
+                >
+                  <option value="Automatic">Automatic</option>
+                  <option value="Manual">Manual</option>
+                </select>
+              </label>
 
               <div className="mt-2 flex items-center justify-end gap-2">
                 <button
@@ -710,7 +829,7 @@ export default function VehiclesPage() {
                   required
                 >
                   <option value="">Select vehicle</option>
-                  {rows.map((vehicle) => (
+                  {activeVehicleOptions.map((vehicle) => (
                     <option key={vehicle.id} value={String(vehicle.id)}>{vehicle.nickname} ({vehicle.plateNumber})</option>
                   ))}
                 </select>
@@ -821,7 +940,7 @@ export default function VehiclesPage() {
                   required
                 >
                   <option value="">Select vehicle</option>
-                  {rows.map((vehicle) => (
+                  {activeVehicleOptions.map((vehicle) => (
                     <option key={vehicle.id} value={String(vehicle.id)}>{vehicle.nickname} ({vehicle.plateNumber})</option>
                   ))}
                 </select>

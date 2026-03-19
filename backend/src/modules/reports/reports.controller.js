@@ -7,6 +7,9 @@ async function getDailyReports(req, res) {
       date: req.query.date,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
+      courseType: req.query.courseType,
+      instructorId: req.query.instructorId,
+      vehicleId: req.query.vehicleId,
     });
     return res.status(200).json(payload);
   } catch (error) {
