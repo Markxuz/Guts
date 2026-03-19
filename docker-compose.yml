@@ -1,0 +1,82 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: guts-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me_root_password}
+      MYSQL_DATABASE: ${DB_NAME:-guts_db}
+      MYSQL_USER: ${DB_USER:-guts_app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-change_me_db_password}
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: guts-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      PORT: 5000
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-guts_db}
+      DB_USER: ${DB_USER:-guts_app}
+      DB_PASSWORD: ${DB_PASSWORD:-change_me_db_password}
+      JWT_SECRET: ${JWT_SECRET:-change_me_to_long_random_secret}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      DB_SYNC: "false"
+      DB_BOOTSTRAP_SYNC: ${DB_BOOTSTRAP_SYNC:-true}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:${APP_PORT:-8080}}
+      LOGIN_RATE_LIMIT_WINDOW_MINUTES: ${LOGIN_RATE_LIMIT_WINDOW_MINUTES:-15}
+      LOGIN_RATE_LIMIT_MAX_ATTEMPTS: ${LOGIN_RATE_LIMIT_MAX_ATTEMPTS:-5}
+      SEED_DEFAULT_USERS: ${SEED_DEFAULT_USERS:-false}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@guts.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe!Admin123}
+      SEED_STAFF_EMAIL: ${SEED_STAFF_EMAIL:-staff@guts.local}
+      SEED_STAFF_PASSWORD: ${SEED_STAFF_PASSWORD:-ChangeMe!Staff123}
+      BACKUP_DIR: /app/backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS:-26}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      REQUEST_LOG_INCLUDE_HEALTH: ${REQUEST_LOG_INCLUDE_HEALTH:-false}
+      BACKUP_ALERT_WEBHOOK_URL: ${BACKUP_ALERT_WEBHOOK_URL:-}
+    volumes:
+      - ./backend/backups:/app/backups
+    command: sh -c "if [ \"$DB_BOOTSTRAP_SYNC\" = \"true\" ]; then DB_SYNC=true npm start; else npm run migrate && npm start; fi"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: guts-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8080}:80"
+
+volumes:
+  db_data:

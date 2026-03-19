@@ -25,6 +25,49 @@ async function markMigrationApplied(name) {
   });
 }
 
+function parseMissingTableFromError(error) {
+  const message = error?.message || "";
+  const describeMatch = message.match(/No description found for "(.+?)" table/i);
+  if (describeMatch) {
+    return describeMatch[1];
+  }
+
+  const tableNotFoundMatch = message.match(/Table '.*?\.(.+?)' doesn't exist/i);
+  if (tableNotFoundMatch) {
+    return tableNotFoundMatch[1].replace(/[`"']/g, "");
+  }
+
+  return null;
+}
+
+function normalizeTableName(table) {
+  if (typeof table === "string") {
+    return table.toLowerCase();
+  }
+
+  if (table && typeof table === "object") {
+    if (typeof table.tableName === "string") {
+      return table.tableName.toLowerCase();
+    }
+    if (typeof table.name === "string") {
+      return table.name.toLowerCase();
+    }
+  }
+
+  return "";
+}
+
+async function shouldSkipMissingTableMigration(error) {
+  const missingTable = parseMissingTableFromError(error);
+  if (!missingTable) {
+    return false;
+  }
+
+  const existingTables = await sequelize.getQueryInterface().showAllTables();
+  const normalizedExisting = new Set(existingTables.map(normalizeTableName).filter(Boolean));
+  return normalizedExisting.has(String(missingTable).toLowerCase());
+}
+
 async function main() {
   await ensureMigrationTable();
 
@@ -45,9 +88,19 @@ async function main() {
       throw new Error(`Migration ${file} is missing an up() function`);
     }
 
-    await migration.up(sequelize.getQueryInterface(), Sequelize);
-    await markMigrationApplied(file);
-    console.log(`Applied migration: ${file}`);
+    try {
+      await migration.up(sequelize.getQueryInterface(), Sequelize);
+      await markMigrationApplied(file);
+      console.log(`Applied migration: ${file}`);
+    } catch (error) {
+      if (await shouldSkipMissingTableMigration(error)) {
+        await markMigrationApplied(file);
+        console.warn(`Skipped migration due to table-case mismatch: ${file}`);
+        continue;
+      }
+
+      throw error;
+    }
   }
 
   console.log("Migrations complete");
