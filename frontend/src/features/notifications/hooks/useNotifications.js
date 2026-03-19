@@ -20,12 +20,70 @@ export function useMarkNotificationRead() {
 
   const { mutate: markRead } = useMutation({
     mutationFn: (id) => notificationsService.markRead(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+
+      const previous = queryClient.getQueryData(["notifications"]);
+      queryClient.setQueryData(["notifications"], (current) => {
+        if (!current) return current;
+
+        const items = Array.isArray(current.items)
+          ? current.items.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    is_read: true,
+                  }
+                : item
+            )
+          : [];
+
+        const unreadCount = items.reduce((count, item) => count + (item.is_read ? 0 : 1), 0);
+        return {
+          ...current,
+          items,
+          unreadCount,
+        };
+      });
+
+      return { previous };
+    },
+    onError: (_error, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["notifications"], context.previous);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   const { mutate: markAllRead } = useMutation({
     mutationFn: notificationsService.markAllRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+
+      const previous = queryClient.getQueryData(["notifications"]);
+      queryClient.setQueryData(["notifications"], (current) => {
+        if (!current) return current;
+
+        const items = Array.isArray(current.items)
+          ? current.items.map((item) => ({ ...item, is_read: true }))
+          : [];
+
+        return {
+          ...current,
+          items,
+          unreadCount: 0,
+        };
+      });
+
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["notifications"], context.previous);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   return { markRead, markAllRead };

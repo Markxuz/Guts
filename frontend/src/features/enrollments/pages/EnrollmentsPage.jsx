@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, GraduationCap, LoaderCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import EnrollmentTypeSwitcher from "../components/EnrollmentTypeSwitcher";
@@ -8,6 +9,8 @@ import PdcFormSections from "../components/sections/PdcFormSections";
 import PromoFormSections from "../components/sections/PromoFormSections";
 import TdcFormSections from "../components/sections/TdcFormSections";
 import { useCreateEnrollment } from "../hooks/useCreateEnrollment";
+import { resourceServices } from "../../../services/resources";
+import { fetchDailyReports } from "../../dashboard/services/dashboardApi";
 import ToastStack from "../../students/components/ToastStack";
 
 const INITIAL_FORM = {
@@ -50,6 +53,14 @@ const INITIAL_FORM = {
     lto_portal_account: "",
     tdc_training_method: "Onsite",
     pdc_training_method: "Onsite",
+  },
+  schedule: {
+    enabled: true,
+    schedule_date: "",
+    slot: "morning",
+    instructor_id: "",
+    care_of_instructor_id: "",
+    vehicle_id: "",
   },
 };
 
@@ -135,7 +146,33 @@ function buildEnrollmentPayload(type, form) {
       pdc_category: type === "PDC" || type === "PROMO" ? form.enrollment.pdc_category : null,
       status: "pending",
     },
+    schedule: {
+      enabled: Boolean(form.schedule.enabled),
+      schedule_date: form.schedule.schedule_date || null,
+      slot: form.schedule.slot || null,
+      instructor_id: toNullableNumber(form.schedule.instructor_id),
+      care_of_instructor_id: toNullableNumber(form.schedule.care_of_instructor_id),
+      vehicle_id: toNullableNumber(form.schedule.vehicle_id),
+    },
   };
+}
+
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function inferEnrollmentCourseType(type, form) {
+  if (type === "TDC") return "tdc";
+
+  const pdcType = normalizeText(form.enrollment.pdc_type || form.enrollment.pdc_category);
+  return pdcType === "experience" ? "pdc_experience" : pdcType ? "pdc_beginner" : "";
+}
+
+function scheduleCourseLabel(courseType) {
+  if (courseType === "tdc") return "TDC";
+  if (courseType === "pdc_beginner") return "PDC Beginner";
+  if (courseType === "pdc_experience") return "PDC Experience";
+  return "Select course details above";
 }
 
 const ENROLLMENT_TYPE_CARDS = [
@@ -155,6 +192,73 @@ export default function EnrollmentsPage() {
   const [toasts, setToasts] = useState([]);
   const successRedirectTimeoutRef = useRef(null);
   const createEnrollmentMutation = useCreateEnrollment();
+  const scheduleCourseType = useMemo(() => inferEnrollmentCourseType(selectedType, form), [selectedType, form]);
+  const isScheduleTdc = scheduleCourseType === "tdc";
+
+  const { data: scheduleResources, isLoading: loadingScheduleResources } = useQuery({
+    queryKey: ["enrollment-schedule-resources"],
+    queryFn: async () => {
+      const [instructors, vehicles] = await Promise.all([
+        resourceServices.instructors.list(),
+        resourceServices.vehicles.list(),
+      ]);
+
+      return { instructors, vehicles };
+    },
+    enabled: step === 1,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: scheduleAvailability, isLoading: loadingScheduleAvailability } = useQuery({
+    queryKey: [
+      "enrollment-schedule-availability",
+      form.schedule.schedule_date,
+      scheduleCourseType,
+      form.schedule.instructor_id,
+      form.schedule.vehicle_id,
+    ],
+    queryFn: () => fetchDailyReports({
+      mode: "day",
+      date: form.schedule.schedule_date,
+      courseType: scheduleCourseType,
+      instructorId: form.schedule.instructor_id ? Number(form.schedule.instructor_id) : undefined,
+      vehicleId: !isScheduleTdc && form.schedule.vehicle_id ? Number(form.schedule.vehicle_id) : undefined,
+    }),
+    enabled: step === 1 && Boolean(form.schedule.schedule_date) && Boolean(scheduleCourseType),
+    staleTime: 10 * 1000,
+  });
+
+  const instructorOptions = useMemo(() => {
+    const rows = scheduleResources?.instructors || [];
+
+    const isQualified = (item) => {
+      const specialization = String(item.specialization || "").toLowerCase();
+      const tdcCertified = Boolean(item.tdc_certified) || specialization.includes("tdc");
+      const pdcBeginnerCertified = Boolean(item.pdc_beginner_certified) || specialization.includes("pdc");
+      const pdcExperienceCertified = Boolean(item.pdc_experience_certified) || specialization.includes("pdc");
+
+      if (scheduleCourseType === "tdc") return tdcCertified;
+      if (scheduleCourseType === "pdc_beginner") return pdcBeginnerCertified;
+      if (scheduleCourseType === "pdc_experience") return pdcExperienceCertified;
+      return true;
+    };
+
+    return rows
+      .filter((item) => String(item.status || "Active") === "Active")
+      .filter((item) => isQualified(item))
+      .map((item) => ({ value: String(item.id), label: item.name }));
+  }, [scheduleResources, scheduleCourseType]);
+
+  const vehicleOptions = useMemo(
+    () => (scheduleResources?.vehicles || []).map((item) => ({
+      value: String(item.id),
+      label: `${item.vehicle_name || item.plate_number} (${item.vehicle_type || "Vehicle"})`,
+    })),
+    [scheduleResources]
+  );
+
+  const scheduleSlots = scheduleAvailability?.availability || [];
+  const selectedScheduleSlot = scheduleSlots.find((item) => item.slot === form.schedule.slot) || null;
 
   useEffect(() => {
     return () => {
@@ -174,11 +278,21 @@ export default function EnrollmentsPage() {
 
   function handleFieldChange(section, field, value) {
     setForm((current) => {
-      if (section !== "enrollment") {
+      if (section !== "enrollment" && section !== "schedule") {
         return {
           ...current,
           [section]: {
             ...current[section],
+            [field]: value,
+          },
+        };
+      }
+
+      if (section === "schedule") {
+        return {
+          ...current,
+          schedule: {
+            ...current.schedule,
             [field]: value,
           },
         };
@@ -306,9 +420,32 @@ export default function EnrollmentsPage() {
       return;
     }
 
+    if (!form.schedule.schedule_date) {
+      addToast("Please select a schedule date before submitting the enrollment.");
+      return;
+    }
+
+    if (!form.schedule.instructor_id) {
+      addToast("Please assign an instructor in the Schedule Session section.");
+      return;
+    }
+
+    if (!isScheduleTdc && !form.schedule.vehicle_id) {
+      addToast("Please assign a vehicle in the Schedule Session section.");
+      return;
+    }
+
+    if (selectedScheduleSlot?.full) {
+      addToast("The selected schedule slot is fully booked. Choose another slot or date.");
+      return;
+    }
+
     createEnrollmentMutation.mutate(buildEnrollmentPayload(selectedType, form), {
-      onSuccess: () => {
-        const nextSuccessMessage = `${getEnrollmentTypeLabel(selectedType)} submitted successfully.`;
+      onSuccess: (response) => {
+        const hasSchedule = Boolean(response?.schedule?.item);
+        const nextSuccessMessage = hasSchedule
+          ? `${getEnrollmentTypeLabel(selectedType)} and schedule submitted successfully.`
+          : `${getEnrollmentTypeLabel(selectedType)} submitted successfully.`;
 
         setSuccessMessage(nextSuccessMessage);
         setIsSuccessModalOpen(true);
@@ -460,6 +597,125 @@ export default function EnrollmentsPage() {
             {selectedType === "TDC" ? <TdcFormSections form={form} onFieldChange={handleFieldChange} /> : null}
             {selectedType === "PDC" ? <PdcFormSections form={form} onFieldChange={handleFieldChange} /> : null}
             {selectedType === "PROMO" ? <PromoFormSections form={form} onFieldChange={handleFieldChange} /> : null}
+
+            <section className="mt-6 rounded-2xl border border-[#d9c9a0] bg-[#fff9ef] p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">Schedule Session</h3>
+                  <p className="mt-1 text-sm text-slate-500">Reserve the first session while saving the enrollment.</p>
+                </div>
+                <span className="rounded-full bg-[#D4AF37]/20 px-3 py-1 text-xs font-semibold text-[#800000]">
+                  {scheduleCourseLabel(scheduleCourseType)}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Start Date</span>
+                  <input
+                    type="date"
+                    value={form.schedule.schedule_date}
+                    onChange={(event) => handleFieldChange("schedule", "schedule_date", event.target.value)}
+                    className="h-11 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Instructor</span>
+                  <select
+                    value={form.schedule.instructor_id}
+                    onChange={(event) => handleFieldChange("schedule", "instructor_id", event.target.value)}
+                    disabled={loadingScheduleResources || !scheduleCourseType}
+                    className="h-11 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000] disabled:bg-slate-100"
+                  >
+                    <option value="">Select instructor</option>
+                    {instructorOptions.map((item) => (
+                      <option key={item.value} value={item.value}>{item.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                {!isScheduleTdc ? (
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Vehicle</span>
+                    <select
+                      value={form.schedule.vehicle_id}
+                      onChange={(event) => handleFieldChange("schedule", "vehicle_id", event.target.value)}
+                      disabled={loadingScheduleResources || !scheduleCourseType}
+                      className="h-11 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000] disabled:bg-slate-100"
+                    >
+                      <option value="">Select vehicle</option>
+                      {vehicleOptions.map((item) => (
+                        <option key={item.value} value={item.value}>{item.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <div className="rounded-xl border border-[#d9c9a0] bg-white px-4 py-3 text-sm text-slate-600">
+                    TDC uses an instructor-only lecture slot. Vehicle assignment is not required.
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Time Slot</p>
+                  <p className="text-[11px] text-slate-500">
+                    {selectedScheduleSlot
+                      ? selectedScheduleSlot.full
+                        ? "Fully booked"
+                        : `${selectedScheduleSlot.available} slot${selectedScheduleSlot.available === 1 ? "" : "s"} left`
+                      : "Select a date to view availability"}
+                  </p>
+                </div>
+
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  {[
+                    { slot: "morning", slotLabel: "08:00 AM - 12:00 PM", full: false, available: 0 },
+                    { slot: "afternoon", slotLabel: "01:00 PM - 05:00 PM", full: false, available: 0 },
+                  ].map((fallback) => {
+                    const item = scheduleSlots.find((slot) => slot.slot === fallback.slot) || fallback;
+                    const selected = form.schedule.slot === item.slot;
+                    return (
+                      <button
+                        key={item.slot}
+                        type="button"
+                        disabled={Boolean(item.full)}
+                        onClick={() => handleFieldChange("schedule", "slot", item.slot)}
+                        className={`rounded-2xl border px-4 py-4 text-left transition ${
+                          item.full
+                            ? "border-red-300 bg-red-50 text-red-700"
+                            : selected
+                              ? "border-[#800000] bg-[#800000] text-white shadow-lg"
+                              : "border-[#d9c9a0] bg-white text-slate-800 hover:border-[#800000]"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold">{item.slotLabel}</p>
+                        <p className={`mt-1 text-xs ${item.full ? "text-red-600" : selected ? "text-white/80" : "text-slate-500"}`}>
+                          {item.full ? (item.fullLabel || "Fully Booked") : `${item.available} slot${item.available === 1 ? "" : "s"} left`}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {loadingScheduleAvailability ? (
+                  <p className="mt-3 text-sm text-slate-500">Checking schedule availability...</p>
+                ) : null}
+
+                {scheduleCourseType === "pdc_beginner" ? (
+                  <p className="mt-3 rounded-xl border border-[#d9c9a0] bg-white px-3 py-2 text-sm text-slate-700">
+                    Beginner scheduling automatically reserves the same slot on two consecutive operating days.
+                  </p>
+                ) : null}
+
+                {scheduleCourseType === "pdc_experience" ? (
+                  <p className="mt-3 rounded-xl border border-[#d9c9a0] bg-white px-3 py-2 text-sm text-slate-700">
+                    Experience scheduling reserves the whole day for the selected instructor and vehicle.
+                  </p>
+                ) : null}
+              </div>
+            </section>
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">

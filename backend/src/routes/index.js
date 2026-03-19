@@ -18,6 +18,7 @@ const studentRoutes = require("../modules/students/students.routes");
 const enrollmentRoutes = require("../modules/enrollments/enrollments.routes");
 const dashboardRoutes = require("../modules/dashboard/dashboard.routes");
 const notificationRoutes = require("../modules/notifications/notifications.routes");
+const scheduleChangeRequestRoutes = require("../modules/schedule-change-requests/schedule-change-requests.routes");
 const usersRoutes = require("../modules/users/users.routes");
 const scheduleRoutes = require("../modules/schedules/schedules.routes");
 const { authenticateToken } = require("../shared/middleware/auth");
@@ -33,6 +34,7 @@ function createApiRouter() {
   router.use("/students", studentRoutes);
   router.use("/enrollments", enrollmentRoutes);
   router.use("/notifications", notificationRoutes);
+  router.use("/schedule-change-requests", scheduleChangeRequestRoutes);
   router.use("/users", usersRoutes);
   router.use(
     "/courses",

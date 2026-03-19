@@ -4,15 +4,26 @@ const { ensureDefaultUsers } = require("../../src/modules/auth/auth.service");
 const { sequelize } = require("../../models");
 
 let cached;
+let initializing;
 
 async function getTestClient() {
-  if (!cached) {
-    await sequelize.sync({ force: false });
-    await ensureDefaultUsers();
-    cached = request(createApp());
+  if (cached) {
+    return cached;
   }
 
-  return cached;
+  if (!initializing) {
+    initializing = (async () => {
+      await sequelize.sync({ force: false });
+      await ensureDefaultUsers();
+      cached = request(createApp());
+      return cached;
+    })().catch((error) => {
+      initializing = null;
+      throw error;
+    });
+  }
+
+  return initializing;
 }
 
 async function loginAsAdmin(client) {
@@ -28,7 +39,21 @@ async function loginAsAdmin(client) {
   return response.body.token;
 }
 
+async function loginAsStaff(client) {
+  const response = await client.post("/api/auth/login").send({
+    email: "staff@guts.local",
+    password: "staff123",
+  });
+
+  if (response.status !== 200 || !response.body?.token) {
+    throw new Error("Failed to authenticate test staff");
+  }
+
+  return response.body.token;
+}
+
 module.exports = {
   getTestClient,
   loginAsAdmin,
+  loginAsStaff,
 };

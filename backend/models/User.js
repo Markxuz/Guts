@@ -23,6 +23,11 @@ module.exports = (sequelize) => {
 			allowNull: false,
 			defaultValue: "staff",
 		},
+		must_change_password: {
+			type: DataTypes.BOOLEAN,
+			allowNull: false,
+			defaultValue: false,
+		},
 	});
 
 	return User;

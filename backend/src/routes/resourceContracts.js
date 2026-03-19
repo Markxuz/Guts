@@ -35,37 +35,55 @@ const dlCodeUpdateSchema = Joi.object({
 const instructorCreateSchema = Joi.object({
   name: Joi.string().trim().required(),
   license_number: Joi.string().trim().required(),
-  specialization: Joi.string().valid("PDC Certified", "TDC Certified").required(),
+  specialization: Joi.string().trim().allow("", null),
   status: Joi.string().valid("Active", "On Leave").required(),
   assigned_vehicle_id: Joi.number().integer().positive().allow(null),
   phone: Joi.string().trim().max(20).allow("", null),
   tdc_cert_expiry: Joi.date().iso().allow(null, ""),
   pdc_cert_expiry: Joi.date().iso().allow(null, ""),
   certification_file_name: optionalText,
+  tdc_certified: Joi.boolean().default(false),
+  pdc_beginner_certified: Joi.boolean().default(false),
+  pdc_experience_certified: Joi.boolean().default(false),
+}).custom((value, helpers) => {
+  if (value.tdc_certified || value.pdc_beginner_certified || value.pdc_experience_certified) {
+    return value;
+  }
+
+  return helpers.error("any.custom", {
+    message: "At least one instructor qualification is required",
+  });
 });
 
 const instructorUpdateSchema = Joi.object({
   name: Joi.string().trim(),
   license_number: Joi.string().trim(),
-  specialization: Joi.string().valid("PDC Certified", "TDC Certified"),
+  specialization: Joi.string().trim().allow("", null),
   status: Joi.string().valid("Active", "On Leave"),
   assigned_vehicle_id: Joi.number().integer().positive().allow(null),
   phone: Joi.string().trim().max(20).allow("", null),
   tdc_cert_expiry: Joi.date().iso().allow(null, ""),
   pdc_cert_expiry: Joi.date().iso().allow(null, ""),
   certification_file_name: optionalText,
+  tdc_certified: Joi.boolean(),
+  pdc_beginner_certified: Joi.boolean(),
+  pdc_experience_certified: Joi.boolean(),
 }).min(1);
 
 const vehicleCreateSchema = Joi.object({
   vehicle_name: Joi.string().trim().allow("", null),
   plate_number: Joi.string().trim().required(),
   vehicle_type: Joi.string().valid("Sedan", "Motorcycle", "Car", "Motor").required(),
+  transmission_type: Joi.string().valid("Automatic", "Manual").default("Automatic"),
+  status: Joi.string().valid("Available", "In Service", "Maintenance", "Archived").default("Available"),
 });
 
 const vehicleUpdateSchema = Joi.object({
   vehicle_name: Joi.string().trim().allow("", null),
   plate_number: Joi.string().trim(),
   vehicle_type: Joi.string().valid("Sedan", "Motorcycle", "Car", "Motor"),
+  transmission_type: Joi.string().valid("Automatic", "Manual"),
+  status: Joi.string().valid("Available", "In Service", "Maintenance", "Archived"),
 }).min(1);
 
 const maintenanceCreateSchema = Joi.object({

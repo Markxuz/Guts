@@ -17,6 +17,22 @@ module.exports = (sequelize) => {
 				isIn: [["Sedan", "Motorcycle", "Car", "Motor"]],
 			},
 		},
+		transmission_type: {
+			type: DataTypes.STRING(20),
+			allowNull: false,
+			defaultValue: "Automatic",
+			validate: {
+				isIn: [["Automatic", "Manual"]],
+			},
+		},
+		status: {
+			type: DataTypes.STRING(30),
+			allowNull: false,
+			defaultValue: "Available",
+			validate: {
+				isIn: [["Available", "In Service", "Maintenance", "Archived"]],
+			},
+		},
 		created_at: {
 			type: DataTypes.DATE,
 			allowNull: true,

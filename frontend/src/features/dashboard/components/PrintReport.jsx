@@ -80,12 +80,12 @@ function PrintMonthlyChart({ rows }) {
   const max = Math.max(1, ...rows.flatMap((row) => [row.tdc || 0, row.pdcBeginner || 0, row.pdcExperience || 0]));
 
   return (
-    <div className="break-inside-avoid rounded-lg border border-[#800000]/30 bg-white p-3">
+    <div className="break-inside-avoid min-w-0 overflow-hidden rounded-lg border border-[#800000]/30 bg-white p-3">
       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#800000]">Monthly Enrollment Chart</p>
-      <div className="h-40 rounded border border-slate-200 px-2 py-1">
-        <div className="flex h-full items-end justify-between gap-2">
+      <div className="print-chart-boundary h-40 min-w-0 rounded border border-slate-200 px-2 py-1">
+        <div className="flex h-full min-w-0 items-end justify-between gap-2 overflow-hidden">
           {rows.map((row) => (
-            <div key={row.month} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
+            <div key={row.month} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
               <div className="flex items-end gap-1">
                 <span className="w-1.5 rounded-sm bg-cyan-500" style={{ height: `${((row.tdc || 0) / max) * 70 + 2}px` }} />
                 <span className="w-1.5 rounded-sm bg-red-500" style={{ height: `${((row.pdcBeginner || 0) / max) * 70 + 2}px` }} />
@@ -177,7 +177,7 @@ export default function PrintReport({
           <PrintMonthlyChart rows={monthlyEnrollment} />
         </section>
 
-        <section className="mb-3 break-inside-avoid rounded-lg border border-[#800000]/30 bg-white p-3">
+        <section className="print-daily-enrollment-section mb-3 break-inside-avoid rounded-lg border border-[#800000]/30 bg-white p-3">
           <div className="mb-1 flex items-center justify-between">
             <p className="text-sm font-bold uppercase tracking-wide text-[#800000]">Daily Enrollment and Schedule Report</p>
             <span className="rounded-full bg-[#D4AF37]/20 px-2 py-0.5 text-[8pt] font-semibold text-[#800000]">{dailyTransactions.length} entries</span>
@@ -208,7 +208,7 @@ export default function PrintReport({
           )}
         </section>
 
-        <section className="mb-6 break-inside-avoid rounded-lg border border-[#800000]/30 bg-white p-3">
+        <section className="print-recent-activities-section mb-6 break-inside-avoid rounded-lg border border-[#800000]/30 bg-white p-3">
           <p className="mb-2 text-sm font-bold uppercase tracking-wide text-[#800000]">Recent System Activities Log</p>
           <div className="space-y-1.5">
             {recentActivities.length === 0 ? (

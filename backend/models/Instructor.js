@@ -38,6 +38,21 @@ module.exports = (sequelize) => {
 			type: DataTypes.STRING(255),
 			allowNull: true,
 		},
+		tdc_certified: {
+			type: DataTypes.BOOLEAN,
+			allowNull: false,
+			defaultValue: false,
+		},
+		pdc_beginner_certified: {
+			type: DataTypes.BOOLEAN,
+			allowNull: false,
+			defaultValue: false,
+		},
+		pdc_experience_certified: {
+			type: DataTypes.BOOLEAN,
+			allowNull: false,
+			defaultValue: false,
+		},
 		phone: {
 			type: DataTypes.STRING(20),
 			allowNull: true,

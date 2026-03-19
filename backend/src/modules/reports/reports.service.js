@@ -194,7 +194,7 @@ function buildUsageByVehicle(rows) {
     .sort((a, b) => b.totalTrainingHours - a.totalTrainingHours);
 }
 
-async function getDailyReports({ date, startDate, endDate }) {
+async function getDailyReports({ date, startDate, endDate, courseType, instructorId, vehicleId }) {
   const effectiveStartDate = date || startDate;
   const effectiveEndDate = date || endDate;
   const start = new Date(`${effectiveStartDate}T00:00:00.000Z`);
@@ -203,7 +203,9 @@ async function getDailyReports({ date, startDate, endDate }) {
 
   const [enrollments, schedules] = await Promise.all([
     repository.findEnrollmentsByDateRange(start, end),
-    date ? listSchedulesByDate(date) : listSchedulesByRange(effectiveStartDate, effectiveEndDate),
+    date
+      ? listSchedulesByDate(date, courseType, { instructorId, vehicleId })
+      : listSchedulesByRange(effectiveStartDate, effectiveEndDate),
   ]);
 
   const items = [
@@ -218,6 +220,9 @@ async function getDailyReports({ date, startDate, endDate }) {
     isRange: !date,
     total: items.length,
     availability: date ? schedules?.slots || [] : [],
+    dayRestriction: date ? schedules?.dayRestriction || null : null,
+    beginnerSecondDay: date ? schedules?.beginnerSecondDay || null : null,
+    wholeDayLock: date && courseType === "pdc_experience" ? Boolean(schedules?.dayFull) : false,
     dayFull: date ? schedules?.dayFull || false : false,
     items,
   };

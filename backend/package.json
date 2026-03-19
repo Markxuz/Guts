@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "migrate": "node scripts/runMigrations.js",
+    "backup:db": "node scripts/backupDatabase.js",
+    "backup:monitor": "node scripts/monitorBackupStatus.js",
+    "backup:restore-test": "node scripts/restoreBackupTest.js",
     "start": "node server.js",
     "test": "node --test --test-concurrency=1 test/contracts/*.test.js"
   },

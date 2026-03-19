@@ -3,29 +3,43 @@ import {
   X,
   CalendarPlus,
   ChevronDown,
-  Download,
   Pencil,
   Plus,
+  Printer,
   Search,
+  Trash2,
   UserRound,
   UserRoundCog,
 } from "lucide-react";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 import { useNavigate } from "react-router-dom";
 import NotificationBell from "../../notifications/components/NotificationBell";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { resourceServices } from "../../../services/resources";
 
 const PAGE_SIZE = 8;
-const SPECIALIZATION_OPTIONS = ["PDC Certified", "TDC Certified"];
 const STATUS_OPTIONS = ["Active", "On Leave"];
+const QUALIFICATION_OPTIONS = [
+  { key: "tdc_certified", label: "TDC Certified (Lecture)" },
+  { key: "pdc_beginner_certified", label: "PDC Beginner Certified" },
+  { key: "pdc_experience_certified", label: "PDC Experienced Certified" },
+];
+
+function specializationFromQualifications(value) {
+  const parts = [];
+  if (value?.tdc_certified) parts.push("TDC");
+  if (value?.pdc_beginner_certified) parts.push("PDC Beginner");
+  if (value?.pdc_experience_certified) parts.push("PDC Experience");
+  return parts.length ? parts.join(" + ") : "";
+}
 
 function emptyForm() {
   return {
     name: "",
     license_number: "",
-    specialization: "PDC Certified",
+    specialization: "",
+    tdc_certified: false,
+    pdc_beginner_certified: false,
+    pdc_experience_certified: false,
     status: "Active",
     assigned_vehicle_id: "",
     phone: "",
@@ -43,18 +57,6 @@ function emptyScheduleForm() {
     slot: "morning",
     remarks: "",
   };
-}
-
-async function loadImageAsDataUrl(url) {
-  const response = await fetch(url);
-  const blob = await response.blob();
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 export default function InstructorsPage() {
@@ -78,6 +80,7 @@ export default function InstructorsPage() {
   const [editingInstructorId, setEditingInstructorId] = useState(null);
   const [form, setForm] = useState(() => emptyForm());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeletingInstructor, setIsDeletingInstructor] = useState(false);
 
   const [selectedInstructor, setSelectedInstructor] = useState(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -125,7 +128,10 @@ export default function InstructorsPage() {
         id: item.id,
         name: item.name || `Instructor #${item.id}`,
         licenseNumber: item.license_number || `LIC-${String(item.id).padStart(5, "0")}`,
-        specialization: item.specialization || "TDC Certified",
+        tdc_certified: Boolean(item.tdc_certified),
+        pdc_beginner_certified: Boolean(item.pdc_beginner_certified),
+        pdc_experience_certified: Boolean(item.pdc_experience_certified),
+        specialization: specializationFromQualifications(item) || item.specialization || "Unspecified",
         status: item.status || "Active",
         assignedVehicle: item?.assignedVehicle?.vehicle_name || "Unassigned",
         assignedVehicleId: item.assigned_vehicle_id || null,
@@ -159,8 +165,8 @@ export default function InstructorsPage() {
 
       const matchesTab =
         activeTab === "all" ||
-        (activeTab === "pdc" && row.specialization === "PDC Certified") ||
-        (activeTab === "tdc" && row.specialization === "TDC Certified");
+        (activeTab === "pdc" && (row.pdc_beginner_certified || row.pdc_experience_certified)) ||
+        (activeTab === "tdc" && row.tdc_certified);
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -180,35 +186,8 @@ export default function InstructorsPage() {
   const startIndex = (safePage - 1) * PAGE_SIZE;
   const pagedRows = filteredRows.slice(startIndex, startIndex + PAGE_SIZE);
 
-  async function exportPdf() {
-    const doc = new jsPDF("p", "pt", "a4");
-    const logo = await loadImageAsDataUrl("/Guts%20Icon.png");
-
-    doc.addImage(logo, "PNG", 40, 28, 40, 40);
-    doc.setFontSize(16);
-    doc.setTextColor(30, 30, 30);
-    doc.text("Guardians Technical School INC.", 90, 48);
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Instructors Management Report", 90, 66);
-
-    autoTable(doc, {
-      startY: 84,
-      head: [["Instructor Name", "License Number", "Specialization", "Status", "Assigned Vehicle", "Contact Number"]],
-      body: filteredRows.map((row) => [
-        row.name,
-        row.licenseNumber,
-        row.specialization,
-        row.status,
-        row.assignedVehicle,
-        row.contact || "-",
-      ]),
-      styles: { fontSize: 9, cellPadding: 6 },
-      headStyles: { fillColor: [128, 0, 0], textColor: 255 },
-      alternateRowStyles: { fillColor: [250, 250, 250] },
-    });
-
-    doc.save("instructors-list.pdf");
+  function printInstructors() {
+    window.print();
   }
 
 
@@ -224,6 +203,9 @@ export default function InstructorsPage() {
       name: row.name,
       license_number: row.licenseNumber,
       specialization: row.specialization,
+      tdc_certified: Boolean(row.tdc_certified),
+      pdc_beginner_certified: Boolean(row.pdc_beginner_certified),
+      pdc_experience_certified: Boolean(row.pdc_experience_certified),
       status: row.status,
       assigned_vehicle_id: row.assignedVehicleId ? String(row.assignedVehicleId) : "",
       phone: row.contact || "",
@@ -248,12 +230,20 @@ export default function InstructorsPage() {
       return;
     }
 
+    if (!form.tdc_certified && !form.pdc_beginner_certified && !form.pdc_experience_certified) {
+      window.alert("Select at least one instructor qualification.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const payload = {
         name: form.name.trim(),
         license_number: form.license_number.trim(),
-        specialization: form.specialization,
+        specialization: specializationFromQualifications(form),
+        tdc_certified: Boolean(form.tdc_certified),
+        pdc_beginner_certified: Boolean(form.pdc_beginner_certified),
+        pdc_experience_certified: Boolean(form.pdc_experience_certified),
         status: form.status,
         assigned_vehicle_id: form.assigned_vehicle_id ? Number(form.assigned_vehicle_id) : null,
         phone: form.phone.trim(),
@@ -370,6 +360,28 @@ export default function InstructorsPage() {
     const nextStatus = selectedInstructor.status === "Active" ? "On Leave" : "Active";
     await toggleArchive(selectedInstructor);
     setSelectedInstructor((current) => (current ? { ...current, status: nextStatus } : current));
+  }
+
+  async function removeInstructorFromProfile() {
+    if (!selectedInstructor || isDeletingInstructor) return;
+
+    const shouldDelete = window.confirm(
+      `Remove instructor ${selectedInstructor.name}? This cannot be undone.`
+    );
+
+    if (!shouldDelete) return;
+
+    setIsDeletingInstructor(true);
+    try {
+      await resourceServices.instructors.remove(selectedInstructor.id);
+      closeProfileModal();
+      await loadInstructors();
+      window.alert("Instructor removed successfully.");
+    } catch (deleteError) {
+      window.alert(deleteError?.message || "Failed to remove instructor.");
+    } finally {
+      setIsDeletingInstructor(false);
+    }
   }
 
   return (
@@ -492,11 +504,11 @@ export default function InstructorsPage() {
 
               <button
                 type="button"
-                onClick={exportPdf}
+                onClick={printInstructors}
                 className="inline-flex items-center gap-1 rounded-lg border border-[#800000]/20 bg-[#800000] px-3 py-2 text-xs font-semibold text-white hover:bg-[#670000]"
               >
-                <Download size={13} />
-                Export
+                <Printer size={13} />
+                Print
               </button>
             </div>
 
@@ -533,7 +545,14 @@ export default function InstructorsPage() {
                     ? pagedRows.map((row) => (
                         <tr key={row.id} className="cursor-pointer hover:bg-[#D4AF37]/10" onClick={() => openProfileModal(row)}>
                           <td className="px-4 py-3">
-                            <button type="button" className="font-semibold text-[#800000] hover:underline">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openProfileModal(row);
+                              }}
+                              className="font-semibold text-[#800000] hover:underline"
+                            >
                               {row.name}
                             </button>
                           </td>
@@ -649,19 +668,27 @@ export default function InstructorsPage() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
-                  Specialization
-                  <select
-                    value={form.specialization}
-                    onChange={(event) => setForm((current) => ({ ...current, specialization: event.target.value }))}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#800000]"
-                    required
-                  >
-                    {SPECIALIZATION_OPTIONS.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </label>
+                <fieldset className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
+                  <legend className="text-xs font-semibold text-slate-600">Qualifications</legend>
+                  <div className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900">
+                    <div className="space-y-2">
+                      {QUALIFICATION_OPTIONS.map((option) => (
+                        <label key={option.key} className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(form[option.key])}
+                            onChange={(event) => setForm((current) => ({
+                              ...current,
+                              [option.key]: event.target.checked,
+                            }))}
+                            className="h-4 w-4 rounded border-slate-300 text-[#800000] focus:ring-[#800000]"
+                          />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </fieldset>
                 <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
                   Status
                   <select
@@ -775,6 +802,15 @@ export default function InstructorsPage() {
               >
                 <CalendarPlus size={13} />
                 Assign to Schedule
+              </button>
+              <button
+                type="button"
+                onClick={removeInstructorFromProfile}
+                disabled={isDeletingInstructor}
+                className="inline-flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 disabled:opacity-60"
+              >
+                <Trash2 size={13} />
+                {isDeletingInstructor ? "Removing..." : "Remove Instructor"}
               </button>
             </div>
 

@@ -1,22 +1,33 @@
+async function hasColumn(queryInterface, tableName, columnName) {
+  const definition = await queryInterface.describeTable(tableName);
+  return Object.prototype.hasOwnProperty.call(definition, columnName);
+}
+
+async function addColumnIfMissing(queryInterface, tableName, columnName, definition) {
+  if (!(await hasColumn(queryInterface, tableName, columnName))) {
+    await queryInterface.addColumn(tableName, columnName, definition);
+  }
+}
+
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn("instructors", "license_number", {
+    await addColumnIfMissing(queryInterface, "instructors", "license_number", {
       type: Sequelize.STRING(50),
       allowNull: true,
     });
 
-    await queryInterface.addColumn("instructors", "specialization", {
+    await addColumnIfMissing(queryInterface, "instructors", "specialization", {
       type: Sequelize.STRING(50),
       allowNull: true,
     });
 
-    await queryInterface.addColumn("instructors", "status", {
+    await addColumnIfMissing(queryInterface, "instructors", "status", {
       type: Sequelize.STRING(30),
       allowNull: true,
       defaultValue: "Active",
     });
 
-    await queryInterface.addColumn("instructors", "assigned_vehicle_id", {
+    await addColumnIfMissing(queryInterface, "instructors", "assigned_vehicle_id", {
       type: Sequelize.INTEGER,
       allowNull: true,
       references: {

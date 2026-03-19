@@ -11,7 +11,8 @@ export function useCreateSchedule() {
       const date = dateIso ? new Date(`${dateIso}T00:00:00`) : null;
 
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["reports", "daily", dateIso] }),
+        queryClient.invalidateQueries({ queryKey: ["reports", "daily"] }),
+        queryClient.invalidateQueries({ queryKey: ["reports", "daily", "schedule-modal"] }),
         queryClient.invalidateQueries({ queryKey: ["reports"] }),
         queryClient.invalidateQueries({ queryKey: ["activity-logs"] }),
         ...(date ? [queryClient.invalidateQueries({ queryKey: ["schedules", "month-status", date.getFullYear(), date.getMonth()] })] : []),

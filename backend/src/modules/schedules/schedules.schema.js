@@ -4,14 +4,33 @@ const scheduleCreateSchema = Joi.object({
   course_id: Joi.number().integer(),
   course_type: Joi.string().valid("tdc", "pdc_beginner", "pdc_experience"),
   instructor_id: Joi.number().integer().required(),
-  vehicle_id: Joi.number().integer().required(),
+  care_of_instructor_id: Joi.number().integer().positive().allow(null),
+  vehicle_id: Joi.number().integer().allow(null),
+  enrollment_id: Joi.number().integer().positive().allow(null),
+  student_id: Joi.number().integer().positive().allow(null),
   schedule_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   slot: Joi.string().valid("morning", "afternoon").required(),
   remarks: Joi.string().trim().allow("", null),
-}).or("course_id", "course_type");
+}).or("course_id", "course_type", "enrollment_id");
 
 const scheduleDayQuerySchema = Joi.object({
   date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  course_type: Joi.string().valid("tdc", "pdc_beginner", "pdc_experience").optional(),
+  instructor_id: Joi.number().integer().positive().optional(),
+  vehicle_id: Joi.number().integer().positive().optional(),
+});
+
+const scheduleCancelParamsSchema = Joi.object({
+  id: Joi.number().integer().positive().required(),
+});
+
+const scheduleCancelQuerySchema = Joi.object({
+  scope: Joi.string().valid("single", "both").default("single"),
+});
+
+const scheduleUpdateSchema = Joi.object({
+  schedule_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  slot: Joi.string().valid("morning", "afternoon").required(),
 });
 
 const scheduleMonthStatusQuerySchema = Joi.object({
@@ -23,4 +42,7 @@ module.exports = {
   scheduleCreateSchema,
   scheduleDayQuerySchema,
   scheduleMonthStatusQuerySchema,
+  scheduleCancelParamsSchema,
+  scheduleCancelQuerySchema,
+  scheduleUpdateSchema,
 };
