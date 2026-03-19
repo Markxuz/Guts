@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const repository = require("./users.repository");
+const { assertStrongPassword } = require("../../shared/security/passwordPolicy");
 
 const VALID_ROLES = ["admin", "sub_admin", "staff"];
 
@@ -18,14 +19,17 @@ async function createUser({ name, email, password, role = "staff" }) {
     err.status = 400;
     throw err;
   }
-  const existing = await repository.findByEmail(email);
+  assertStrongPassword(password);
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const existing = await repository.findByEmail(normalizedEmail);
   if (existing) {
     const err = new Error("Email already in use");
     err.status = 400;
     throw err;
   }
   const password_hash = await bcrypt.hash(password, 10);
-  return repository.create({ name, email, password_hash, role });
+  return repository.create({ name, email: normalizedEmail, password_hash, role });
 }
 
 async function changeRole(id, role, requesterId) {

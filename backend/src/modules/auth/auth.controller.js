@@ -33,8 +33,24 @@ async function me(req, res) {
   }
 }
 
+async function changePassword(req, res) {
+  try {
+    const payload = await service.changePassword(req.body);
+
+    await recordActivity({
+      userId: req.user?.id || null,
+      action: `Password changed for ${req.body.email}`,
+    });
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    return sendHttpError(res, error, 400, "Password update failed");
+  }
+}
+
 module.exports = {
   login,
   register,
+  changePassword,
   me,
 };
