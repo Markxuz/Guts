@@ -32,16 +32,16 @@ export default function StudentTable({
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+      <div className="w-full overflow-x-auto">
+        <table className="min-w-full table-fixed text-sm">
           <thead className="bg-[#800000] text-left text-white">
             <tr>
-              <th className="px-4 py-3 font-semibold">Student</th>
-              <th className="px-4 py-3 font-semibold">Contact</th>
-              <th className="px-4 py-3 font-semibold">Course</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 font-semibold">Address</th>
-              <th className="px-4 py-3 font-semibold">Actions</th>
+              <th className="w-[22%] px-4 py-3 font-semibold">Student</th>
+              <th className="w-[18%] px-4 py-3 font-semibold">Contact</th>
+              <th className="w-[10%] px-4 py-3 font-semibold">Course</th>
+              <th className="w-[12%] px-4 py-3 font-semibold">Status</th>
+              <th className="w-[28%] px-4 py-3 font-semibold">Address</th>
+              <th className="w-[10%] px-4 py-3 font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -84,15 +84,15 @@ export default function StudentTable({
                       className={`${index % 2 === 0 ? "bg-white" : "bg-slate-50"} transition-colors hover:bg-[#D4AF37]/10`}
                     >
                       <td className="px-4 py-3 align-top">
-                        <p className="font-semibold text-slate-900">
+                        <p className="font-semibold text-slate-900 [overflow-wrap:anywhere]">
                           {fullName || "N/A"}
                           {isPromo ? <span className="ml-2 rounded-full bg-[#D4AF37]/20 px-2 py-0.5 text-[10px] font-bold text-[#800000]">Promo</span> : null}
                         </p>
                         <p className="text-xs text-slate-500">ID #{student.id}</p>
                       </td>
                       <td className="px-4 py-3 align-top text-slate-700">
-                        <p>{student.email || "N/A"}</p>
-                        <p className="text-xs text-slate-500">{student.phone || "No phone"}</p>
+                        <p className="[overflow-wrap:anywhere]">{student.email || "N/A"}</p>
+                        <p className="text-xs text-slate-500 [overflow-wrap:anywhere]">{student.phone || "No phone"}</p>
                       </td>
                       <td className="px-4 py-3 align-top">
                         <Badge label={course} tone="maroon" />
@@ -103,12 +103,12 @@ export default function StudentTable({
                           tone={enrollmentStatus === "completed" ? "green" : enrollmentStatus === "pending" ? "amber" : "maroon"}
                         />
                       </td>
-                      <td className="max-w-xs px-4 py-3 align-top text-slate-700">
-                        <p className="truncate" title={buildAddress(student.StudentProfile)}>
+                      <td className="px-4 py-3 align-top text-slate-700">
+                        <p className="[overflow-wrap:anywhere]" title={buildAddress(student.StudentProfile)}>
                           {buildAddress(student.StudentProfile)}
                         </p>
                       </td>
-                      <td className="px-4 py-3 align-top">
+                      <td className="px-4 py-3 align-top whitespace-nowrap">
                         <div className="flex items-center gap-2 text-slate-700">
                           <button
                             type="button"

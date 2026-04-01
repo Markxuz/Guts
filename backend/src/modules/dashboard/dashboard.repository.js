@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { Student, Enrollment, DLCode } = require("../../../models");
+const { Student, Enrollment, DLCode, Schedule } = require("../../../models");
 
 async function countStudents() {
   return Student.count();
@@ -23,6 +23,15 @@ async function findAllEnrollmentsWithCode(start, end) {
         model: DLCode,
         attributes: ["id", "code", "description"],
       },
+      {
+        model: Schedule,
+        as: "scheduledSessions",
+        attributes: ["id", "start_time", "end_time", "schedule_date"],
+      },
+      {
+        model: Student,
+        attributes: ["id", "first_name", "last_name"],
+      },
     ],
     order: [["created_at", "DESC"], ["id", "DESC"]],
   });
@@ -40,6 +49,15 @@ async function findEnrollmentsByDateRange(start, end) {
       {
         model: DLCode,
         attributes: ["id", "code", "description"],
+      },
+      {
+        model: Schedule,
+        as: "scheduledSessions",
+        attributes: ["id", "start_time", "end_time", "schedule_date"],
+      },
+      {
+        model: Student,
+        attributes: ["id", "first_name", "last_name"],
       },
     ],
     order: [["created_at", "DESC"], ["id", "DESC"]],

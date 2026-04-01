@@ -5,10 +5,11 @@ import StatusUpdateModal from "../components/StatusUpdateModal";
 import StudentDetailsModal from "../components/StudentDetailsModal";
 import StudentTable from "../components/StudentTable";
 import SummaryCards from "../components/SummaryCards";
-import ToastStack from "../components/ToastStack";
+import ToastStack from "../../../shared/utils/ToastStack";
 import { useStudentsPageLogic } from "../hooks/useStudentsPageLogic";
 
-export default function StudentsPage() {
+function StudentsPage() {
+
   const {
     search,
     courseFilter,
@@ -33,7 +34,7 @@ export default function StudentsPage() {
     setStatusForm,
     setSelectedStudent,
     setDeletingStudent,
-    setToasts,
+    removeToast,
     setSearch,
     setCourseFilter,
     setStatusFilter,
@@ -49,11 +50,8 @@ export default function StudentsPage() {
   } = useStudentsPageLogic();
 
   return (
-    <section className="space-y-4">
-      <ToastStack
-        toasts={toasts}
-        onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))}
-      />
+    <section className="min-w-0 space-y-4">
+      <ToastStack toasts={toasts} onDismiss={removeToast} />
 
       <div className="rounded-2xl border border-slate-300 bg-gradient-to-r from-white to-slate-100 p-5 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -62,32 +60,49 @@ export default function StudentsPage() {
             <p className="text-sm text-slate-600">Admin and Staff view of enrolled students</p>
           </div>
 
-          <div className="flex flex-col gap-2 md:flex-row">
-            <label className="relative">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
+            <label className="relative w-full sm:w-auto">
               <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#D4AF37]" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search student..."
-                className="h-10 w-64 rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none ring-[#800000]/20 placeholder:text-slate-400 focus:border-[#800000] focus:ring-2"
+                className="h-10 w-full sm:w-64 rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none ring-[#800000]/20 placeholder:text-slate-400 focus:border-[#800000] focus:ring-2"
               />
             </label>
-
-            <select
-              value={courseFilter}
-              onChange={(event) => setCourseFilter(event.target.value)}
-              className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-[#800000]"
-            >
-              <option value="all">All Courses</option>
-              <option value="TDC">TDC</option>
-              <option value="PDC">PDC</option>
-              <option value="PROMO">Promo</option>
-            </select>
-
+            <div className="flex flex-wrap gap-2 md:ml-2">
+              <button
+                type="button"
+                className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                  courseFilter === "all" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+                onClick={() => setCourseFilter("all")}
+              >
+                Overall
+              </button>
+              <button
+                type="button"
+                className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                  courseFilter === "TDC" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+                onClick={() => setCourseFilter("TDC")}
+              >
+                TDC
+              </button>
+              <button
+                type="button"
+                className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                  courseFilter === "PDC" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+                onClick={() => setCourseFilter("PDC")}
+              >
+                PDC
+              </button>
+            </div>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-[#800000]"
+              className="h-10 w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-[#800000]"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -98,7 +113,7 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      <SummaryCards summary={summary} />
+      <SummaryCards summary={summary} courseFilter={courseFilter} />
 
       <StudentTable
         students={students}
@@ -144,3 +159,4 @@ export default function StudentsPage() {
   );
 }
 
+export default StudentsPage;

@@ -1,5 +1,61 @@
 @import "tailwindcss";
 
+:root {
+	--ui-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+	--ui-dur-fast: 160ms;
+	--ui-dur-medium: 240ms;
+}
+
+html,
+body,
+#root {
+	scroll-behavior: smooth;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+[role="button"],
+article,
+.rounded-xl,
+.rounded-2xl {
+	transition:
+		background-color var(--ui-dur-fast) var(--ui-ease-standard),
+		border-color var(--ui-dur-fast) var(--ui-ease-standard),
+		color var(--ui-dur-fast) var(--ui-ease-standard),
+		box-shadow var(--ui-dur-medium) var(--ui-ease-standard),
+		transform var(--ui-dur-medium) var(--ui-ease-standard),
+		opacity var(--ui-dur-fast) var(--ui-ease-standard);
+}
+
+button:hover,
+a:hover,
+[role="button"]:hover {
+	transform: translateY(-1px);
+}
+
+button:active,
+a:active,
+[role="button"]:active {
+	transform: translateY(0);
+}
+
+.route-fade-enter {
+	animation: routeFadeIn 220ms var(--ui-ease-standard);
+	will-change: opacity;
+}
+
+@keyframes routeFadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
 .thin-scrollbar {
 	scrollbar-width: thin;
 	scrollbar-color: rgba(128, 0, 0, 0.35) transparent;
@@ -20,6 +76,19 @@
 
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
 	background: rgba(128, 0, 0, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html,
+	body,
+	#root {
+		scroll-behavior: auto;
+	}
+
+	* {
+		animation: none !important;
+		transition: none !important;
+	}
 }
 
 @media print {

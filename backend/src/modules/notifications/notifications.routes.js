@@ -7,7 +7,7 @@ const { notificationIdParamSchema } = require("./notifications.schema");
 const router = express.Router();
 
 router.use(authenticateToken);
-router.use(authorizeRoles("admin", "sub_admin"));
+router.use(authorizeRoles("admin", "sub_admin", "staff"));
 
 router.get("/", controller.list);
 router.patch("/read-all", controller.markAllRead);

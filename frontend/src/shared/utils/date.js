@@ -1,3 +1,16 @@
+// Returns age in years given a birthdate string (YYYY-MM-DD or Date object)
+export function calculateAge(birthdate) {
+  if (!birthdate) return "";
+  const date = typeof birthdate === "string" ? parseDateValue(birthdate) : birthdate;
+  if (!(date instanceof Date) || isNaN(date)) return "";
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const m = today.getMonth() - date.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < date.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : "";
+}
 export function formatDateToISO(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

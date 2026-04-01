@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useToast } from "../../../shared/utils/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useStudentsList } from "./useStudentsList";
 import { deleteStudent, updateEnrollmentStatus, updateStudent } from "../services/studentsApi";
@@ -19,18 +20,12 @@ export function useStudentsPageLogic() {
   const [deletingStudent, setDeletingStudent] = useState(null);
   const [updatingStatusStudent, setUpdatingStatusStudent] = useState(null);
   const [statusForm, setStatusForm] = useState({ enrollmentStatus: "" });
-  const [toasts, setToasts] = useState([]);
+  const [toasts, addToast, removeToast] = useToast();
 
   const { data, isLoading, isError, error } = useStudentsList();
   const students = useMemo(() => data || [], [data]);
 
-  const addToast = (message, type = "success") => {
-    const id = `${Date.now()}-${Math.random()}`;
-    setToasts((current) => [...current, { id, message, type }]);
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 3000);
-  };
+
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }) => updateStudent(id, payload),
@@ -69,15 +64,68 @@ export function useStudentsPageLogic() {
     },
   });
 
-  const summary = useMemo(
-    () => ({
-      total: students.length,
-      tdc: students.filter((student) => getCourseCode(student) === "TDC").length,
-      pdc: students.filter((student) => getCourseCode(student) === "PDC").length,
-      completed: students.filter((student) => getLatestEnrollment(student)?.status === "completed").length,
-    }),
-    [students]
-  );
+  // Compute summary based on current filter
+  const summary = useMemo(() => {
+    const getMembership = (student) => {
+      const enrollment = getLatestEnrollment(student);
+      const code = String(enrollment?.DLCode?.code || "").toUpperCase();
+      const pdcType = String(enrollment?.pdc_type || "").toLowerCase();
+
+      const membership = {
+        tdc: false,
+        pdcBeginner: false,
+        pdcExperience: false,
+      };
+
+      const isPromo = code.includes("PROMO") || (code.includes("TDC") && code.includes("PDC"));
+      if (code.includes("TDC")) {
+        membership.tdc = true;
+      }
+      if (code.includes("PDC") || isPromo) {
+        if (pdcType === "experience") {
+          membership.pdcExperience = true;
+        } else {
+          membership.pdcBeginner = true;
+        }
+      }
+
+      return membership;
+    };
+
+    let filtered = students;
+    if (courseFilter === "TDC") {
+      filtered = students.filter((student) => getCourseCode(student) === "TDC");
+    } else if (courseFilter === "PDC") {
+      filtered = students.filter((student) => getCourseCode(student) === "PDC");
+    }
+
+    const currentlyEnrolled = filtered.filter((student) => {
+      const status = String(getLatestEnrollment(student)?.status || "").toLowerCase();
+      return status === "pending" || status === "confirmed";
+    }).length;
+
+    const tdc = filtered.filter((student) => getMembership(student).tdc).length;
+    const pdcBeginner = filtered.filter((student) => getMembership(student).pdcBeginner).length;
+    const pdcExperience = filtered.filter((student) => getMembership(student).pdcExperience).length;
+
+    return {
+      total: filtered.length,
+      currentlyEnrolled,
+      tdc,
+      pdc: pdcBeginner + pdcExperience,
+      completed: filtered.filter((student) => getLatestEnrollment(student)?.status === "completed").length,
+      thisMonth: filtered.filter((student) => {
+        const enrollment = getLatestEnrollment(student);
+        const createdAt = enrollment?.createdAt || enrollment?.created_at;
+        if (!createdAt) return false;
+        const now = new Date();
+        const created = new Date(createdAt);
+        return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+      }).length,
+      pdc_b: pdcBeginner,
+      pdc_e: pdcExperience,
+    };
+  }, [students, courseFilter]);
 
   const filteredStudents = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -189,7 +237,7 @@ export function useStudentsPageLogic() {
     setStatusForm,
     setSelectedStudent,
     setDeletingStudent,
-    setToasts,
+    removeToast,
     setSearch: (value) => {
       setSearch(value);
       setPage(1);

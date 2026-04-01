@@ -173,10 +173,8 @@ async function ensureDefaultUsers() {
       email: seedAdminEmail,
       password: seedAdminPass,
       role: "admin",
-      must_change_password: true,
+      must_change_password: false,
     });
-  } else if (!admin.must_change_password) {
-    await repository.updateMustChangePassword(admin.id, true);
   }
 
   const staff = await repository.findUserByEmail(seedStaffEmail);
@@ -186,10 +184,8 @@ async function ensureDefaultUsers() {
       email: seedStaffEmail,
       password: seedStaffPass,
       role: "staff",
-      must_change_password: true,
+      must_change_password: false,
     });
-  } else if (!staff.must_change_password) {
-    await repository.updateMustChangePassword(staff.id, true);
   }
 }
 

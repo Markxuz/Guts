@@ -15,6 +15,9 @@ const ROLE_BADGE = {
   staff: "bg-slate-100 text-slate-600 border border-slate-300",
 };
 
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || "1.0.0";
+const RELEASE_LABEL = import.meta.env.VITE_RELEASE_LABEL || "April 2026 updates";
+
 function buildNavItems(role) {
   const all = [
     { label: "Dashboard", to: "/", icon: LayoutDashboard, roles: ["admin", "sub_admin", "staff"] },
@@ -28,6 +31,7 @@ function buildNavItems(role) {
 export default function AppLayout() {
   const { pathname } = useLocation();
   const { logout, auth, role } = useAuth();
+  const currentYear = new Date().getFullYear();
   const isInSettingsSection = pathname.startsWith("/settings/");
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [isSettingsPopoverOpen, setIsSettingsPopoverOpen] = useState(false);
@@ -55,7 +59,8 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (!isCollapsed) {
-      setIsSettingsPopoverOpen(false);
+      // Use a microtask to avoid cascading renders
+      Promise.resolve().then(() => setIsSettingsPopoverOpen(false));
     }
   }, [isCollapsed]);
 
@@ -258,11 +263,21 @@ export default function AppLayout() {
       </aside>
 
       <div className={`flex min-h-screen flex-1 flex-col bg-slate-200 transition-all duration-300 print:ml-0 print:bg-white ${isCollapsed ? "ml-20" : "ml-64"}`}>
-        <main className="flex-1 overflow-y-auto p-6 print:overflow-visible print:p-0">
+        <main className="flex-1 overflow-y-auto p-6 scroll-smooth print:overflow-visible print:p-0">
           <div className="mx-auto w-full max-w-full">
-            <Outlet />
+            <div key={pathname} className="route-fade-enter">
+              <Outlet />
+            </div>
           </div>
         </main>
+
+        <footer className="border-t border-slate-300/70 bg-slate-100/90 px-6 py-2 text-xs text-slate-600 print:hidden">
+          <div className="mx-auto flex w-full max-w-full flex-wrap items-center justify-between gap-2">
+            <p>Guardians Technical School System</p>
+            <p>Version {APP_VERSION} | {RELEASE_LABEL}</p>
+            <p>Copyright {currentYear}</p>
+          </div>
+        </footer>
       </div>
     </div>
   );

@@ -26,20 +26,44 @@ export default function DailyReportsCard({ rows, total, loading, error, title, s
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Student Name</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Course</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Vehicle Type</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Instructor</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-700">Session</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-700">Instructor / Care Of</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Remarks</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">{row.studentName}</td>
-                  <td className="px-4 py-3 text-slate-700">{row.course || row.transactionType || "-"}</td>
-                  <td className="px-4 py-3 text-slate-700">{row.vehicleType || "-"}</td>
-                  <td className="px-4 py-3 text-slate-700">{row.instructor || "-"}</td>
-                  <td className="px-4 py-3 text-slate-600">{row.remarks || row.description || row.transactionType}</td>
-                </tr>
-              ))}
+              {rows.map((row) => {
+
+                // Prefer slotLabel (e.g. '08:00 AM - 12:00 PM') if available, else fallback
+                let sessionLabel = row.slotLabel || "-";
+                if (!row.slotLabel) {
+                  if (row.slot === "morning") sessionLabel = "Morning";
+                  else if (row.slot === "afternoon") sessionLabel = "Afternoon";
+                  else if (row.slot === "whole_day" || row.sessionType === "whole_day") sessionLabel = "Whole Day";
+                  else if (row.slot) sessionLabel = row.slot;
+                }
+
+                // Instructor/Care Of formatting
+                let instructorCareOf = "-";
+                if (row.instructor && row.careOf) {
+                  instructorCareOf = `Instructor: ${row.instructor}\nCare of: ${row.careOf}`;
+                } else if (row.instructor) {
+                  instructorCareOf = `Instructor: ${row.instructor}`;
+                } else if (row.careOf) {
+                  instructorCareOf = `Care of: ${row.careOf}`;
+                }
+
+                return (
+                  <tr key={row.id}>
+                    <td className="px-4 py-3 font-medium text-slate-900">{row.studentName}</td>
+                    <td className="px-4 py-3 text-slate-700">{row.course || row.transactionType || "-"}</td>
+                    <td className="px-4 py-3 text-slate-700">{row.vehicleType || "-"}</td>
+                    <td className="px-4 py-3 text-slate-700">{sessionLabel}</td>
+                    <td className="px-4 py-3 whitespace-pre-line text-slate-700">{instructorCareOf}</td>
+                    <td className="px-4 py-3 text-slate-600">{row.remarks || row.description || row.transactionType}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : null}

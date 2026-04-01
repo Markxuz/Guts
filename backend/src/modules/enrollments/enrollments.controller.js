@@ -1,5 +1,6 @@
 const service = require("./enrollments.service");
 const { recordActivity } = require("../activity-logs/activity-logs.service");
+const { create: createNotification } = require("../notifications/notifications.service");
 const { sendHttpError } = require("../../shared/http/response");
 
 async function getAllEnrollments(req, res) {
@@ -27,6 +28,14 @@ async function createEnrollment(req, res) {
       userId: req.user?.id,
       action: `Created enrollment #${created.id}`,
     });
+
+    if (req.user?.role === "admin" || req.user?.role === "sub_admin" || req.user?.role === "staff") {
+      createNotification({
+        message: `${req.user.name || req.user.email} created enrollment #${created.id}.`,
+        actorId: req.user.id,
+      }).catch(() => {});
+    }
+
     return res.status(201).json(created);
   } catch (error) {
     return sendHttpError(res, error, 400, "Failed to create enrollment");

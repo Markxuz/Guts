@@ -1,5 +1,11 @@
 import { LoaderCircle, X } from "lucide-react";
 
+const STATUS_OPTIONS = [
+  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Active" },
+  { value: "completed", label: "Completed" },
+];
+
 export default function StatusUpdateModal({ student, form, onChange, onClose, onSubmit, isPending }) {
   if (!student) return null;
 
@@ -11,8 +17,8 @@ export default function StatusUpdateModal({ student, form, onChange, onClose, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:items-center">
+      <div className="my-4 w-full max-w-md rounded-2xl bg-white shadow-2xl sm:my-0">
         <div className="flex items-center justify-between rounded-t-2xl bg-[#800000] px-5 py-4 text-white">
           <div>
             <h3 className="text-lg font-semibold">Update Status</h3>
@@ -26,16 +32,27 @@ export default function StatusUpdateModal({ student, form, onChange, onClose, on
         <form onSubmit={onSubmit} className="px-5 py-4">
           <div className="mb-4">
             <label className="mb-2 block text-sm font-semibold text-[#800000]">Enrollment Status</label>
-            <select
-              value={form.enrollmentStatus || ""}
-              onChange={(event) => handleStatusChange("enrollmentStatus", event.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-[#800000] focus:ring-2 focus:ring-[#800000]/15"
-            >
-              <option value="">Select Status</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Active</option>
-              <option value="completed">Completed</option>
-            </select>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Enrollment status options">
+              {STATUS_OPTIONS.map((item) => {
+                const isActive = (form.enrollmentStatus || "") === item.value;
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    onClick={() => handleStatusChange("enrollmentStatus", item.value)}
+                    className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                      isActive
+                        ? "border-[#800000] bg-[#800000] text-white"
+                        : "border-slate-300 bg-white text-slate-700 hover:border-[#800000]/50"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <button

@@ -33,10 +33,32 @@ function getCourseMembership(row) {
 
 function mapLog(row) {
   const date = getCreatedDate(row);
+  // Find the latest scheduled session (if any)
+  let session = null;
+  if (Array.isArray(row.scheduledSessions) && row.scheduledSessions.length > 0) {
+    session = row.scheduledSessions.reduce((latest, curr) => {
+      if (!latest) return curr;
+      const latestDate = new Date(latest.schedule_date || latest.createdAt || 0);
+      const currDate = new Date(curr.schedule_date || curr.createdAt || 0);
+      return currDate > latestDate ? curr : latest;
+    }, null);
+  }
+  // Build slot label
+  let slotLabel = null;
+  if (session && session.start_time && session.end_time) {
+    // Format as '08:00 AM - 12:00 PM'
+    const formatTime = (t) => {
+      const [h, m] = t.split(":");
+      const d = new Date();
+      d.setHours(Number(h), Number(m), 0, 0);
+      return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    };
+    slotLabel = `${formatTime(session.start_time)} - ${formatTime(session.end_time)}`;
+  }
   return {
     id: row.id,
     student_id: row.student_id,
-    schedule_id: row.schedule_id,
+    schedule_id: session ? session.id : row.schedule_id,
     package_id: row.package_id,
     dl_code_id: row.dl_code_id,
     status: row.status,
@@ -44,6 +66,12 @@ function mapLog(row) {
     course_type: classifyCourseType(row),
     course_code: row?.DLCode?.code || null,
     date_label: Number.isNaN(date.valueOf()) ? null : date.toISOString(),
+    slot: session ? session.slot : null,
+    slotLabel,
+    schedule_date: session ? session.schedule_date : null,
+    start_time: session ? session.start_time : null,
+    end_time: session ? session.end_time : null,
+    studentName: row?.Student ? `${row.Student.first_name} ${row.Student.last_name}` : undefined,
   };
 }
 
@@ -111,6 +139,7 @@ async function getSummary(courseFilter = "overall") {
 
   const pdcBeginner = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_beginner").length;
   const pdcExperience = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_experience").length;
+  const tdc = filteredEnrollments.filter((item) => classifyCourseType(item) === "tdc").length;
 
   const totalStudentsForFilter = new Set(filteredEnrollments.map((item) => item.student_id).filter(Boolean)).size;
 
@@ -120,6 +149,7 @@ async function getSummary(courseFilter = "overall") {
       currentlyEnrolled,
       completed,
       thisMonth,
+      tdc,
       pdcBeginner,
       pdcExperience,
     },
