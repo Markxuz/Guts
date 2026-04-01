@@ -3,13 +3,16 @@ import { notificationsService } from "../services/notificationsService";
 import { useAuth } from "../../auth/hooks/useAuth";
 
 export function useNotifications() {
-  const { role } = useAuth();
+  const { role, auth } = useAuth();
   const canReceive = role === "admin" || role === "sub_admin" || role === "staff";
+  const userId = auth?.user?.id || null;
 
   return useQuery({
-    queryKey: ["notifications"],
+    queryKey: ["notifications", userId, role],
     queryFn: notificationsService.getAll,
-    refetchInterval: 30000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
     enabled: canReceive,
     select: (data) => data,
   });

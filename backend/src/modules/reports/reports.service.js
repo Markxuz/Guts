@@ -87,8 +87,14 @@ function mapEnrollmentReport(row) {
   const courseLabel = courseDisplayLabel(row);
   const session = latestScheduledSession(row);
   const vehicleType =
+    session?.Vehicle?.vehicle_name ||
+    session?.Vehicle?.plate_number ||
     session?.Vehicle?.vehicle_type ||
     [row?.target_vehicle, row?.transmission_type].filter(Boolean).join(" - ") ||
+    "-";
+  const transmissionType =
+    session?.Vehicle?.transmission_type ||
+    row?.transmission_type ||
     "-";
   const slotLabel =
     session?.start_time && session?.end_time
@@ -102,6 +108,7 @@ function mapEnrollmentReport(row) {
     transactionType: `${courseLabel} Enrollment`,
     course: courseLabel,
     vehicleType,
+    transmissionType,
     slotLabel,
     instructor: session?.Instructor?.name || "-",
     careOf: session?.careOfInstructor?.name || "-",
@@ -120,7 +127,8 @@ function mapScheduleReport(row, index) {
     studentName: row.studentName || "Open Slot",
     transactionType: "Schedule",
     course: row.course || "Course",
-    vehicleType: row.vehicleType || "-",
+    vehicleType: row.vehicleName || row.vehicleType || "-",
+    transmissionType: row.transmissionType || "-",
     instructor: row.instructor || "-",
     remarks: row.remarks || row.slotLabel || "Scheduled session",
     courseType: "schedule",

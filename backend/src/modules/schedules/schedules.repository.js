@@ -101,7 +101,7 @@ async function getScheduleIncludes() {
   const includes = [
     { model: Course, attributes: ["id", "course_name", "description"] },
     { model: Instructor, attributes: ["id", "name", "phone"] },
-    { model: Vehicle, attributes: ["id", "vehicle_name", "vehicle_type", "plate_number"] },
+    { model: Vehicle, attributes: ["id", "vehicle_name", "vehicle_type", "plate_number", "transmission_type"] },
     {
       model: Enrollment,
       include: [

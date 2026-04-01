@@ -86,7 +86,10 @@ async function updateEnrollmentStatus(req, res) {
       createNotification({
         message: `${req.user.name || req.user.email} updated student #${updated.id} enrollment progress to ${enrollmentStatusLabel(req.body?.enrollmentStatus)}.`,
         actorId: req.user.id,
-      }).catch(() => {});
+      }).catch((err) => {
+        // Keep status update successful even if notification insert fails.
+        console.error("Error creating status update notification:", err.message);
+      });
     }
 
     return res.status(200).json(updated);

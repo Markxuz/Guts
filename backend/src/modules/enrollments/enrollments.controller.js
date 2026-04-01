@@ -33,7 +33,9 @@ async function createEnrollment(req, res) {
       createNotification({
         message: `${req.user.name || req.user.email} created enrollment #${created.id}.`,
         actorId: req.user.id,
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error("Error creating notification:", err.message);
+      });
     }
 
     return res.status(201).json(created);

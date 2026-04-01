@@ -204,6 +204,15 @@ function matchesVehicleTarget(vehicleType, targetVehicle) {
   return true;
 }
 
+function matchesTransmissionType(vehicleTransmission, selectedTransmission) {
+  const normalizedSelected = normalizeText(selectedTransmission);
+  if (!normalizedSelected) {
+    return true;
+  }
+
+  return normalizeText(vehicleTransmission) === normalizedSelected;
+}
+
 const ENROLLMENT_TYPE_CARDS = [
   { value: "TDC", label: "TDC", description: "Theoretical Driving Course" },
   { value: "PDC", label: "PDC", description: "Practical Driving Course" },
@@ -296,13 +305,15 @@ export default function EnrollmentsPage() {
 
   const vehicleOptions = useMemo(() => {
     const rows = scheduleResources?.vehicles || [];
-    const filtered = rows.filter((item) => matchesVehicleTarget(item.vehicle_type, form.enrollment.target_vehicle));
+    const filtered = rows
+      .filter((item) => matchesVehicleTarget(item.vehicle_type, form.enrollment.target_vehicle))
+      .filter((item) => matchesTransmissionType(item.transmission_type, form.enrollment.transmission_type));
 
     return filtered.map((item) => ({
       value: String(item.id),
-      label: `${item.vehicle_name || item.plate_number} (${item.vehicle_type || "Vehicle"})`,
+      label: `${item.vehicle_name || item.plate_number} (${item.vehicle_type || "Vehicle"} | ${item.transmission_type || "Transmission N/A"})`,
     }));
-  }, [scheduleResources, form.enrollment.target_vehicle]);
+  }, [scheduleResources, form.enrollment.target_vehicle, form.enrollment.transmission_type]);
 
   const selectedScheduleVehicle = useMemo(
     () => (scheduleResources?.vehicles || []).find((item) => String(item.id) === String(form.schedule.vehicle_id)) || null,
