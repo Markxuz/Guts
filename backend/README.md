@@ -51,3 +51,26 @@ Structured logging:
 
 - Logs are emitted as JSON lines.
 - Configure verbosity using `LOG_LEVEL` in `.env`.
+
+## Recent Backend Updates (April 2026)
+
+### Notifications and Role Flow
+
+- Notifications now support `admin`, `sub_admin`, and `staff` access on notification endpoints.
+- Creating an enrollment now creates a notification entry with actor context.
+- Enrollment progress updates (`pending`, `confirmed`, `completed`) now create notifications for cross-role visibility.
+- Status labels shown in notification messages are normalized to user-facing labels:
+   - `pending` -> `Pending`
+   - `confirmed` -> `Active`
+   - `completed` -> `Complete`
+
+### Dashboard and Reports Data Reliability
+
+- Fixed dashboard summary query failure caused by selecting a non-existent schedule column.
+- Normalized dashboard summary counting to enrollment-based totals to avoid inflated metrics.
+- Daily report enrollment rows now include schedule-linked fields (session slot, vehicle type, instructor, care-of instructor) when available.
+
+### API Notes
+
+- Notification feed remains global (not recipient-scoped) in the current implementation.
+- Recent activity logs and notifications are both available, but they are separate streams with different use-cases.

@@ -4,7 +4,7 @@ import { useAuth } from "../../auth/hooks/useAuth";
 
 export function useNotifications() {
   const { role } = useAuth();
-  const canReceive = role === "admin" || role === "sub_admin";
+  const canReceive = role === "admin" || role === "sub_admin" || role === "staff";
 
   return useQuery({
     queryKey: ["notifications"],

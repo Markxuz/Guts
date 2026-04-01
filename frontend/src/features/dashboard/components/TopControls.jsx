@@ -109,7 +109,7 @@ export default function TopControls({
           />
         </label>
 
-        {(role === "admin" || role === "sub_admin") ? (
+        {(role === "admin" || role === "sub_admin" || role === "staff") ? (
           <NotificationBell
             buttonClassName="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#D4AF37]/70 bg-[#800000] text-[#D4AF37] transition hover:bg-[#600000]"
             iconSize={14}

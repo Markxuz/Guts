@@ -1,3 +1,11 @@
+import React from "react";
+
+/**
+ * ToastStack - Renders a stack of toast notifications.
+ * Props:
+ *   - toasts: Array<{ id, message, type }>
+ *   - onDismiss: function(id)
+ */
 export default function ToastStack({ toasts, onDismiss }) {
   if (!toasts.length) return null;
 

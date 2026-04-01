@@ -2,6 +2,7 @@ const sequelize = require("../config/db");
 
 const User = require("./User")(sequelize);
 const Notification = require("./Notification")(sequelize);
+const NotificationRead = require("./NotificationRead")(sequelize);
 const Student = require("./Student")(sequelize);
 const StudentProfile = require("./StudentProfile")(sequelize);
 const Course = require("./Course")(sequelize);
@@ -80,6 +81,12 @@ ActivityLog.belongsTo(User, { foreignKey: "userId" });
 User.hasMany(Notification, { foreignKey: "actor_id" });
 Notification.belongsTo(User, { foreignKey: "actor_id", as: "actor" });
 
+Notification.hasMany(NotificationRead, { foreignKey: "notification_id", as: "reads" });
+NotificationRead.belongsTo(Notification, { foreignKey: "notification_id", as: "notification" });
+
+User.hasMany(NotificationRead, { foreignKey: "user_id", as: "notificationReads" });
+NotificationRead.belongsTo(User, { foreignKey: "user_id", as: "reader" });
+
 User.hasMany(ScheduleChangeRequest, { foreignKey: "requested_by_user_id", as: "requestedScheduleChanges" });
 ScheduleChangeRequest.belongsTo(User, { foreignKey: "requested_by_user_id", as: "requester" });
 
@@ -103,6 +110,7 @@ module.exports = {
   Certificate,
   ActivityLog,
   Notification,
+  NotificationRead,
   MaintenanceLog,
   FuelLog,
 };

@@ -12,6 +12,7 @@ services:
       - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+      - --lower_case_table_names=1
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
@@ -30,7 +31,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      NODE_ENV: production
+      NODE_ENV: development # <--- Pinalitan from production to development
       APP_VERSION: ${APP_VERSION:-1.0.0}
       PORT: 5000
       DB_HOST: db
@@ -56,8 +57,10 @@ services:
       REQUEST_LOG_INCLUDE_HEALTH: ${REQUEST_LOG_INCLUDE_HEALTH:-false}
       BACKUP_ALERT_WEBHOOK_URL: ${BACKUP_ALERT_WEBHOOK_URL:-}
     volumes:
+      - ./backend:/app              # <--- HOT RELOAD MAGIC: Nakakonekta na ang live files mo
+      - /app/node_modules           # <--- Para hindi mag-conflict ang Windows at Linux modules
       - ./backend/backups:/app/backups
-    command: sh -c "if [ \"$DB_BOOTSTRAP_SYNC\" = \"true\" ]; then DB_SYNC=true npm start; else npm run migrate && npm start; fi"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173 --force"
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 20s
@@ -65,18 +68,22 @@ services:
       retries: 5
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: /api
+    # Pinalitan natin ito para hindi Nginx ang mag-serve kundi mismong Vite Dev Server
+    image: node:20-alpine
     container_name: guts-frontend
+    working_dir: /app
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
+    environment:
+      - VITE_API_BASE_URL=/api
+    volumes:
+      - ./frontend:/app             # <--- HOT RELOAD MAGIC para sa frontend
+      - /app/node_modules
     ports:
-      - "${APP_PORT:-8080}:80"
+      - "${APP_PORT:-8080}:5173"    # <--- Papasok ang 8080 sa Vite default port na 5173
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
 
 volumes:
   db_data:

@@ -1,16 +1,51 @@
-# React + Vite
+# GTS Frontend (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend for the Guardians Technical School management system.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 19
+- React Router 7
+- TanStack Query 5
+- Tailwind CSS 4
+- Vite 7
 
-## React Compiler
+## Local Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Install dependencies:
+	- `npm install`
+2. Run development server:
+	- `npm run dev`
+3. Build for production:
+	- `npm run build`
+4. Preview production build:
+	- `npm run preview`
 
-## Expanding the ESLint configuration
+## Frontend Highlights
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Role-aware dashboard and management views (admin, sub-admin, staff).
+- Enrollment workflow with schedule reservation flow.
+- Students page with live summary cards, filters, and responsive table handling.
+- Notification bell integration for admin, sub-admin, and staff roles.
+
+## Recent UI/UX Updates (April 2026)
+
+- Dashboard summary queries now self-heal better on transient failures with improved retry behavior.
+- Pending approvals now combine schedule-change requests and pending enrollments.
+- Pending approvals card now supports internal scrolling and fixed-height behavior for cleaner alignment.
+- Students and enrollment pages received responsive layout adjustments to behave better at browser zoom levels.
+- Global motion polish added:
+  - smoother scrolling
+  - subtle component transitions
+  - route fade-in animations with reduced-motion support
+
+## Notifications Behavior
+
+- Notification feed is now visible and active for staff as well as admin/sub-admin.
+- Notifications are currently a shared stream (not recipient-scoped).
+
+## Linting
+
+- Run:
+  - `npm run lint`
+- Note: current workspace may include existing lint issues unrelated to your latest changes.

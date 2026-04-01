@@ -61,19 +61,50 @@ function formatTime(dateInput) {
   });
 }
 
+function toDisplayTime(timeValue) {
+  const [hour = "00", minute = "00"] = String(timeValue || "00:00:00").split(":");
+  const date = new Date();
+  date.setHours(Number(hour), Number(minute), 0, 0);
+  return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+
+function latestScheduledSession(row) {
+  const sessions = Array.isArray(row?.scheduledSessions) ? row.scheduledSessions : [];
+  if (sessions.length === 0) return null;
+
+  return sessions.reduce((latest, current) => {
+    if (!latest) return current;
+    const latestDate = new Date(`${latest.schedule_date || "1970-01-01"}T${latest.start_time || "00:00:00"}`);
+    const currentDate = new Date(`${current.schedule_date || "1970-01-01"}T${current.start_time || "00:00:00"}`);
+    return currentDate > latestDate ? current : latest;
+  }, null);
+}
+
 function mapEnrollmentReport(row) {
   const code = row?.DLCode?.code || courseDisplayLabel(row);
   const name = studentName(row.Student);
   const courseType = classifyCourseType(row);
   const courseLabel = courseDisplayLabel(row);
+  const session = latestScheduledSession(row);
+  const vehicleType =
+    session?.Vehicle?.vehicle_type ||
+    [row?.target_vehicle, row?.transmission_type].filter(Boolean).join(" - ") ||
+    "-";
+  const slotLabel =
+    session?.start_time && session?.end_time
+      ? `${toDisplayTime(session.start_time)} - ${toDisplayTime(session.end_time)}`
+      : "-";
+
   return {
     id: `enrollment-${row.id}`,
     time: formatTime(row.created_at),
     studentName: name,
     transactionType: `${courseLabel} Enrollment`,
     course: courseLabel,
-    vehicleType: "-",
-    instructor: "-",
+    vehicleType,
+    slotLabel,
+    instructor: session?.Instructor?.name || "-",
+    careOf: session?.careOfInstructor?.name || "-",
     remarks: `${name} enrolled in ${code}`,
     courseType,
     description: `${name} enrolled in ${code}`,

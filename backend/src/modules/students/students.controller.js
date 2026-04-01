@@ -3,6 +3,14 @@ const { recordActivity } = require("../activity-logs/activity-logs.service");
 const { create: createNotification } = require("../notifications/notifications.service");
 const { sendHttpError } = require("../../shared/http/response");
 
+function enrollmentStatusLabel(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "pending") return "Pending";
+  if (normalized === "confirmed") return "Active";
+  if (normalized === "completed") return "Complete";
+  return value || "Unknown";
+}
+
 async function getAllStudents(req, res) {
   try {
     const rows = await service.listStudents();
@@ -73,12 +81,14 @@ async function updateEnrollmentStatus(req, res) {
       userId: req.user?.id,
       action: `Updated enrollment status for student #${updated.id}`,
     });
-    if (req.user?.role === "staff") {
+
+    if (req.user?.role === "admin" || req.user?.role === "sub_admin" || req.user?.role === "staff") {
       createNotification({
-        message: `${req.user.name || req.user.email} updated enrollment status for student #${updated.id}`,
+        message: `${req.user.name || req.user.email} updated student #${updated.id} enrollment progress to ${enrollmentStatusLabel(req.body?.enrollmentStatus)}.`,
         actorId: req.user.id,
       }).catch(() => {});
     }
+
     return res.status(200).json(updated);
   } catch (error) {
     return sendHttpError(res, error, 500, "Failed to update enrollment status");

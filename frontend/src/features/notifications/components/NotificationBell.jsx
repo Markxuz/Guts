@@ -22,6 +22,9 @@ function resolveNotificationTarget(item, role) {
 
   const text = String(item?.message || "").toLowerCase();
 
+  // Enrollment creation and progress updates are best reviewed on Students page.
+  if (/created enrollment|enrollment progress|updated enrollment status/.test(text)) return "/students";
+
   if (/student/.test(text)) return "/students";
   if (/enroll/.test(text)) return "/enrollments";
   if (/schedule|calendar/.test(text)) return "/";

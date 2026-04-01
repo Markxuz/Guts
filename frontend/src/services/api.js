@@ -1,5 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const AUTH_KEY = "guts_auth";
+const UNAUTHORIZED_EVENT = "guts:unauthorized";
 
 function getAuthToken() {
   try {
@@ -30,6 +31,11 @@ async function request(path, options = {}) {
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem(AUTH_KEY);
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    }
+
     const message = payload?.message || `Request failed: ${response.status}`;
     throw new Error(message);
   }

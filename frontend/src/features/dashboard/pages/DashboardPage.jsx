@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/hooks/useAuth";
 import AddScheduleModal from "../components/AddScheduleModal";
@@ -20,11 +21,14 @@ import {
   usePendingScheduleChangeRequests,
   useRejectScheduleChangeRequest,
 } from "../hooks/useScheduleChangeRequests";
+import { useDashboardSummary } from "../hooks/useDashboardSummary";
 import { useDailyReports } from "../hooks/useDailyReports";
 import { useReportOverview } from "../hooks/useReportOverview";
 import { useScheduleMonthStatus } from "../hooks/useScheduleMonthStatus";
 import { formatDateToISO, parseDateValue } from "../../../shared/utils/date";
-import ToastStack from "../../students/components/ToastStack";
+import ToastStack from "../../../shared/utils/ToastStack";
+import { useToast } from "../../../shared/utils/toast";
+import { fetchStudents } from "../../students/services/studentsApi";
 
 function getDateRangeFromPreset(preset, customStartDate, customEndDate) {
   const now = new Date();
@@ -159,7 +163,7 @@ export default function DashboardPage() {
   const [activeFilter, setActiveFilter] = useState("overall");
   const [scheduleCourseType, setScheduleCourseType] = useState("tdc");
   const [search, setSearch] = useState("");
-  const [toasts, setToasts] = useState([]);
+  const [toasts, addToast, removeToast] = useToast();
   const [printedAt, setPrintedAt] = useState(new Date());
   const initialFilter = useMemo(() => buildReportFilter("thisMonth", "", ""), []);
   const [reportFilter, setReportFilter] = useState(initialFilter);
@@ -175,7 +179,14 @@ export default function DashboardPage() {
     [reportFilter]
   );
 
-  const { data: reportOverview, isLoading: summaryLoading, isError: summaryError } = useReportOverview({
+  const {
+    data: dashboardSummaryPayload,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    isFetching: summaryFetching,
+    failureCount: summaryFailureCount,
+  } = useDashboardSummary(activeFilter);
+  const { data: reportOverview, isError: overviewError } = useReportOverview({
     startDate: reportFilter.startDate,
     endDate: reportFilter.endDate,
     course: activeFilter,
@@ -188,14 +199,30 @@ export default function DashboardPage() {
   const approveScheduleChangeMutation = useApproveScheduleChangeRequest();
   const rejectScheduleChangeMutation = useRejectScheduleChangeRequest();
   const { data: pendingRequestsData, isLoading: pendingRequestsLoading } = usePendingScheduleChangeRequests(auth?.user?.role === "admin");
+  const { data: studentsData = [], isLoading: pendingEnrollmentsLoading } = useQuery({
+    queryKey: ["students", "pending-approvals"],
+    queryFn: fetchStudents,
+    enabled: auth?.user?.role === "admin",
+  });
 
-  function addToast(message, type = "success") {
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    setToasts((current) => [...current, { id, message, type }]);
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 4500);
-  }
+  const pendingEnrollments = useMemo(() => {
+    return (studentsData || [])
+      .map((student) => {
+        const enrollment = student?.Enrollments?.[0];
+        if (!enrollment) return null;
+        if (String(enrollment.status || "").toLowerCase() !== "pending") return null;
+
+        return {
+          id: student.id,
+          enrollmentId: enrollment.id,
+          studentName: [student.first_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`,
+          courseLabel: enrollment?.DLCode?.code || "Enrollment",
+        };
+      })
+      .filter(Boolean);
+  }, [studentsData]);
+
+
 
   const unfilteredDailyReports = dailyReportData?.items || [];
   const unfilteredRecentActivities = reportOverview?.recentActivities || [];
@@ -215,11 +242,12 @@ export default function DashboardPage() {
     ...((monthStatusData?.items || []).map((item) => item.date)),
   ].map((dateValue) => parseDateValue(dateValue));
 
-  const summary = reportOverview?.stats || {
+  const summary = dashboardSummaryPayload?.stats || {
     totalStudents: 0,
     currentlyEnrolled: 0,
     completed: 0,
     thisMonth: 0,
+    tdc: 0,
     pdcBeginner: 0,
     pdcExperience: 0,
   };
@@ -237,13 +265,19 @@ export default function DashboardPage() {
           onEnroll={() => navigate("/enrollments")}
         />
 
-        {summaryError ? (
+        {summaryError && !summaryFetching && summaryFailureCount >= 4 ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             Failed to load dashboard summary.
           </div>
         ) : null}
 
-        <StatsGrid loading={summaryLoading} stats={summary} />
+        {summaryFetching && summaryFailureCount > 0 ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Reconnecting dashboard summary... (attempt {Math.min(summaryFailureCount + 1, 4)} of 4)
+          </div>
+        ) : null}
+
+        <StatsGrid loading={summaryLoading} stats={{...summary, activeFilter}} />
 
         <DashboardGrid
           left={(
@@ -300,7 +334,7 @@ export default function DashboardPage() {
               <RecentActivitiesCard
                 rows={recentActivities}
                 loading={summaryLoading}
-                error={summaryError}
+                error={overviewError}
               />
             </>
           )}
@@ -324,8 +358,9 @@ export default function DashboardPage() {
               />
               {auth?.user?.role === "admin" ? (
                 <PendingApprovalsCard
-                  rows={pendingRequestsData?.items || []}
-                  loading={pendingRequestsLoading}
+                  scheduleRows={pendingRequestsData?.items || []}
+                  enrollmentRows={pendingEnrollments}
+                  loading={pendingRequestsLoading || pendingEnrollmentsLoading}
                   approveMutation={approveScheduleChangeMutation}
                   rejectMutation={rejectScheduleChangeMutation}
                   onApproved={(row) => addToast(`Approved schedule change for ${row.currentSchedule?.studentName || "student"}.`, "success")}
@@ -372,7 +407,7 @@ export default function DashboardPage() {
 
       <ToastStack
         toasts={toasts}
-        onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))}
+        onDismiss={removeToast}
       />
     </>
   );

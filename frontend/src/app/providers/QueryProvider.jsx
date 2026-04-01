@@ -9,6 +9,13 @@ export default function QueryProvider({ children }) {
           queries: {
             staleTime: 60_000,
             refetchOnWindowFocus: false,
+            retry: (failureCount, error) => {
+              const message = String(error?.message || "").toLowerCase();
+              if (message.includes("unauthorized") || message.includes("invalid token")) {
+                return false;
+              }
+              return failureCount < 2;
+            },
           },
         },
       })

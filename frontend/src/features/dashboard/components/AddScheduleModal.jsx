@@ -274,7 +274,6 @@ export default function AddScheduleModal({
     const rows = resources?.vehicles || [];
     const targetVehicle = selectedEnrollmentRow?.target_vehicle || "";
     const filtered = rows.filter((item) => matchesVehicleTarget(item.vehicle_type, targetVehicle));
-
     return filtered.map((item) => ({
       value: String(item.id),
       label: `${item.vehicle_name || item.plate_number} (${item.vehicle_type || "Vehicle"})`,
@@ -291,6 +290,7 @@ export default function AddScheduleModal({
   );
   const isMotorcycleWholeDaySchedule =
     form.course_type === "pdc_experience" && isMotorcycleVehicleType(selectedVehicle?.vehicle_type);
+
   const activeSlotDetails = effectiveAvailability.find((item) => item.slot === activeAvailabilitySlot) || null;
   const selectedSlotDetails = effectiveAvailability.find((item) => item.slot === (isMotorcycleWholeDaySchedule ? "morning" : form.slot)) || null;
   const hasAvailableSlot = effectiveAvailability.some((item) => !item.full);
@@ -313,36 +313,30 @@ export default function AddScheduleModal({
     selectedSlotDetails?.full;
 
   useEffect(() => {
-    if (!isMotorcycleWholeDaySchedule) {
-      return;
-    }
-
-    setForm((current) => {
-      if (current.slot === "morning") {
-        return current;
-      }
-
-      return {
-        ...current,
-        slot: "morning",
-      };
+    if (!isMotorcycleWholeDaySchedule) return;
+    Promise.resolve().then(() => {
+      setForm((current) => {
+        if (current.slot === "morning") {
+          return current;
+        }
+        return {
+          ...current,
+          slot: "morning",
+        };
+      });
     });
   }, [isMotorcycleWholeDaySchedule]);
 
   useEffect(() => {
-    if (isTdcCourse) {
-      return;
-    }
-
+    if (isTdcCourse) return;
     const existsInOptions = vehicleOptions.some((item) => item.value === String(form.vehicle_id));
-    if (existsInOptions || !form.vehicle_id) {
-      return;
-    }
-
-    setForm((current) => ({
-      ...current,
-      vehicle_id: "",
-    }));
+    if (existsInOptions || !form.vehicle_id) return;
+    Promise.resolve().then(() => {
+      setForm((current) => ({
+        ...current,
+        vehicle_id: "",
+      }));
+    });
   }, [vehicleOptions, form.vehicle_id, isTdcCourse]);
 
   function updateField(event) {
@@ -509,17 +503,10 @@ export default function AddScheduleModal({
   }
 
   return (
-   features/chuwi-updates
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1f1111]/70 p-4 backdrop-blur-sm">
-      <div className="flex min-h-full items-start justify-center py-4 sm:items-center">
-        <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-[#d4af37]/30 bg-[linear-gradient(180deg,#fffdf7_0%,#f8f2e4_100%)] shadow-[0_32px_80px_rgba(40,8,8,0.45)] max-h-[calc(100vh-2rem)] overflow-y-auto">
-        <div className="flex items-start justify-between border-b border-[#e6d7b6] bg-[#800000] px-6 py-5 text-white">
-=======
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-[#1f1111]/70 p-4 backdrop-blur-sm">
       <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-[#d4af37]/30 bg-[linear-gradient(180deg,#fffdf7_0%,#f8f2e4_100%)] shadow-[0_32px_80px_rgba(40,8,8,0.45)]">
         {/* Fixed Header */}
         <div className="flex shrink-0 items-start justify-between border-b border-[#e6d7b6] bg-[#800000] px-6 py-5 text-white">
-        main
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f0d78a]">Calendar Schedule</p>
             <h2 className="mt-2 text-2xl font-bold">Add Schedule</h2>
@@ -567,14 +554,19 @@ export default function AddScheduleModal({
                   className="h-11 rounded-xl border border-[#d9c9a0] bg-slate-50 px-3 text-sm text-slate-800 outline-none"
                 />
               </label>
-              <ResourceField
-                label="Instructor"
-                name="instructor_id"
-                value={form.instructor_id}
-                onChange={updateField}
-                options={instructorOptions}
-                disabled={loadingResources || !form.course_type}
-              />
+              <div className="flex flex-col gap-0.5">
+                <ResourceField
+                  label="Instructor"
+                  name="instructor_id"
+                  value={form.instructor_id}
+                  onChange={updateField}
+                  options={instructorOptions}
+                  disabled={loadingResources || !form.course_type}
+                />
+                {!isTdcCourse && (
+                  <span className="ml-1 mt-1 text-xs text-slate-500 italic">Care of (if applicable) is set below</span>
+                )}
+              </div>
             </div>
             {selectedEnrollmentRow ? (
               <p className="rounded-2xl border border-[#d9c9a0] bg-white px-4 py-3 text-xs text-slate-600">
@@ -586,21 +578,12 @@ export default function AddScheduleModal({
                 Select a student enrollment to detect course type and enable scheduling.
               </p>
             )}
-            {!isTdcCourse ? (
-              <>
-                <ResourceField label="Care Of" name="care_of_instructor_id" value={form.care_of_instructor_id} onChange={updateField} options={careOfOptions} disabled={loadingResources} />
-                <ResourceField label="Vehicle" name="vehicle_id" value={form.vehicle_id} onChange={updateField} options={vehicleOptions} disabled={loadingResources} />
-                {!loadingResources && vehicleOptions.length === 0 ? (
-                  <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    No vehicles match this enrollment vehicle type.
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <p className="rounded-2xl border border-[#d9c9a0] bg-[#fff7ea] px-4 py-3 text-sm text-[#800000]">
-                TDC uses a lecture-style schedule. Instructor selection is required, but vehicle assignment is not.
+            <ResourceField label="Vehicle" name="vehicle_id" value={form.vehicle_id} onChange={updateField} options={vehicleOptions} disabled={loadingResources} />
+            {!loadingResources && vehicleOptions.length === 0 ? (
+              <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                No vehicles match this enrollment vehicle type.
               </p>
-            )}
+            ) : null}
 
             <div>
               <div className="flex items-center justify-between gap-3">
@@ -730,11 +713,7 @@ export default function AddScheduleModal({
             </div>
           </form>
 
-         features/chuwi-updates
-          <aside className="border-t border-[#e6d7b6] bg-[#fff7ea] px-6 py-6 md:border-l md:border-t-0">
-=======
           <aside className="overflow-y-auto border-l border-[#e6d7b6] bg-[#fff7ea] px-6 py-6">
-          main
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#800000]">Availability</p>
             <div className="mt-4 space-y-3">
               {effectiveAvailability.map((item) => (
@@ -750,38 +729,14 @@ export default function AddScheduleModal({
                       {item.full ? (item.fullLabel || "Fully Booked") : "Available"}
                     </span>
                   </div>
-                  {item.schedules?.length ? (
-                    <div className="mt-3">
-                      <button
-                        type="button"
-                        onClick={() => setActiveAvailabilitySlot(item.slot)}
-                        className="rounded-lg border border-[#d9c9a0] bg-white px-3 py-1.5 text-xs font-semibold text-[#800000] transition hover:bg-[#fff7ea]"
-                      >
-                        View booked schedule details
-                      </button>
-                    </div>
-                  ) : null}
                 </div>
               ))}
-            </div>
-
-            <div className="mt-6 space-y-3 rounded-3xl bg-[#2d1512] px-5 py-5 text-[#f7ead0] shadow-inner">
-              <div className="flex items-center gap-3 text-sm font-semibold">
-                <CalendarClock size={16} className="text-[#D4AF37]" /> Fixed sessions: 08:00 AM - 12:00 PM and 01:00 PM - 05:00 PM
-              </div>
-              <div className="flex items-center gap-3 text-sm font-semibold">
-                <UserRound size={16} className="text-[#D4AF37]" />
-                {isTdcCourse ? "Lecture instructor conflicts are blocked for the selected date" : "Instructor conflicts are blocked per slot"}
-              </div>
-              <div className="flex items-center gap-3 text-sm font-semibold">
-                <CarFront size={16} className="text-[#D4AF37]" />
-                {isTdcCourse ? "Vehicle assignment is not required for TDC sessions" : "Vehicle conflicts are blocked per slot"}
-              </div>
             </div>
           </aside>
         </div>
 
-        {activeSlotDetails ? (
+        {/* Modal inside modal conditionally rendered */}
+        {activeAvailabilitySlot && activeSlotDetails ? (
           <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4">
             <div className="w-full max-w-xl rounded-2xl border border-[#d9c9a0] bg-white p-5 shadow-2xl">
               <div className="mb-4 flex items-start justify-between gap-3">
@@ -900,7 +855,6 @@ export default function AddScheduleModal({
             </div>
           </div>
         ) : null}
-        </div>
       </div>
     </div>
   );

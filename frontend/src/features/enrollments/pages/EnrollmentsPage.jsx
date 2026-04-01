@@ -11,7 +11,8 @@ import TdcFormSections from "../components/sections/TdcFormSections";
 import { useCreateEnrollment } from "../hooks/useCreateEnrollment";
 import { resourceServices } from "../../../services/resources";
 import { fetchDailyReports } from "../../dashboard/services/dashboardApi";
-import ToastStack from "../../students/components/ToastStack";
+import ToastStack from "../../../shared/utils/ToastStack";
+import { calculateAge } from "../../../shared/utils/date";
 
 const INITIAL_FORM = {
   student: {
@@ -100,7 +101,7 @@ function buildEnrollmentPayload(type, form) {
       fb_link: form.profile.fb_link,
       house_number: form.profile.house_number,
       street: form.profile.street,
-      barangay: form.profile.barangay,
+      barangay: form.profile.city,
       city: form.profile.city,
       province: form.profile.province,
       zip_code: form.profile.zip_code,
@@ -223,6 +224,22 @@ export default function EnrollmentsPage() {
   const scheduleCourseType = useMemo(() => inferEnrollmentCourseType(selectedType, form), [selectedType, form]);
   const isScheduleTdc = scheduleCourseType === "tdc";
 
+  // INILIPAT DITO ANG AUTO-CALCULATE AGE PARA NASA LOOB NG COMPONENT
+  useEffect(() => {
+    const birthdate = form.profile.birthdate;
+    const age = calculateAge(birthdate);
+    if (birthdate && age !== form.profile.age) {
+      setForm((current) => ({
+        ...current,
+        profile: {
+          ...current.profile,
+          age,
+        },
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.profile.birthdate]);
+
   const { data: scheduleResources, isLoading: loadingScheduleResources } = useQuery({
     queryKey: ["enrollment-schedule-resources"],
     queryFn: async () => {
@@ -301,42 +318,37 @@ export default function EnrollmentsPage() {
   const selectedScheduleSlot = scheduleSlots.find((item) => item.slot === activeScheduleSlotKey) || null;
 
   useEffect(() => {
-    if (!isMotorcycleWholeDaySchedule) {
-      return;
-    }
-
-    setForm((current) => {
-      if (current.schedule.slot === "morning") {
-        return current;
-      }
-
-      return {
-        ...current,
-        schedule: {
-          ...current.schedule,
-          slot: "morning",
-        },
-      };
+    if (!isMotorcycleWholeDaySchedule) return;
+    // Use a microtask to avoid cascading renders
+    Promise.resolve().then(() => {
+      setForm((current) => {
+        if (current.schedule.slot === "morning") {
+          return current;
+        }
+        return {
+          ...current,
+          schedule: {
+            ...current.schedule,
+            slot: "morning",
+          },
+        };
+      });
     });
   }, [isMotorcycleWholeDaySchedule]);
 
   useEffect(() => {
-    if (isScheduleTdc) {
-      return;
-    }
-
+    if (isScheduleTdc) return;
     const existsInOptions = vehicleOptions.some((item) => item.value === String(form.schedule.vehicle_id));
-    if (existsInOptions || !form.schedule.vehicle_id) {
-      return;
-    }
-
-    setForm((current) => ({
-      ...current,
-      schedule: {
-        ...current.schedule,
-        vehicle_id: "",
-      },
-    }));
+    if (existsInOptions || !form.schedule.vehicle_id) return;
+    Promise.resolve().then(() => {
+      setForm((current) => ({
+        ...current,
+        schedule: {
+          ...current.schedule,
+          vehicle_id: "",
+        },
+      }));
+    });
   }, [vehicleOptions, form.schedule.vehicle_id, isScheduleTdc]);
 
   useEffect(() => {
@@ -559,7 +571,7 @@ export default function EnrollmentsPage() {
           </div>
         ) : null}
 
-        <section className="w-full max-w-5xl">
+        <section className="w-full min-w-0">
           <div className="mb-4 flex items-center gap-3">
             <button
               type="button"
@@ -637,7 +649,7 @@ export default function EnrollmentsPage() {
         </div>
       ) : null}
 
-      <section className="w-full max-w-5xl">
+      <section className="w-full min-w-0">
         <div className="mb-4 flex items-center gap-3">
           <button
             type="button"
@@ -697,6 +709,22 @@ export default function EnrollmentsPage() {
                     onChange={(event) => handleFieldChange("schedule", "schedule_date", event.target.value)}
                     className="h-11 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
                   />
+                </label>
+
+                {/* Care of Instructor Dropdown */}
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Care of</span>
+                  <select
+                    value={form.schedule.care_of_instructor_id}
+                    onChange={(event) => handleFieldChange("schedule", "care_of_instructor_id", event.target.value)}
+                    disabled={loadingScheduleResources || !scheduleCourseType}
+                    className="h-11 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000] disabled:bg-slate-100"
+                  >
+                    <option value="">Select care of instructor</option>
+                    {instructorOptions.map((item) => (
+                      <option key={item.value} value={item.value}>{item.label}</option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="flex flex-col gap-1">

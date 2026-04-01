@@ -7,6 +7,7 @@ const {
   User,
   Schedule,
   Vehicle,
+  Instructor,
   MaintenanceLog,
   FuelLog,
 } = require("../../../models");
@@ -35,6 +36,30 @@ async function findEnrollmentsByDateRange(start, end) {
     include: [
       { model: Student, attributes: ["id", "first_name", "last_name"] },
       { model: DLCode, attributes: ["id", "code", "description"] },
+      {
+        model: Schedule,
+        as: "scheduledSessions",
+        attributes: ["id", "schedule_date", "start_time", "end_time", "vehicle_id", "instructor_id", "care_of_instructor_id"],
+        required: false,
+        include: [
+          {
+            model: Vehicle,
+            attributes: ["id", "vehicle_name", "vehicle_type", "plate_number", "transmission_type"],
+            required: false,
+          },
+          {
+            model: Instructor,
+            attributes: ["id", "name"],
+            required: false,
+          },
+          {
+            model: Instructor,
+            as: "careOfInstructor",
+            attributes: ["id", "name"],
+            required: false,
+          },
+        ],
+      },
     ],
     order: [["created_at", "DESC"], ["id", "DESC"]],
   });

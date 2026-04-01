@@ -1,3 +1,4 @@
+import { calculateAge } from "../../../../shared/utils/date";
 import { FormField, SectionTitle, SelectField } from "../FormField";
 
 const genderOptions = [
@@ -13,7 +14,19 @@ const civilStatusOptions = [
   { value: "separated", label: "Separated" },
 ];
 
+import { useEffect } from "react";
+
 export function PersonalInfoSection({ type, form, onFieldChange }) {
+  // Auto-calculate age when birthdate changes
+  useEffect(() => {
+    const birthdate = form.profile.birthdate;
+    const age = calculateAge(birthdate);
+    if (birthdate && age !== form.profile.age) {
+      onFieldChange("profile", "age", age);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.profile.birthdate]);
+
   return (
     <>
       {type === "PDC" ? <SectionTitle>CLIENT INFORMATION</SectionTitle> : null}
@@ -83,8 +96,10 @@ export function PersonalInfoSection({ type, form, onFieldChange }) {
             name="age"
             type="number"
             value={form.profile.age}
-            onChange={(event) => onFieldChange("profile", "age", event.target.value)}
             placeholder="Age"
+            inputClassName="bg-slate-100 cursor-not-allowed"
+            readOnly
+            tabIndex={-1}
           />
           <FormField
             label="NATIONALITY"
@@ -116,8 +131,10 @@ export function PersonalInfoSection({ type, form, onFieldChange }) {
             name="age"
             type="number"
             value={form.profile.age}
-            onChange={(event) => onFieldChange("profile", "age", event.target.value)}
             placeholder="Age"
+            inputClassName="bg-slate-100 cursor-not-allowed"
+            readOnly
+            tabIndex={-1}
           />
           <SelectField
             label="GENDER"

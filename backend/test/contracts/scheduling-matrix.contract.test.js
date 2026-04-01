@@ -2,29 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { Course, Instructor, Vehicle, Schedule, Enrollment } = require("../../models");
 const { getTestClient, loginAsAdmin } = require("../helpers/appTestHarness");
-
-function uniqueLabel(prefix) {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-}
-
-function toIsoDate(date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function addDaysIso(dateIso, daysToAdd) {
-  const date = new Date(`${dateIso}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + daysToAdd);
-  return toIsoDate(date);
-}
-
-function nextWeekdayIso(weekday, weeksAhead = 4) {
-  const base = new Date();
-  base.setDate(base.getDate() + weeksAhead * 7);
-
-  const diff = (weekday - base.getDay() + 7) % 7;
-  base.setDate(base.getDate() + diff);
-  return toIsoDate(base);
-}
+const { uniqueLabel, toIsoDate, addDaysIso, nextWeekdayIso } = require("../helpers/dateUtils");
 
 test.describe("Scheduling live verification matrix", () => {
   let client;
