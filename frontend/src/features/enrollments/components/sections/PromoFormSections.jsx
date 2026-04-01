@@ -11,6 +11,11 @@ const vehicleTypeOptions = [
   { value: "Car", label: "Car" },
 ];
 
+const transmissionTypeOptions = [
+  { value: "Automatic", label: "Automatic Transmission" },
+  { value: "Manual", label: "Manual Transmission" },
+];
+
 export default function PromoFormSections({ form, onFieldChange }) {
   return (
     <>
@@ -36,7 +41,7 @@ export default function PromoFormSections({ form, onFieldChange }) {
           </div>
         </div>
       </div>
-      <div className="mt-2 grid gap-3 md:grid-cols-1">
+      <div className="mt-2 grid gap-3 md:grid-cols-2">
         <SelectField
           label="TYPE OF VEHICLE"
           name="target_vehicle"
@@ -44,6 +49,16 @@ export default function PromoFormSections({ form, onFieldChange }) {
           onChange={(event) => onFieldChange("enrollment", "target_vehicle", event.target.value)}
           placeholder="Select Type of Vehicle"
           options={vehicleTypeOptions}
+          inputClassName="text-slate-900"
+          required
+        />
+        <SelectField
+          label="TYPE OF TRANSMISSION"
+          name="transmission_type"
+          value={form.enrollment.transmission_type}
+          onChange={(event) => onFieldChange("enrollment", "transmission_type", event.target.value)}
+          placeholder="Select Type of Transmission"
+          options={transmissionTypeOptions}
           inputClassName="text-slate-900"
           required
         />

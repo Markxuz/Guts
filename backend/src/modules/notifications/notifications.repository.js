@@ -1,4 +1,4 @@
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 const { Notification, NotificationRead } = require("../../../models");
 
 function buildVisibleNotificationsWhere(userId) {
@@ -24,10 +24,15 @@ async function findAll({ limit = 50, userId } = {}) {
         model: NotificationRead,
         as: "reads",
         required: false,
-        where: { user_id: userId },
         attributes: ["id", "user_id", "read_at"],
+        where: Sequelize.where(
+          Sequelize.col("reads.user_id"),
+          Op.eq,
+          userId
+        ),
       },
     ],
+    subQuery: false,
   });
 }
 
@@ -39,17 +44,21 @@ async function countUnread({ userId } = {}) {
         model: NotificationRead,
         as: "reads",
         required: false,
-        where: { user_id: userId },
         attributes: ["id"],
+        where: Sequelize.where(
+          Sequelize.col("reads.user_id"),
+          Op.eq,
+          userId
+        ),
       },
     ],
-    where: {
-      ...buildVisibleNotificationsWhere(userId),
-      "$reads.id$": null,
-    },
+    where: buildVisibleNotificationsWhere(userId),
+    subQuery: false,
   });
 
-  return rows.length;
+  // Count only notifications that don't have a read entry for this user
+  const unreadCount = rows.filter((notification) => !notification.reads || notification.reads.length === 0).length;
+  return unreadCount;
 }
 
 async function markAsRead(id, userId) {
@@ -77,21 +86,26 @@ async function markAllAsRead(userId) {
         model: NotificationRead,
         as: "reads",
         required: false,
-        where: { user_id: userId },
         attributes: ["id"],
+        where: Sequelize.where(
+          Sequelize.col("reads.user_id"),
+          Op.eq,
+          userId
+        ),
       },
     ],
-    where: {
-      ...buildVisibleNotificationsWhere(userId),
-      "$reads.id$": null,
-    },
+    where: buildVisibleNotificationsWhere(userId),
+    subQuery: false,
   });
 
-  if (!unreadRows.length) {
+  // Filter to only unread notifications (where reads is empty)
+  const unreadNotifications = unreadRows.filter((n) => !n.reads || n.reads.length === 0);
+
+  if (!unreadNotifications.length) {
     return [0];
   }
 
-  const payload = unreadRows.map((row) => ({
+  const payload = unreadNotifications.map((row) => ({
     notification_id: row.id,
     user_id: userId,
     read_at: new Date(),

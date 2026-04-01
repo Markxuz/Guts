@@ -26,6 +26,7 @@ export default function DailyReportsCard({ rows, total, loading, error, title, s
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Student Name</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Course</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Vehicle Type</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-700">Type of Transmission</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Session</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Instructor / Care Of</th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">Remarks</th>
@@ -58,6 +59,7 @@ export default function DailyReportsCard({ rows, total, loading, error, title, s
                     <td className="px-4 py-3 font-medium text-slate-900">{row.studentName}</td>
                     <td className="px-4 py-3 text-slate-700">{row.course || row.transactionType || "-"}</td>
                     <td className="px-4 py-3 text-slate-700">{row.vehicleType || "-"}</td>
+                    <td className="px-4 py-3 text-slate-700">{row.transmissionType || "-"}</td>
                     <td className="px-4 py-3 text-slate-700">{sessionLabel}</td>
                     <td className="px-4 py-3 whitespace-pre-line text-slate-700">{instructorCareOf}</td>
                     <td className="px-4 py-3 text-slate-600">{row.remarks || row.description || row.transactionType}</td>
