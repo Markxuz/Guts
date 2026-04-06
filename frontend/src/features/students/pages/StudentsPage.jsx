@@ -5,21 +5,29 @@ import StatusUpdateModal from "../components/StatusUpdateModal";
 import StudentDetailsModal from "../components/StudentDetailsModal";
 import StudentTable from "../components/StudentTable";
 import SummaryCards from "../components/SummaryCards";
+import BulkStatusUpdateModal from "../components/BulkStatusUpdateModal";
 import ToastStack from "../../../shared/utils/ToastStack";
 import { useStudentsPageLogic } from "../hooks/useStudentsPageLogic";
+import { useAuth } from "../../auth/hooks/useAuth";
 
 function StudentsPage() {
+  const { role } = useAuth();
 
   const {
     search,
     courseFilter,
     statusFilter,
+    sortBy,
     selectedStudent,
     editingStudent,
     editForm,
     deletingStudent,
     updatingStatusStudent,
     statusForm,
+    selectedStudentIds,
+    isBulkStatusModalOpen,
+    bulkStatusForm,
+    allVisibleSelected,
     toasts,
     students,
     summary,
@@ -30,14 +38,22 @@ function StudentsPage() {
     isUpdatingStudent,
     isDeletingStudent,
     isUpdatingStatus,
+    isBulkUpdatingStatus,
     setEditForm,
     setStatusForm,
+    setBulkStatusForm,
     setSelectedStudent,
     setDeletingStudent,
     removeToast,
     setSearch,
     setCourseFilter,
     setStatusFilter,
+    setSortBy,
+    toggleSelectStudent,
+    toggleSelectAllVisible,
+    openBulkStatusModal,
+    closeBulkStatusModal,
+    submitBulkStatusUpdate,
     goToPreviousPage,
     goToNextPage,
     openEditModal,
@@ -109,6 +125,27 @@ function StudentsPage() {
               <option value="confirmed">Active</option>
               <option value="completed">Completed</option>
             </select>
+
+            <select
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value)}
+              className="h-10 w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-[#800000]"
+            >
+              <option value="name_asc">Sort: Name A-Z</option>
+              <option value="name_desc">Sort: Name Z-A</option>
+              <option value="id_desc">Sort: Newest First</option>
+              <option value="id_asc">Sort: Oldest First</option>
+              <option value="status">Sort: Status</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={openBulkStatusModal}
+              disabled={selectedStudentIds.length === 0}
+              className="h-10 rounded-lg bg-[#800000] px-3 text-xs font-semibold text-white transition hover:bg-[#690000] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Bulk Update Status ({selectedStudentIds.length})
+            </button>
           </div>
         </div>
       </div>
@@ -125,6 +162,11 @@ function StudentsPage() {
         onEdit={openEditModal}
         onUpdateStatus={openStatusUpdateModal}
         onDelete={setDeletingStudent}
+        canDelete={role === "admin"}
+        selectedStudentIds={selectedStudentIds}
+        allVisibleSelected={allVisibleSelected}
+        onToggleSelectStudent={toggleSelectStudent}
+        onToggleSelectAllVisible={toggleSelectAllVisible}
         onPreviousPage={goToPreviousPage}
         onNextPage={goToNextPage}
       />
@@ -154,6 +196,16 @@ function StudentsPage() {
         onClose={closeStatusUpdateModal}
         onSubmit={submitStatusUpdate}
         isPending={isUpdatingStatus}
+      />
+
+      <BulkStatusUpdateModal
+        isOpen={isBulkStatusModalOpen}
+        selectedCount={selectedStudentIds.length}
+        form={bulkStatusForm}
+        onChange={setBulkStatusForm}
+        onClose={closeBulkStatusModal}
+        onSubmit={submitBulkStatusUpdate}
+        isPending={isBulkUpdatingStatus}
       />
     </section>
   );
