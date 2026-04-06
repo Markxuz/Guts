@@ -27,6 +27,11 @@ export default function StudentTable({
   onEdit,
   onUpdateStatus,
   onDelete,
+  canDelete,
+  selectedStudentIds,
+  allVisibleSelected,
+  onToggleSelectStudent,
+  onToggleSelectAllVisible,
   onPreviousPage,
   onNextPage,
 }) {
@@ -36,18 +41,27 @@ export default function StudentTable({
         <table className="min-w-full table-fixed text-sm">
           <thead className="bg-[#800000] text-left text-white">
             <tr>
-              <th className="w-[22%] px-4 py-3 font-semibold">Student</th>
-              <th className="w-[18%] px-4 py-3 font-semibold">Contact</th>
+              <th className="w-[4%] px-4 py-3 font-semibold">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={onToggleSelectAllVisible}
+                  aria-label="Select all visible students"
+                  className="h-4 w-4 rounded border-slate-300 text-[#800000] focus:ring-[#800000]/30"
+                />
+              </th>
+              <th className="w-[20%] px-4 py-3 font-semibold">Student</th>
+              <th className="w-[16%] px-4 py-3 font-semibold">Contact</th>
               <th className="w-[10%] px-4 py-3 font-semibold">Course</th>
               <th className="w-[12%] px-4 py-3 font-semibold">Status</th>
-              <th className="w-[28%] px-4 py-3 font-semibold">Address</th>
-              <th className="w-[10%] px-4 py-3 font-semibold">Actions</th>
+              <th className="w-[24%] px-4 py-3 font-semibold">Address</th>
+              <th className="w-[14%] px-4 py-3 font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   Loading students...
                 </td>
               </tr>
@@ -55,7 +69,7 @@ export default function StudentTable({
 
             {!isLoading && isError ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-rose-700">
+                <td colSpan={7} className="px-4 py-8 text-center text-rose-700">
                   {error?.message || "Failed to load students"}
                 </td>
               </tr>
@@ -63,7 +77,7 @@ export default function StudentTable({
 
             {!isLoading && !isError && students.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   No students found for the selected filters.
                 </td>
               </tr>
@@ -83,6 +97,15 @@ export default function StudentTable({
                       key={student.id}
                       className={`${index % 2 === 0 ? "bg-white" : "bg-slate-50"} transition-colors hover:bg-[#D4AF37]/10`}
                     >
+                      <td className="px-4 py-3 align-top">
+                        <input
+                          type="checkbox"
+                          checked={selectedStudentIds.includes(student.id)}
+                          onChange={() => onToggleSelectStudent(student.id)}
+                          aria-label={`Select student ${fullName || student.id}`}
+                          className="mt-1 h-4 w-4 rounded border-slate-300 text-[#800000] focus:ring-[#800000]/30"
+                        />
+                      </td>
                       <td className="px-4 py-3 align-top">
                         <p className="font-semibold text-slate-900 [overflow-wrap:anywhere]">
                           {fullName || "N/A"}
@@ -109,39 +132,45 @@ export default function StudentTable({
                         </p>
                       </td>
                       <td className="px-4 py-3 align-top whitespace-nowrap">
-                        <div className="flex items-center gap-2 text-slate-700">
+                        <div className="flex flex-wrap items-center gap-1.5 text-slate-700">
                           <button
                             type="button"
                             onClick={() => onView(student)}
-                            className="rounded-md p-2 hover:bg-slate-100"
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
                             title="View"
                           >
                             <Eye size={16} className="text-[#800000]" />
+                            View
                           </button>
                           <button
                             type="button"
                             onClick={() => onEdit(student)}
-                            className="rounded-md p-2 hover:bg-slate-100"
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
                             title="Edit"
                           >
                             <Pencil size={16} className="text-[#8d6f12]" />
+                            Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => onUpdateStatus(student)}
-                            className="rounded-md p-2 hover:bg-slate-100"
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
                             title="Update Status"
                           >
                             <Clock size={16} className="text-[#800000]" />
+                            Update
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onDelete(student)}
-                            className="rounded-md p-2 hover:bg-slate-100"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} className="text-rose-600" />
-                          </button>
+                          {canDelete ? (
+                            <button
+                              type="button"
+                              onClick={() => onDelete(student)}
+                              className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-white px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} className="text-rose-600" />
+                              Delete
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
