@@ -15,6 +15,9 @@ export async function fetchDashboardLogs(dateIso) {
 
 export async function fetchDailyReports(filter) {
   const params = new URLSearchParams();
+  if (filter?.course) {
+    params.set("course", filter.course);
+  }
   if (filter?.mode === "day" && filter?.date) {
     params.set("date", filter.date);
     if (filter?.courseType) params.set("courseType", filter.courseType);
@@ -28,9 +31,19 @@ export async function fetchDailyReports(filter) {
   return api.get(`/reports/daily?${params.toString()}`);
 }
 
-export async function fetchScheduleMonthStatus({ year, month }) {
-  const payload = await api.get(`/schedules/month-status?year=${year}&month=${month}`);
+export async function fetchScheduleMonthStatus({ year, month, course = "overall" }) {
+  const params = new URLSearchParams({ year, month });
+  if (course && course !== "overall") {
+    params.set("course", course);
+  }
+  const payload = await api.get(`/schedules/month-status?${params.toString()}`);
   return unwrapScheduleResponse(payload);
+}
+
+export async function fetchScheduleDay(dateIso) {
+  const payload = await api.get(`/schedules/day?date=${encodeURIComponent(dateIso)}`);
+  const data = unwrapScheduleResponse(payload);
+  return Array.isArray(data) ? data : data?.items || [];
 }
 
 export async function createSchedule(payload) {

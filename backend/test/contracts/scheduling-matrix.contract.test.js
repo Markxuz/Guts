@@ -154,6 +154,7 @@ test.describe("Scheduling live verification matrix", () => {
   test("Scenario 1: TDC booking works without vehicle", async () => {
     const instructor = await createInstructorForCourse("tdc");
     const scheduleDate = nextWeekdayIso(1, 5); // Monday
+    const nextOperationalDate = addDaysIso(scheduleDate, 1);
 
     const response = await client
       .post("/api/schedules")
@@ -170,9 +171,10 @@ test.describe("Scheduling live verification matrix", () => {
     assert.equal(response.status, 201, JSON.stringify(response.body));
     assert.equal(response.body.data?.courseType, "tdc");
     assert.equal(Array.isArray(response.body.data?.reservedDates), true);
-    assert.equal(response.body.data.reservedDates.length, 1);
+    assert.deepEqual(response.body.data?.reservedDates, [scheduleDate, nextOperationalDate]);
 
     const createdIds = (response.body.data?.createdItems || []).map((item) => item.id);
+    assert.equal(createdIds.length, 4);
     cleanup.scheduleIds.push(...createdIds);
 
     const dayResponse = await client

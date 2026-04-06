@@ -24,6 +24,7 @@ function buildProfileUpdatePayload(payload = {}) {
   const profile = payload.profile || {};
   const fields = [
     "birthdate",
+    "birthplace",
     "age",
     "gender",
     "civil_status",
@@ -41,6 +42,8 @@ function buildProfileUpdatePayload(payload = {}) {
     "emergency_contact_person",
     "emergency_contact_number",
     "lto_portal_account",
+    "driving_school_tdc",
+    "year_completed_tdc",
   ];
 
   return fields.reduce((result, field) => {

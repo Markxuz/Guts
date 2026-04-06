@@ -2,12 +2,29 @@ const Joi = require("joi");
 
 const optionalText = Joi.string().trim().allow("", null);
 const optionalNumber = Joi.number().integer().allow(null);
-const targetVehicleSchema = Joi.string().valid("Car", "Motor", "Motorcycle").allow("", null);
-const transmissionSchema = Joi.string().valid("Manual", "Automatic").allow("", null);
-const educationalAttainmentSchema = Joi.string().valid("High School", "College").allow("", null);
-const tdcTrainingMethodSchema = Joi.string().valid("Onsite", "Online").allow("", null);
-const pdcTrainingMethodSchema = Joi.string().valid("Onsite").allow("", null);
+const targetVehicleSchema = optionalText;
+const transmissionSchema = optionalText;
+const educationalAttainmentSchema = Joi.string().valid(
+  "High School",
+  "College",
+  "Elementary",
+  "Post Graduate",
+  "Vocational",
+  "Informal Schooling",
+  "Other"
+).allow("", null);
+const tdcTrainingMethodSchema = optionalText;
+const pdcTrainingMethodSchema = optionalText;
 const scheduleSlotSchema = Joi.string().valid("morning", "afternoon");
+
+const schedulePayloadSchema = Joi.object({
+  enabled: Joi.boolean().default(false),
+  schedule_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow("", null),
+  slot: scheduleSlotSchema.allow("", null),
+  instructor_id: Joi.number().integer().positive().allow(null),
+  care_of_instructor_id: Joi.number().integer().positive().allow(null),
+  vehicle_id: Joi.number().integer().positive().allow(null),
+});
 
 const enrollmentCreateSchema = Joi.object({
   enrollment_type: Joi.string().valid("TDC", "PDC", "PROMO").required(),
@@ -21,6 +38,7 @@ const enrollmentCreateSchema = Joi.object({
   }).required(),
   profile: Joi.object({
     birthdate: Joi.date().iso().allow(null, ""),
+    birthplace: optionalText,
     age: optionalNumber,
     gender: optionalText,
     civil_status: optionalText,
@@ -42,6 +60,8 @@ const enrollmentCreateSchema = Joi.object({
     emergency_contact_person: optionalText,
     emergency_contact_number: optionalText,
     lto_portal_account: optionalText,
+    driving_school_tdc: optionalText,
+    year_completed_tdc: optionalText,
     tdc_training_method: tdcTrainingMethodSchema,
     pdc_training_method: pdcTrainingMethodSchema,
   }).default({}),
@@ -60,14 +80,12 @@ const enrollmentCreateSchema = Joi.object({
     score: optionalText,
     status: Joi.string().valid("pending", "confirmed", "completed").default("pending"),
   }).default({}),
-  schedule: Joi.object({
+  schedule: schedulePayloadSchema.default({ enabled: false }),
+  promo_schedule: Joi.object({
     enabled: Joi.boolean().default(false),
-    schedule_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow("", null),
-    slot: scheduleSlotSchema.allow("", null),
-    instructor_id: Joi.number().integer().positive().allow(null),
-    care_of_instructor_id: Joi.number().integer().positive().allow(null),
-    vehicle_id: Joi.number().integer().positive().allow(null),
-  }).default({ enabled: false }),
+    tdc: schedulePayloadSchema.default({ enabled: false }),
+    pdc: schedulePayloadSchema.default({ enabled: false }),
+  }).allow(null),
 }).custom((value, helpers) => {
   const hasPdcSelection = Boolean(value.enrollment?.pdc_category || value.enrollment?.pdc_type);
   const scheduleEnabled = Boolean(value.schedule?.enabled);
@@ -98,9 +116,15 @@ const enrollmentCreateSchema = Joi.object({
     }
   }
 
-  if (value.enrollment_type === "PROMO" && !value.enrollment?.target_vehicle) {
+  if (value.enrollment_type === "PROMO" && value.enrollment?.is_already_driver && !value.enrollment?.target_vehicle) {
     return helpers.error("any.custom", {
       message: "target_vehicle is required for PROMO enrollments",
+    });
+  }
+
+  if (value.enrollment_type === "PROMO" && value.enrollment?.is_already_driver && !value.enrollment?.transmission_type) {
+    return helpers.error("any.custom", {
+      message: "transmission_type is required for PROMO enrollments when already driving",
     });
   }
 
@@ -108,6 +132,24 @@ const enrollmentCreateSchema = Joi.object({
     return helpers.error("any.custom", {
       message: "pdc_category is required for PROMO enrollments",
     });
+  }
+
+  const promoScheduleEnabled = Boolean(value.promo_schedule?.enabled);
+  if (value.enrollment_type === "PROMO" && promoScheduleEnabled) {
+    const promoTdc = value.promo_schedule?.tdc || {};
+    const promoPdc = value.promo_schedule?.pdc || {};
+
+    if (!promoTdc.schedule_date || !promoTdc.slot || !promoTdc.instructor_id) {
+      return helpers.error("any.custom", {
+        message: "promo_schedule.tdc requires schedule_date, slot, and instructor_id",
+      });
+    }
+
+    if (!promoPdc.schedule_date || !promoPdc.slot || !promoPdc.instructor_id || !promoPdc.vehicle_id) {
+      return helpers.error("any.custom", {
+        message: "promo_schedule.pdc requires schedule_date, slot, instructor_id, and vehicle_id",
+      });
+    }
   }
 
   if (scheduleEnabled) {

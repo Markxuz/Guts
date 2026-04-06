@@ -13,6 +13,10 @@ module.exports = (sequelize) => {
         type: DataTypes.DATEONLY,
         allowNull: true,
       },
+      birthplace: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       age: {
         type: DataTypes.INTEGER,
         allowNull: true,
@@ -78,6 +82,14 @@ module.exports = (sequelize) => {
         allowNull: true,
       },
       lto_portal_account: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      driving_school_tdc: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      year_completed_tdc: {
         type: DataTypes.STRING,
         allowNull: true,
       },

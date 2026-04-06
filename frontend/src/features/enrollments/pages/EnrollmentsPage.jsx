@@ -24,11 +24,13 @@ const INITIAL_FORM = {
   },
   profile: {
     birthdate: "",
+    birthplace: "",
     age: "",
     gender: "",
     civil_status: "",
     nationality: "",
     fb_link: "",
+    gmail_account: "",
     house_number: "",
     street: "",
     barangay: "",
@@ -47,15 +49,33 @@ const INITIAL_FORM = {
   },
   extras: {
     region: "",
-    enrolling_for: "PDC",
+    enrolling_for: "",
     educational_attainment: "",
     emergency_contact_person: "",
     emergency_contact_number: "",
     lto_portal_account: "",
+    driving_school_tdc: "",
+    year_completed_tdc: "",
     tdc_training_method: "Onsite",
     pdc_training_method: "Onsite",
   },
   schedule: {
+    enabled: true,
+    schedule_date: "",
+    slot: "morning",
+    instructor_id: "",
+    care_of_instructor_id: "",
+    vehicle_id: "",
+  },
+  promo_schedule_tdc: {
+    enabled: true,
+    schedule_date: "",
+    slot: "morning",
+    instructor_id: "",
+    care_of_instructor_id: "",
+    vehicle_id: "",
+  },
+  promo_schedule_pdc: {
     enabled: true,
     schedule_date: "",
     slot: "morning",
@@ -94,36 +114,48 @@ function buildEnrollmentPayload(type, form) {
     },
     profile: {
       birthdate: form.profile.birthdate || null,
+      birthplace: form.profile.birthplace || null,
       age: toNullableNumber(form.profile.age),
       gender: form.profile.gender,
       civil_status: form.profile.civil_status,
       nationality: form.profile.nationality,
       fb_link: form.profile.fb_link,
+      gmail_account: form.profile.gmail_account,
       house_number: form.profile.house_number,
       street: form.profile.street,
-      barangay: form.profile.city,
+      barangay: form.profile.barangay,
       city: form.profile.city,
       province: form.profile.province,
       zip_code: form.profile.zip_code,
     },
     extras: {
       region: form.extras.region,
-      enrolling_for: type === "PDC" ? "PDC" : form.extras.enrolling_for,
+      enrolling_for:
+        type === "PDC"
+          ? form.extras.enrolling_for
+          : type === "PROMO"
+            ? "TDC + PDC Promo"
+            : form.extras.enrolling_for,
       educational_attainment: form.extras.educational_attainment,
       emergency_contact_person: form.extras.emergency_contact_person,
       emergency_contact_number: form.extras.emergency_contact_number,
       lto_portal_account: form.extras.lto_portal_account,
+      driving_school_tdc: form.extras.driving_school_tdc,
+      year_completed_tdc: form.extras.year_completed_tdc,
       tdc_training_method: type === "PROMO" ? form.extras.tdc_training_method || "Onsite" : form.extras.tdc_training_method,
       pdc_training_method: type === "PROMO" ? promoPdcTrainingMethod : form.extras.pdc_training_method,
     },
     enrollment: {
       client_type:
         type === "PDC"
-          ? "new"
+          ? form.enrollment.client_type || null
           : type === "PROMO"
             ? "promo"
-            : form.enrollment.client_type || "tdc",
-      is_already_driver: type === "TDC" ? form.enrollment.is_already_driver === true : false,
+            : form.enrollment.client_type || null,
+      is_already_driver:
+        type === "TDC" || type === "PROMO"
+          ? form.enrollment.is_already_driver === true
+          : false,
       target_vehicle:
         type === "PROMO"
           ? form.enrollment.target_vehicle || null
@@ -131,7 +163,7 @@ function buildEnrollmentPayload(type, form) {
           ? form.enrollment.target_vehicle || null
           : null,
       transmission_type:
-        type === "TDC" && form.enrollment.is_already_driver === true
+        (type === "TDC" || type === "PROMO") && form.enrollment.is_already_driver === true
           ? form.enrollment.transmission_type || null
           : null,
       motorcycle_type:
@@ -140,7 +172,7 @@ function buildEnrollmentPayload(type, form) {
           : null,
       training_method:
         type === "PDC"
-          ? "On Site"
+          ? form.enrollment.training_method || null
           : type === "PROMO"
             ? promoTrainingMethod
             : "",
@@ -148,13 +180,32 @@ function buildEnrollmentPayload(type, form) {
       status: "pending",
     },
     schedule: {
-      enabled: Boolean(form.schedule.enabled),
-      schedule_date: form.schedule.schedule_date || null,
-      slot: form.schedule.slot || null,
-      instructor_id: toNullableNumber(form.schedule.instructor_id),
-      care_of_instructor_id: toNullableNumber(form.schedule.care_of_instructor_id),
-      vehicle_id: toNullableNumber(form.schedule.vehicle_id),
+      enabled: Boolean(type === "PROMO" ? form.promo_schedule_pdc.enabled : form.schedule.enabled),
+      schedule_date: (type === "PROMO" ? form.promo_schedule_pdc.schedule_date : form.schedule.schedule_date) || null,
+      slot: (type === "PROMO" ? form.promo_schedule_pdc.slot : form.schedule.slot) || null,
+      instructor_id: toNullableNumber(type === "PROMO" ? form.promo_schedule_pdc.instructor_id : form.schedule.instructor_id),
+      care_of_instructor_id: toNullableNumber(type === "PROMO" ? form.promo_schedule_pdc.care_of_instructor_id : form.schedule.care_of_instructor_id),
+      vehicle_id: toNullableNumber(type === "PROMO" ? form.promo_schedule_pdc.vehicle_id : form.schedule.vehicle_id),
     },
+    promo_schedule: type === "PROMO" ? {
+      enabled: true,
+      tdc: {
+        enabled: Boolean(form.promo_schedule_tdc.enabled),
+        schedule_date: form.promo_schedule_tdc.schedule_date || null,
+        slot: form.promo_schedule_tdc.slot || "morning",
+        instructor_id: toNullableNumber(form.promo_schedule_tdc.instructor_id),
+        care_of_instructor_id: toNullableNumber(form.promo_schedule_tdc.care_of_instructor_id),
+        vehicle_id: null,
+      },
+      pdc: {
+        enabled: Boolean(form.promo_schedule_pdc.enabled),
+        schedule_date: form.promo_schedule_pdc.schedule_date || null,
+        slot: form.promo_schedule_pdc.slot || null,
+        instructor_id: toNullableNumber(form.promo_schedule_pdc.instructor_id),
+        care_of_instructor_id: toNullableNumber(form.promo_schedule_pdc.care_of_instructor_id),
+        vehicle_id: toNullableNumber(form.promo_schedule_pdc.vehicle_id),
+      },
+    } : null,
   };
 }
 
@@ -176,6 +227,25 @@ function scheduleCourseLabel(courseType) {
   return "Select course details above";
 }
 
+function buildInstructorOptionsForCourseType(rows, courseType) {
+  const isQualified = (item) => {
+    const specialization = String(item.specialization || "").toLowerCase();
+    const tdcCertified = Boolean(item.tdc_certified) || specialization.includes("tdc");
+    const pdcBeginnerCertified = Boolean(item.pdc_beginner_certified) || specialization.includes("pdc");
+    const pdcExperienceCertified = Boolean(item.pdc_experience_certified) || specialization.includes("pdc");
+
+    if (courseType === "tdc") return tdcCertified;
+    if (courseType === "pdc_beginner") return pdcBeginnerCertified;
+    if (courseType === "pdc_experience") return pdcExperienceCertified;
+    return true;
+  };
+
+  return rows
+    .filter((item) => String(item.status || "Active") === "Active")
+    .filter((item) => isQualified(item))
+    .map((item) => ({ value: String(item.id), label: item.name }));
+}
+
 function isMotorcycleVehicleType(vehicleType) {
   const normalized = normalizeText(vehicleType);
   return normalized === "motorcycle" || normalized === "motor";
@@ -193,11 +263,26 @@ function matchesVehicleTarget(vehicleType, targetVehicle) {
     return true;
   }
 
-  if (normalizedTarget === "motor" || normalizedTarget === "motorcycle") {
+  const wantsMotorcycle =
+    normalizedTarget === "motor" ||
+    normalizedTarget === "motorcycle" ||
+    normalizedTarget.includes("motorcycle") ||
+    normalizedTarget.includes("tricycle") ||
+    normalizedTarget.includes("dl codes a");
+
+  if (wantsMotorcycle) {
     return isMotorcycleVehicleType(vehicleType);
   }
 
-  if (normalizedTarget === "car") {
+  const wantsCar =
+    normalizedTarget === "car" ||
+    normalizedTarget.includes("car") ||
+    normalizedTarget.includes("sedan") ||
+    normalizedTarget.includes("l300") ||
+    normalizedTarget.includes("van") ||
+    normalizedTarget.includes("dl codes b");
+
+  if (wantsCar) {
     return isCarVehicleType(vehicleType);
   }
 
@@ -208,6 +293,18 @@ function matchesTransmissionType(vehicleTransmission, selectedTransmission) {
   const normalizedSelected = normalizeText(selectedTransmission);
   if (!normalizedSelected) {
     return true;
+  }
+
+  if (normalizedSelected === "other") {
+    return true;
+  }
+
+  if (normalizedSelected.includes("manual")) {
+    return normalizeText(vehicleTransmission) === "manual";
+  }
+
+  if (normalizedSelected.includes("automatic")) {
+    return normalizeText(vehicleTransmission) === "automatic";
   }
 
   return normalizeText(vehicleTransmission) === normalizedSelected;
@@ -232,6 +329,11 @@ export default function EnrollmentsPage() {
   const createEnrollmentMutation = useCreateEnrollment();
   const scheduleCourseType = useMemo(() => inferEnrollmentCourseType(selectedType, form), [selectedType, form]);
   const isScheduleTdc = scheduleCourseType === "tdc";
+  const isPromo = selectedType === "PROMO";
+  const promoPdcCourseType = useMemo(
+    () => inferEnrollmentCourseType("PDC", form),
+    [form]
+  );
 
   // INILIPAT DITO ANG AUTO-CALCULATE AGE PARA NASA LOOB NG COMPONENT
   useEffect(() => {
@@ -282,26 +384,55 @@ export default function EnrollmentsPage() {
     staleTime: 10 * 1000,
   });
 
-  const instructorOptions = useMemo(() => {
-    const rows = scheduleResources?.instructors || [];
+  const { data: promoTdcAvailability, isLoading: loadingPromoTdcAvailability } = useQuery({
+    queryKey: [
+      "enrollment-promo-tdc-availability",
+      form.promo_schedule_tdc.schedule_date,
+      form.promo_schedule_tdc.instructor_id,
+    ],
+    queryFn: () => fetchDailyReports({
+      mode: "day",
+      date: form.promo_schedule_tdc.schedule_date,
+      courseType: "tdc",
+      instructorId: form.promo_schedule_tdc.instructor_id ? Number(form.promo_schedule_tdc.instructor_id) : undefined,
+    }),
+    enabled: step === 1 && isPromo && Boolean(form.promo_schedule_tdc.schedule_date),
+    staleTime: 10 * 1000,
+  });
 
-    const isQualified = (item) => {
-      const specialization = String(item.specialization || "").toLowerCase();
-      const tdcCertified = Boolean(item.tdc_certified) || specialization.includes("tdc");
-      const pdcBeginnerCertified = Boolean(item.pdc_beginner_certified) || specialization.includes("pdc");
-      const pdcExperienceCertified = Boolean(item.pdc_experience_certified) || specialization.includes("pdc");
+  const { data: promoPdcAvailability, isLoading: loadingPromoPdcAvailability } = useQuery({
+    queryKey: [
+      "enrollment-promo-pdc-availability",
+      form.promo_schedule_pdc.schedule_date,
+      promoPdcCourseType,
+      form.promo_schedule_pdc.instructor_id,
+      form.promo_schedule_pdc.vehicle_id,
+    ],
+    queryFn: () => fetchDailyReports({
+      mode: "day",
+      date: form.promo_schedule_pdc.schedule_date,
+      courseType: promoPdcCourseType,
+      instructorId: form.promo_schedule_pdc.instructor_id ? Number(form.promo_schedule_pdc.instructor_id) : undefined,
+      vehicleId: form.promo_schedule_pdc.vehicle_id ? Number(form.promo_schedule_pdc.vehicle_id) : undefined,
+    }),
+    enabled: step === 1 && isPromo && Boolean(form.promo_schedule_pdc.schedule_date) && Boolean(promoPdcCourseType),
+    staleTime: 10 * 1000,
+  });
 
-      if (scheduleCourseType === "tdc") return tdcCertified;
-      if (scheduleCourseType === "pdc_beginner") return pdcBeginnerCertified;
-      if (scheduleCourseType === "pdc_experience") return pdcExperienceCertified;
-      return true;
-    };
+  const instructorOptions = useMemo(
+    () => buildInstructorOptionsForCourseType(scheduleResources?.instructors || [], scheduleCourseType),
+    [scheduleResources, scheduleCourseType]
+  );
 
-    return rows
-      .filter((item) => String(item.status || "Active") === "Active")
-      .filter((item) => isQualified(item))
-      .map((item) => ({ value: String(item.id), label: item.name }));
-  }, [scheduleResources, scheduleCourseType]);
+  const promoTdcInstructorOptions = useMemo(
+    () => buildInstructorOptionsForCourseType(scheduleResources?.instructors || [], "tdc"),
+    [scheduleResources]
+  );
+
+  const promoPdcInstructorOptions = useMemo(
+    () => buildInstructorOptionsForCourseType(scheduleResources?.instructors || [], promoPdcCourseType),
+    [scheduleResources, promoPdcCourseType]
+  );
 
   const vehicleOptions = useMemo(() => {
     const rows = scheduleResources?.vehicles || [];
@@ -320,13 +451,28 @@ export default function EnrollmentsPage() {
     [scheduleResources, form.schedule.vehicle_id]
   );
 
+  const promoPdcSelectedVehicle = useMemo(
+    () => (scheduleResources?.vehicles || []).find((item) => String(item.id) === String(form.promo_schedule_pdc.vehicle_id)) || null,
+    [scheduleResources, form.promo_schedule_pdc.vehicle_id]
+  );
+
   const isMotorcycleWholeDaySchedule =
-    scheduleCourseType === "pdc_experience" && isMotorcycleVehicleType(selectedScheduleVehicle?.vehicle_type);
+    scheduleCourseType === "tdc" || (scheduleCourseType === "pdc_experience" && isMotorcycleVehicleType(selectedScheduleVehicle?.vehicle_type));
+
+  const isPromoPdcWholeDaySchedule =
+    promoPdcCourseType === "pdc_experience" && isMotorcycleVehicleType(promoPdcSelectedVehicle?.vehicle_type);
 
   const activeScheduleSlotKey = isMotorcycleWholeDaySchedule ? "morning" : form.schedule.slot;
 
   const scheduleSlots = scheduleAvailability?.availability || [];
   const selectedScheduleSlot = scheduleSlots.find((item) => item.slot === activeScheduleSlotKey) || null;
+
+  const promoTdcSlots = promoTdcAvailability?.availability || [];
+  const promoTdcSelectedSlot = promoTdcSlots.find((item) => item.slot === "morning") || null;
+
+  const promoPdcActiveSlotKey = isPromoPdcWholeDaySchedule ? "morning" : form.promo_schedule_pdc.slot;
+  const promoPdcSlots = promoPdcAvailability?.availability || [];
+  const promoPdcSelectedSlot = promoPdcSlots.find((item) => item.slot === promoPdcActiveSlotKey) || null;
 
   useEffect(() => {
     if (!isMotorcycleWholeDaySchedule) return;
@@ -348,6 +494,24 @@ export default function EnrollmentsPage() {
   }, [isMotorcycleWholeDaySchedule]);
 
   useEffect(() => {
+    if (!isPromoPdcWholeDaySchedule) return;
+    Promise.resolve().then(() => {
+      setForm((current) => {
+        if (current.promo_schedule_pdc.slot === "morning") {
+          return current;
+        }
+        return {
+          ...current,
+          promo_schedule_pdc: {
+            ...current.promo_schedule_pdc,
+            slot: "morning",
+          },
+        };
+      });
+    });
+  }, [isPromoPdcWholeDaySchedule]);
+
+  useEffect(() => {
     if (isScheduleTdc) return;
     const existsInOptions = vehicleOptions.some((item) => item.value === String(form.schedule.vehicle_id));
     if (existsInOptions || !form.schedule.vehicle_id) return;
@@ -361,6 +525,21 @@ export default function EnrollmentsPage() {
       }));
     });
   }, [vehicleOptions, form.schedule.vehicle_id, isScheduleTdc]);
+
+  useEffect(() => {
+    if (!isPromo) return;
+    const existsInOptions = vehicleOptions.some((item) => item.value === String(form.promo_schedule_pdc.vehicle_id));
+    if (existsInOptions || !form.promo_schedule_pdc.vehicle_id) return;
+    Promise.resolve().then(() => {
+      setForm((current) => ({
+        ...current,
+        promo_schedule_pdc: {
+          ...current.promo_schedule_pdc,
+          vehicle_id: "",
+        },
+      }));
+    });
+  }, [isPromo, vehicleOptions, form.promo_schedule_pdc.vehicle_id]);
 
   useEffect(() => {
     return () => {
@@ -445,12 +624,13 @@ export default function EnrollmentsPage() {
         ...current,
         enrollment: {
           ...current.enrollment,
-          client_type: "new",
-          training_method: "On Site",
+          client_type: "",
+          training_method: "",
+          pdc_category: "",
         },
         extras: {
           ...current.extras,
-          enrolling_for: "PDC",
+          enrolling_for: "",
         },
       }));
       return;
@@ -465,8 +645,19 @@ export default function EnrollmentsPage() {
         },
         extras: {
           ...current.extras,
-          tdc_training_method: "Onsite",
+          tdc_training_method: "FACE TO FACE ( FRI-SAT / 8AM TO 5PM)",
           pdc_training_method: "Onsite",
+        },
+        promo_schedule_tdc: {
+          ...current.promo_schedule_tdc,
+          enabled: true,
+          slot: "morning",
+          vehicle_id: "",
+        },
+        promo_schedule_pdc: {
+          ...current.promo_schedule_pdc,
+          enabled: true,
+          slot: "morning",
         },
       }));
     }
@@ -512,9 +703,11 @@ export default function EnrollmentsPage() {
       }
     }
 
-    if (selectedType === "PROMO" && !form.enrollment.target_vehicle) {
-      addToast("Please select the vehicle type for the promo enrollment.");
-      return;
+    if (selectedType === "PROMO" && form.enrollment.is_already_driver) {
+      if (!form.enrollment.target_vehicle || !form.enrollment.transmission_type) {
+        addToast("Please complete the required driving information fields.");
+        return;
+      }
     }
 
     if (selectedType === "PROMO" && !form.enrollment.pdc_category) {
@@ -522,24 +715,46 @@ export default function EnrollmentsPage() {
       return;
     }
 
-    if (!form.schedule.schedule_date) {
-      addToast("Please select a schedule date before submitting the enrollment.");
-      return;
-    }
+    if (selectedType === "PROMO") {
+      if (!form.promo_schedule_tdc.schedule_date || !form.promo_schedule_tdc.instructor_id) {
+        addToast("Please complete the TDC schedule session details for promo enrollment.");
+        return;
+      }
 
-    if (!form.schedule.instructor_id) {
-      addToast("Please assign an instructor in the Schedule Session section.");
-      return;
-    }
+      if (!form.promo_schedule_pdc.schedule_date || !form.promo_schedule_pdc.instructor_id) {
+        addToast("Please complete the PDC schedule session details for promo enrollment.");
+        return;
+      }
 
-    if (!isScheduleTdc && !form.schedule.vehicle_id) {
-      addToast("Please assign a vehicle in the Schedule Session section.");
-      return;
-    }
+      if (!form.promo_schedule_pdc.vehicle_id) {
+        addToast("Please assign a vehicle for the promo PDC schedule.");
+        return;
+      }
 
-    if (selectedScheduleSlot?.full) {
-      addToast("The selected schedule slot is fully booked. Choose another slot or date.");
-      return;
+      if (promoTdcSelectedSlot?.full || promoPdcSelectedSlot?.full) {
+        addToast("One of the promo schedule sessions is fully booked. Choose another date or slot.");
+        return;
+      }
+    } else {
+      if (!form.schedule.schedule_date) {
+        addToast("Please select a schedule date before submitting the enrollment.");
+        return;
+      }
+
+      if (!form.schedule.instructor_id) {
+        addToast("Please assign an instructor in the Schedule Session section.");
+        return;
+      }
+
+      if (!isScheduleTdc && !form.schedule.vehicle_id) {
+        addToast("Please assign a vehicle in the Schedule Session section.");
+        return;
+      }
+
+      if (selectedScheduleSlot?.full) {
+        addToast("The selected schedule slot is fully booked. Choose another slot or date.");
+        return;
+      }
     }
 
     createEnrollmentMutation.mutate(buildEnrollmentPayload(selectedType, form), {
@@ -698,9 +913,26 @@ export default function EnrollmentsPage() {
             <AddressSection type={selectedType} form={form} onFieldChange={handleFieldChange} />
             {selectedType === "TDC" ? <TdcFormSections form={form} onFieldChange={handleFieldChange} /> : null}
             {selectedType === "PDC" ? <PdcFormSections form={form} onFieldChange={handleFieldChange} /> : null}
-            {selectedType === "PROMO" ? <PromoFormSections form={form} onFieldChange={handleFieldChange} /> : null}
+            {selectedType === "PROMO" ? (
+              <PromoFormSections
+                form={form}
+                onFieldChange={handleFieldChange}
+                promoTdcInstructorOptions={promoTdcInstructorOptions}
+                promoPdcInstructorOptions={promoPdcInstructorOptions}
+                promoVehicleOptions={vehicleOptions}
+                promoTdcSelectedSlot={promoTdcSelectedSlot}
+                promoPdcSelectedSlot={promoPdcSelectedSlot}
+                promoPdcSlots={promoPdcSlots}
+                promoPdcWholeDay={isPromoPdcWholeDaySchedule}
+                promoPdcCourseLabel={scheduleCourseLabel(promoPdcCourseType)}
+                loadingScheduleResources={loadingScheduleResources}
+                loadingPromoTdcAvailability={loadingPromoTdcAvailability}
+                loadingPromoPdcAvailability={loadingPromoPdcAvailability}
+              />
+            ) : null}
 
-            <section className="mt-6 rounded-2xl border border-[#d9c9a0] bg-[#fff9ef] p-5">
+            {selectedType !== "PROMO" ? (
+              <section className="mt-6 rounded-2xl border border-[#d9c9a0] bg-[#fff9ef] p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">Schedule Session</h3>
@@ -859,7 +1091,8 @@ export default function EnrollmentsPage() {
                   </p>
                 ) : null}
               </div>
-            </section>
+              </section>
+            ) : null}
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">

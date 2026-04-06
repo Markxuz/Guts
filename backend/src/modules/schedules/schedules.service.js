@@ -186,15 +186,20 @@ function buildSchedulePlan(courseType, startDateIso, preferredSlot) {
   }
 
   if (normalizedType === "tdc") {
-    // TDC automatically reserves 2 consecutive operating days
+    // TDC reserves whole day (both morning and afternoon) on 2 consecutive operating days
     const secondDay = getNextOperationalDay(startDateIso);
     if (!secondDay) {
-      // Fallback to single day if cannot find next operational day
-      return [{ date: startDateIso, slot: preferredSlot }];
+      // Fallback: reserve whole day on single day if cannot find next operational day
+      return [
+        { date: startDateIso, slot: "morning" },
+        { date: startDateIso, slot: "afternoon" },
+      ];
     }
     return [
-      { date: startDateIso, slot: preferredSlot },
-      { date: secondDay, slot: preferredSlot },
+      { date: startDateIso, slot: "morning" },
+      { date: startDateIso, slot: "afternoon" },
+      { date: secondDay, slot: "morning" },
+      { date: secondDay, slot: "afternoon" },
     ];
   }
 
@@ -534,6 +539,8 @@ function mapSchedule(row) {
 
   return {
     id: row.id,
+    vehicle_id: row.vehicle_id || null,
+    vehicleId: row.vehicle_id || null,
     scheduleDate: row.schedule_date,
     slot: row.start_time === SLOT_MAP.morning.startTime ? "morning" : "afternoon",
     slotLabel: row.start_time === SLOT_MAP.morning.startTime ? SLOT_MAP.morning.label : SLOT_MAP.afternoon.label,
