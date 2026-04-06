@@ -54,6 +54,7 @@ function normalizeProfilePayload(studentId, profile = {}, extras = {}) {
   return {
     student_id: studentId,
     birthdate: normalizeText(profile.birthdate),
+    birthplace: normalizeText(profile.birthplace),
     age: profile.age ?? null,
     gender: normalizeText(profile.gender),
     civil_status: normalizeText(profile.civil_status),
@@ -71,6 +72,8 @@ function normalizeProfilePayload(studentId, profile = {}, extras = {}) {
     emergency_contact_person: normalizeText(extras.emergency_contact_person),
     emergency_contact_number: normalizeText(extras.emergency_contact_number),
     lto_portal_account: normalizeText(extras.lto_portal_account),
+    driving_school_tdc: normalizeText(extras.driving_school_tdc),
+    year_completed_tdc: normalizeText(extras.year_completed_tdc),
   };
 }
 
@@ -114,8 +117,8 @@ function scheduleCourseTypeFromEnrollmentPayload(payload) {
   return pdcType === "experience" ? "pdc_experience" : "pdc_beginner";
 }
 
-function normalizeSchedulePayload(schedule = {}, payload = {}, enrollment = null) {
-  const courseType = scheduleCourseTypeFromEnrollmentPayload(payload);
+function normalizeSchedulePayload(schedule = {}, payload = {}, enrollment = null, forcedCourseType = null) {
+  const courseType = forcedCourseType || scheduleCourseTypeFromEnrollmentPayload(payload);
 
   return {
     enrollment_id: enrollment?.id || null,
@@ -218,7 +221,53 @@ async function addEnrollment(payload) {
     );
 
     let schedule = null;
-    if (payload.schedule?.enabled) {
+    let promoSchedule = null;
+
+    if (payload.enrollment_type === "PROMO" && payload.promo_schedule?.enabled) {
+      enrollment.Student = student;
+      enrollment.DLCode = dlCode;
+
+      const promoTdc = await schedulesService.addSchedule(
+        normalizeSchedulePayload(payload.promo_schedule?.tdc, payload, enrollment, "tdc"),
+        {
+          transaction,
+          selectedEnrollment: enrollment,
+          allowPendingEnrollment: true,
+        }
+      );
+
+      const promoPdcCourseType = normalizePdcType(payload.enrollment?.pdc_type, payload.enrollment?.pdc_category) === "experience"
+        ? "pdc_experience"
+        : "pdc_beginner";
+
+      const promoPdc = await schedulesService.addSchedule(
+        normalizeSchedulePayload(payload.promo_schedule?.pdc, payload, enrollment, promoPdcCourseType),
+        {
+          transaction,
+          selectedEnrollment: enrollment,
+          allowPendingEnrollment: true,
+        }
+      );
+
+      promoSchedule = {
+        tdc: {
+          item: promoTdc.item,
+          createdItems: promoTdc.createdItems,
+          reservedDates: promoTdc.reservedDates,
+          slot: promoTdc.slot,
+          courseType: promoTdc.courseType,
+        },
+        pdc: {
+          item: promoPdc.item,
+          createdItems: promoPdc.createdItems,
+          reservedDates: promoPdc.reservedDates,
+          slot: promoPdc.slot,
+          courseType: promoPdc.courseType,
+        },
+      };
+
+      schedule = promoPdc;
+    } else if (payload.schedule?.enabled) {
       enrollment.Student = student;
       enrollment.DLCode = dlCode;
 
@@ -234,19 +283,22 @@ async function addEnrollment(payload) {
 
     await transaction.commit();
     const savedEnrollment = await repository.findEnrollmentById(enrollment.id);
-    if (!schedule) {
+    if (!schedule && !promoSchedule) {
       return savedEnrollment;
     }
 
     return {
       ...(savedEnrollment?.toJSON ? savedEnrollment.toJSON() : savedEnrollment),
-      schedule: {
-        item: schedule.item,
-        createdItems: schedule.createdItems,
-        reservedDates: schedule.reservedDates,
-        slot: schedule.slot,
-        courseType: schedule.courseType,
-      },
+      schedule: schedule
+        ? {
+            item: schedule.item,
+            createdItems: schedule.createdItems,
+            reservedDates: schedule.reservedDates,
+            slot: schedule.slot,
+            courseType: schedule.courseType,
+          }
+        : null,
+      promo_schedule: promoSchedule,
     };
   } catch (error) {
     await transaction.rollback();

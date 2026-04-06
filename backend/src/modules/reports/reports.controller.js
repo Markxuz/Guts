@@ -7,6 +7,7 @@ async function getDailyReports(req, res) {
       date: req.query.date,
       startDate: req.query.startDate,
       endDate: req.query.endDate,
+      courseFilter: req.query.course,
       courseType: req.query.courseType,
       instructorId: req.query.instructorId,
       vehicleId: req.query.vehicleId,

@@ -40,10 +40,11 @@ function getCourseMembership(row) {
 }
 
 function courseDisplayLabel(row) {
+  if (isPromoEnrollment(row)) return "TDC + PDC Promo";
+
   const type = classifyCourseType(row);
   if (type === "tdc") return "TDC";
-  if (type === "pdc_beginner") return "PDC-Beginner";
-  if (type === "pdc_experience") return "PDC-Experience";
+  if (type === "pdc_beginner" || type === "pdc_experience") return "PDC";
   return "Course";
 }
 
@@ -135,6 +136,51 @@ function mapScheduleReport(row, index) {
     description: `${row.course || "Course"} with ${row.instructor || "Instructor"}`,
     createdAt: `${row.scheduleDate}T00:00:00.000Z`,
   };
+}
+
+function classifyDailyItemCourseType(item) {
+  const normalizedType = String(item?.courseType || "").toLowerCase();
+  if (normalizedType === "tdc" || normalizedType === "pdc_beginner" || normalizedType === "pdc_experience") {
+    return normalizedType;
+  }
+
+  const normalizedCourse = String(item?.course || "").toLowerCase();
+  if (normalizedCourse.includes("tdc") && normalizedCourse.includes("promo")) {
+    return "promo";
+  }
+  if (normalizedCourse.includes("tdc") && normalizedCourse.includes("pdc")) {
+    return "promo";
+  }
+  if (normalizedCourse.includes("pdc") && normalizedCourse.includes("beginner")) {
+    return "pdc_beginner";
+  }
+  if (normalizedCourse.includes("pdc") && normalizedCourse.includes("experience")) {
+    return "pdc_experience";
+  }
+  if (normalizedCourse.includes("tdc")) {
+    return "tdc";
+  }
+  if (normalizedCourse.includes("pdc")) {
+    return "pdc_experience";
+  }
+
+  return "unknown";
+}
+
+function includeDailyItemByCourse(item, courseFilter) {
+  const normalizedFilter = String(courseFilter || "overall").toLowerCase();
+  if (normalizedFilter === "overall") return true;
+
+  const normalizedType = classifyDailyItemCourseType(item);
+  if (normalizedType === "promo") {
+    return normalizedFilter === "tdc" || normalizedFilter === "pdc";
+  }
+
+  if (normalizedFilter === "pdc") {
+    return normalizedType === "pdc_beginner" || normalizedType === "pdc_experience";
+  }
+
+  return normalizedType === normalizedFilter;
 }
 
 function mapEnrollmentReportWithDate(row) {
@@ -233,7 +279,7 @@ function buildUsageByVehicle(rows) {
     .sort((a, b) => b.totalTrainingHours - a.totalTrainingHours);
 }
 
-async function getDailyReports({ date, startDate, endDate, courseType, instructorId, vehicleId }) {
+async function getDailyReports({ date, startDate, endDate, courseFilter = "overall", courseType, instructorId, vehicleId }) {
   const effectiveStartDate = date || startDate;
   const effectiveEndDate = date || endDate;
   const start = new Date(`${effectiveStartDate}T00:00:00.000Z`);
@@ -250,7 +296,9 @@ async function getDailyReports({ date, startDate, endDate, courseType, instructo
   const items = [
     ...(date ? schedules?.items || [] : schedules || []).map(mapScheduleReport),
     ...enrollments.map(mapEnrollmentReportWithDate),
-  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  ]
+    .filter((item) => includeDailyItemByCourse(item, courseFilter))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return {
     date: date || null,

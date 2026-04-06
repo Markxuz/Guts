@@ -25,7 +25,7 @@ const COURSE_TYPE_TO_DESCRIPTION = {
   pdc_beginner: "Practical Driving Course - Beginner",
   pdc_experience: "Practical Driving Course - Experience",
 };
-const TDC_SESSION_CAPACITY = Math.max(1, Number(process.env.TDC_SESSION_CAPACITY || 999));
+const TDC_SESSION_CAPACITY = Math.max(1, Number(process.env.TDC_SESSION_CAPACITY || 30));
 const BEGINNER_AUTOMATION_TAG_PREFIX = "[AUTO_GROUP:";
 
 const NON_OPERATION_DAY_INDEX = new Set([0]); // Sunday
@@ -56,6 +56,34 @@ function addDaysToIsoDate(dateIso, daysToAdd) {
   const nextMonth = String(date.getUTCMonth() + 1).padStart(2, "0");
   const nextDay = String(date.getUTCDate()).padStart(2, "0");
   return `${nextYear}-${nextMonth}-${nextDay}`;
+}
+
+function getNextOperationalDay(startDateIso) {
+  let currentDate = startDateIso;
+  let attempts = 0;
+  const maxAttempts = 30; // Safe limit to prevent infinite loops
+
+  while (attempts < maxAttempts) {
+    const nextDate = addDaysToIsoDate(currentDate, 1);
+    if (!nextDate) return null;
+
+    const dateObj = new Date(`${nextDate}T00:00:00`);
+    const dayOfWeek = dateObj.getDay();
+
+    // Skip Sundays (day 0)
+    if (dayOfWeek !== 0) {
+      // Check if date is a holiday
+      const holidays = configuredHolidaySet();
+      if (!holidays.has(nextDate)) {
+        return nextDate;
+      }
+    }
+
+    currentDate = nextDate;
+    attempts += 1;
+  }
+
+  return null;
 }
 
 function evaluateOperationalDay(dateIso) {
@@ -154,6 +182,24 @@ function buildSchedulePlan(courseType, startDateIso, preferredSlot) {
     return [
       { date: startDateIso, slot: preferredSlot },
       { date: addDaysToIsoDate(startDateIso, 1), slot: preferredSlot },
+    ];
+  }
+
+  if (normalizedType === "tdc") {
+    // TDC reserves whole day (both morning and afternoon) on 2 consecutive operating days
+    const secondDay = getNextOperationalDay(startDateIso);
+    if (!secondDay) {
+      // Fallback: reserve whole day on single day if cannot find next operational day
+      return [
+        { date: startDateIso, slot: "morning" },
+        { date: startDateIso, slot: "afternoon" },
+      ];
+    }
+    return [
+      { date: startDateIso, slot: "morning" },
+      { date: startDateIso, slot: "afternoon" },
+      { date: secondDay, slot: "morning" },
+      { date: secondDay, slot: "afternoon" },
     ];
   }
 
@@ -493,6 +539,8 @@ function mapSchedule(row) {
 
   return {
     id: row.id,
+    vehicle_id: row.vehicle_id || null,
+    vehicleId: row.vehicle_id || null,
     scheduleDate: row.schedule_date,
     slot: row.start_time === SLOT_MAP.morning.startTime ? "morning" : "afternoon",
     slotLabel: row.start_time === SLOT_MAP.morning.startTime ? SLOT_MAP.morning.label : SLOT_MAP.afternoon.label,

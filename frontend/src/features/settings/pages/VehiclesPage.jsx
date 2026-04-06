@@ -18,14 +18,15 @@ import { useNavigate } from "react-router-dom";
 import NotificationBell from "../../notifications/components/NotificationBell";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { resourceServices } from "../../../services/resources";
-import { fetchReportOverview } from "../../dashboard/services/dashboardApi";
+import { fetchReportOverview, fetchScheduleDay } from "../../dashboard/services/dashboardApi";
 
 const PAGE_SIZE = 6;
 
 const STATUS_STYLES = {
   Available: "bg-emerald-100 text-emerald-700 border border-emerald-300",
+  Scheduled: "bg-yellow-100 text-yellow-800 border border-yellow-300",
+  "Under Maintenance": "bg-rose-100 text-rose-800 border border-rose-300",
   "In Service": "bg-amber-100 text-amber-700 border border-amber-300",
-  Maintenance: "bg-rose-100 text-rose-700 border border-rose-300",
   Archived: "bg-slate-200 text-slate-700 border border-slate-300",
 };
 
@@ -74,18 +75,69 @@ function buildLatestMaintenanceByVehicle(logs = []) {
   return latest;
 }
 
-function resolveStatusFromMaintenance(baseStatus, latestLog) {
-  if (baseStatus === "Archived" || baseStatus === "Maintenance" || baseStatus === "In Service") {
-    return baseStatus;
+function isDateWithinRange(targetDate, startDate, endDate) {
+  const target = String(targetDate || "");
+  const start = String(startDate || "");
+  const end = String(endDate || "");
+
+  if (!target || !start || !end) return false;
+  return target >= start && target <= end;
+}
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function resolveStatusForDate({ baseStatus, latestLog, scheduleRows, statusDate }) {
+  if (baseStatus === "Archived") {
+    return "Archived";
   }
 
-  if (!latestLog) return "Available";
+  if (baseStatus === "Maintenance") {
+    return "Under Maintenance";
+  }
 
-  const nowIso = new Date().toISOString().slice(0, 10);
-  const nextDate = String(latestLog.next_schedule_date || "");
-  if (!nextDate) return "In Service";
-  if (nextDate < nowIso) return "Maintenance";
-  return "In Service";
+  const selectedDate = String(statusDate || todayIsoDate());
+  const hasMaintenance = Boolean(
+    latestLog && isDateWithinRange(selectedDate, latestLog.date_of_service, latestLog.next_schedule_date)
+  );
+
+  if (hasMaintenance) {
+    return "Under Maintenance";
+  }
+
+  const hasSchedule = (scheduleRows || []).some((schedule) => {
+    const scheduleDate = schedule?.scheduleDate || schedule?.schedule_date || "";
+    return String(scheduleDate) === selectedDate;
+  });
+  if (hasSchedule) {
+    return "Scheduled";
+  }
+
+  if (baseStatus === "In Service") {
+    return "In Service";
+  }
+
+  return "Available";
+}
+
+function scheduleMatchesVehicle(schedule, vehicle) {
+  const scheduleVehicleId = Number(schedule?.vehicle_id || schedule?.vehicleId || 0);
+  const vehicleId = Number(vehicle?.id || 0);
+
+  if (scheduleVehicleId && vehicleId && scheduleVehicleId === vehicleId) {
+    return true;
+  }
+
+  const scheduleVehicleName = String(schedule?.vehicleName || "").toLowerCase();
+  const vehicleName = String(vehicle?.nickname || "").toLowerCase();
+  const vehiclePlate = String(vehicle?.plateNumber || "").toLowerCase();
+
+  if (!scheduleVehicleName) {
+    return false;
+  }
+
+  return scheduleVehicleName === vehicleName || scheduleVehicleName.includes(vehiclePlate);
 }
 
 function emptyVehicleForm() {
@@ -118,6 +170,35 @@ function emptyFuelForm() {
   };
 }
 
+function normalizeDateInput(value) {
+  if (!value) return todayIsoDate();
+  return String(value).slice(0, 10);
+}
+
+function buildVehicleFormValue(vehicle, baseForm) {
+  return {
+    ...baseForm,
+    vehicle_id: vehicle?.id ? String(vehicle.id) : "",
+  };
+}
+
+function formatMoney(value) {
+  return `PHP ${Number(value || 0).toFixed(2)}`;
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
+}
+
 function currentMonthRange() {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -134,10 +215,13 @@ export default function VehiclesPage() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [statusDate, setStatusDate] = useState(() => todayIsoDate());
   const [page, setPage] = useState(1);
 
   const [rows, setRows] = useState([]);
   const [maintenanceLogs, setMaintenanceLogs] = useState([]);
+  const [fuelLogs, setFuelLogs] = useState([]);
+  const [scheduleRows, setScheduleRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -148,16 +232,21 @@ export default function VehiclesPage() {
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [maintenanceForm, setMaintenanceForm] = useState(() => emptyMaintenanceForm());
   const [maintenanceSaving, setMaintenanceSaving] = useState(false);
+  const [maintenanceVehicle, setMaintenanceVehicle] = useState(null);
 
   const [isFuelOpen, setIsFuelOpen] = useState(false);
   const [fuelForm, setFuelForm] = useState(() => emptyFuelForm());
   const [fuelSaving, setFuelSaving] = useState(false);
+  const [fuelVehicle, setFuelVehicle] = useState(null);
 
   const [isUsageOpen, setIsUsageOpen] = useState(false);
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState("");
   const [usageRows, setUsageRows] = useState([]);
   const [vehicleActionLoadingId, setVehicleActionLoadingId] = useState(null);
+
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportVehicle, setReportVehicle] = useState(null);
 
   const userMenuRef = useRef(null);
 
@@ -177,16 +266,17 @@ export default function VehiclesPage() {
     setError("");
 
     try {
-      const [vehicles, logs] = await Promise.all([
+      const [vehicles, logs, fuelEntries, daySchedules] = await Promise.all([
         resourceServices.vehicles.list(),
         resourceServices.maintenanceLogs.list(),
+        resourceServices.fuelLogs.list(),
+        fetchScheduleDay(normalizeDateInput(statusDate)),
       ]);
       const latestMaintenanceByVehicle = buildLatestMaintenanceByVehicle(logs || []);
       const mapped = (vehicles || []).map((item, index) => {
         const type = normalizeVehicleType(item.vehicle_type, item.vehicle_name);
         const baseStatus = normalizeVehicleStatus(item.status);
         const latestMaintenance = latestMaintenanceByVehicle.get(Number(item.id));
-        const status = resolveStatusFromMaintenance(baseStatus, latestMaintenance);
         return {
           id: item.id,
           nickname: item.vehicle_name || `${type} ${index + 1}`,
@@ -194,13 +284,16 @@ export default function VehiclesPage() {
           plateNumber: item.plate_number || "No Plate",
           vehicleType: type,
           transmissionType: item.transmission_type || "Automatic",
-          status,
+          baseStatus,
+          latestMaintenance,
           maintainedBy: item.maintained_by || "Fleet Manager",
         };
       });
 
       setRows(mapped);
       setMaintenanceLogs(logs || []);
+      setFuelLogs(fuelEntries || []);
+      setScheduleRows(daySchedules || []);
     } catch (loadError) {
       setError(loadError?.message || "Failed to load vehicles.");
     } finally {
@@ -210,12 +303,31 @@ export default function VehiclesPage() {
 
   useEffect(() => {
     loadVehicles();
-  }, []);
+  }, [statusDate]);
+
+  const rowsWithStatus = useMemo(() => {
+    const selectedDate = normalizeDateInput(statusDate);
+
+    return rows.map((row) => {
+      const relatedSchedules = (scheduleRows || []).filter((schedule) => scheduleMatchesVehicle(schedule, row));
+      const status = resolveStatusForDate({
+        baseStatus: row.baseStatus,
+        latestLog: row.latestMaintenance,
+        scheduleRows: relatedSchedules,
+        statusDate: selectedDate,
+      });
+
+      return {
+        ...row,
+        status,
+      };
+    });
+  }, [rows, scheduleRows, statusDate]);
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    return rows.filter((row) => {
+    return rowsWithStatus.filter((row) => {
       const matchesSearch =
         !keyword ||
         [row.nickname, row.makeModel, row.plateNumber, row.maintainedBy, row.vehicleType]
@@ -226,12 +338,12 @@ export default function VehiclesPage() {
         (activeTab === "all" && row.status !== "Archived") ||
         (activeTab === "sedans" && row.vehicleType === "Sedan") ||
         (activeTab === "motorcycles" && row.vehicleType === "Motorcycle") ||
-        (activeTab === "maintenance" && row.status === "Maintenance") ||
+        (activeTab === "maintenance" && row.status === "Under Maintenance") ||
         (activeTab === "archived" && row.status === "Archived");
 
       return matchesSearch && matchesTab;
     });
-  }, [rows, search, activeTab]);
+  }, [rowsWithStatus, search, activeTab]);
 
   const overdueVehicleIds = useMemo(() => {
     const nowIso = new Date().toISOString().slice(0, 10);
@@ -252,7 +364,7 @@ export default function VehiclesPage() {
   const safePage = Math.min(page, totalPages);
   const startIndex = (safePage - 1) * PAGE_SIZE;
   const pagedRows = filteredRows.slice(startIndex, startIndex + PAGE_SIZE);
-  const activeVehicleOptions = rows.filter((row) => row.status !== "Archived");
+  const activeVehicleOptions = rowsWithStatus.filter((row) => row.status !== "Archived");
 
   async function submitVehicle(event) {
     event.preventDefault();
@@ -352,6 +464,47 @@ export default function VehiclesPage() {
     } finally {
       setUsageLoading(false);
     }
+  }
+
+  function openMaintenanceForVehicle(vehicle) {
+    if (!vehicle || vehicle.status === "Archived") return;
+
+    setMaintenanceForm(buildVehicleFormValue(vehicle, emptyMaintenanceForm()));
+    setMaintenanceVehicle(vehicle);
+    setIsMaintenanceOpen(true);
+  }
+
+  function openFuelForVehicle(vehicle) {
+    if (!vehicle || vehicle.status === "Archived") return;
+
+    setFuelForm(buildVehicleFormValue(vehicle, emptyFuelForm()));
+    setFuelVehicle(vehicle);
+    setIsFuelOpen(true);
+  }
+
+  function openReportForVehicle(vehicle) {
+    if (!vehicle) return;
+
+    setReportVehicle(vehicle);
+    setIsReportOpen(true);
+  }
+
+  function openQuickMaintenance() {
+    setMaintenanceVehicle(null);
+    setMaintenanceForm((current) => ({
+      ...current,
+      vehicle_id: activeVehicleOptions[0]?.id ? String(activeVehicleOptions[0].id) : "",
+    }));
+    setIsMaintenanceOpen(true);
+  }
+
+  function openQuickFuel() {
+    setFuelVehicle(null);
+    setFuelForm((current) => ({
+      ...current,
+      vehicle_id: activeVehicleOptions[0]?.id ? String(activeVehicleOptions[0].id) : "",
+    }));
+    setIsFuelOpen(true);
   }
 
   async function archiveVehicle(row) {
@@ -488,6 +641,17 @@ export default function VehiclesPage() {
           <section className="rounded-xl border-t-2 border-t-[#D4AF37] border-slate-200 bg-white p-4 shadow-sm">
             <h1 className="text-xl font-bold text-slate-900">Vehicle Inventory</h1>
 
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              <span className="font-semibold text-slate-700">Status date</span>
+              <input
+                type="date"
+                value={statusDate}
+                onChange={(event) => setStatusDate(event.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none"
+              />
+              <span className="text-slate-500">Badge updates to match the selected day.</span>
+            </div>
+
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -588,6 +752,37 @@ export default function VehiclesPage() {
                           </p>
                         </div>
 
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openMaintenanceForVehicle(row)}
+                            disabled={row.status === "Archived"}
+                            title={row.status === "Archived" ? "Restore this vehicle before logging maintenance." : "Schedule maintenance for this vehicle."}
+                            className="inline-flex items-center justify-center gap-1 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Wrench size={12} />
+                            Schedule Maintenance
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openFuelForVehicle(row)}
+                            disabled={row.status === "Archived"}
+                            title={row.status === "Archived" ? "Restore this vehicle before logging fuel." : "Log fuel expense for this vehicle."}
+                            className="inline-flex items-center justify-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Fuel size={12} />
+                            Log Fuel Expense
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => openReportForVehicle(row)}
+                          className="mt-2 w-full rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                        >
+                          View Report
+                        </button>
+
                         <div className="mt-3 flex gap-2">
                           {row.status === "Archived" ? (
                             <>
@@ -668,13 +863,7 @@ export default function VehiclesPage() {
           <div className="mt-3 space-y-2">
             <button
               type="button"
-              onClick={() => {
-                setMaintenanceForm((current) => ({
-                  ...current,
-                  vehicle_id: activeVehicleOptions[0]?.id ? String(activeVehicleOptions[0].id) : "",
-                }));
-                setIsMaintenanceOpen(true);
-              }}
+              onClick={openQuickMaintenance}
               className="w-full rounded-lg bg-[#800000] px-3 py-2 text-left text-xs font-semibold text-white"
             >
               <span className="inline-flex items-center gap-2">
@@ -684,13 +873,7 @@ export default function VehiclesPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setFuelForm((current) => ({
-                  ...current,
-                  vehicle_id: activeVehicleOptions[0]?.id ? String(activeVehicleOptions[0].id) : "",
-                }));
-                setIsFuelOpen(true);
-              }}
+              onClick={openQuickFuel}
               className="inline-flex w-full items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               <Fuel size={14} className="text-[#800000]" />
@@ -812,7 +995,12 @@ export default function VehiclesPage() {
               </h2>
               <button
                 type="button"
-                onClick={() => !maintenanceSaving && setIsMaintenanceOpen(false)}
+                  onClick={() => {
+                    if (!maintenanceSaving) {
+                      setIsMaintenanceOpen(false);
+                      setMaintenanceVehicle(null);
+                    }
+                  }}
                 className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
               >
                 <X size={16} />
@@ -822,17 +1010,25 @@ export default function VehiclesPage() {
             <form className="mt-4 space-y-3" onSubmit={submitMaintenance}>
               <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
                 Vehicle Name
-                <select
-                  value={maintenanceForm.vehicle_id}
-                  onChange={(event) => setMaintenanceForm((current) => ({ ...current, vehicle_id: event.target.value }))}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#800000]"
-                  required
-                >
-                  <option value="">Select vehicle</option>
-                  {activeVehicleOptions.map((vehicle) => (
-                    <option key={vehicle.id} value={String(vehicle.id)}>{vehicle.nickname} ({vehicle.plateNumber})</option>
-                  ))}
-                </select>
+                {maintenanceVehicle ? (
+                  <input
+                    value={`${maintenanceVehicle.nickname} (${maintenanceVehicle.plateNumber})`}
+                    readOnly
+                    className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none"
+                  />
+                ) : (
+                  <select
+                    value={maintenanceForm.vehicle_id}
+                    onChange={(event) => setMaintenanceForm((current) => ({ ...current, vehicle_id: event.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#800000]"
+                    required
+                  >
+                    <option value="">Select vehicle</option>
+                    {activeVehicleOptions.map((vehicle) => (
+                      <option key={vehicle.id} value={String(vehicle.id)}>{vehicle.nickname} ({vehicle.plateNumber})</option>
+                    ))}
+                  </select>
+                )}
               </label>
 
               <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
@@ -895,7 +1091,12 @@ export default function VehiclesPage() {
               <div className="mt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => !maintenanceSaving && setIsMaintenanceOpen(false)}
+                  onClick={() => {
+                    if (!maintenanceSaving) {
+                      setIsMaintenanceOpen(false);
+                      setMaintenanceVehicle(null);
+                    }
+                  }}
                   className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
                 >
                   Cancel
@@ -923,7 +1124,12 @@ export default function VehiclesPage() {
               </h2>
               <button
                 type="button"
-                onClick={() => !fuelSaving && setIsFuelOpen(false)}
+                  onClick={() => {
+                    if (!fuelSaving) {
+                      setIsFuelOpen(false);
+                      setFuelVehicle(null);
+                    }
+                  }}
                 className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
               >
                 <X size={16} />
@@ -933,17 +1139,25 @@ export default function VehiclesPage() {
             <form className="mt-4 space-y-3" onSubmit={submitFuel}>
               <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
                 Vehicle
-                <select
-                  value={fuelForm.vehicle_id}
-                  onChange={(event) => setFuelForm((current) => ({ ...current, vehicle_id: event.target.value }))}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#800000]"
-                  required
-                >
-                  <option value="">Select vehicle</option>
-                  {activeVehicleOptions.map((vehicle) => (
-                    <option key={vehicle.id} value={String(vehicle.id)}>{vehicle.nickname} ({vehicle.plateNumber})</option>
-                  ))}
-                </select>
+                {fuelVehicle ? (
+                  <input
+                    value={`${fuelVehicle.nickname} (${fuelVehicle.plateNumber})`}
+                    readOnly
+                    className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none"
+                  />
+                ) : (
+                  <select
+                    value={fuelForm.vehicle_id}
+                    onChange={(event) => setFuelForm((current) => ({ ...current, vehicle_id: event.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#800000]"
+                    required
+                  >
+                    <option value="">Select vehicle</option>
+                    {activeVehicleOptions.map((vehicle) => (
+                      <option key={vehicle.id} value={String(vehicle.id)}>{vehicle.nickname} ({vehicle.plateNumber})</option>
+                    ))}
+                  </select>
+                )}
               </label>
 
               <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
@@ -1001,7 +1215,12 @@ export default function VehiclesPage() {
               <div className="mt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => !fuelSaving && setIsFuelOpen(false)}
+                  onClick={() => {
+                    if (!fuelSaving) {
+                      setIsFuelOpen(false);
+                      setFuelVehicle(null);
+                    }
+                  }}
                   className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
                 >
                   Cancel
@@ -1098,6 +1317,107 @@ export default function VehiclesPage() {
                 </div>
               </div>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {isReportOpen && reportVehicle ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-4xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Vehicle Report</h2>
+                <p className="text-sm text-slate-500">
+                  {reportVehicle.nickname} · {reportVehicle.plateNumber} · {vehicleTypeLabel(reportVehicle.vehicleType)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsReportOpen(false);
+                  setReportVehicle(null);
+                }}
+                className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {(() => {
+              const vehicleId = Number(reportVehicle.id);
+              const maintenanceRows = (maintenanceLogs || []).filter((log) => Number(log.vehicle_id) === vehicleId);
+              const fuelRows = (fuelLogs || []).filter((log) => Number(log.vehicle_id) === vehicleId);
+
+              return (
+                <div className="mt-4 space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs text-slate-500">Maintenance Entries</p>
+                      <p className="mt-1 text-2xl font-bold text-slate-900">{maintenanceRows.length}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs text-slate-500">Fuel Entries</p>
+                      <p className="mt-1 text-2xl font-bold text-slate-900">{fuelRows.length}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs text-slate-500">Total Fuel Expense</p>
+                      <p className="mt-1 text-2xl font-bold text-slate-900">{formatMoney(fuelRows.reduce((sum, log) => sum + Number(log.amount_spent || 0), 0))}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <section className="rounded-xl border border-slate-200">
+                      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <h3 className="text-sm font-bold text-slate-900">Maintenance Report</h3>
+                      </div>
+                      <div className="max-h-80 overflow-auto p-4">
+                        {maintenanceRows.length === 0 ? (
+                          <p className="text-sm text-slate-500">No maintenance records for this vehicle.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {maintenanceRows.map((log) => (
+                              <article key={log.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="font-semibold text-slate-900">{log.service_type}</p>
+                                  <span className="text-xs text-slate-500">{formatDate(log.date_of_service)}</span>
+                                </div>
+                                <p className="mt-1 text-xs text-slate-600">Next schedule: {formatDate(log.next_schedule_date)}</p>
+                                <p className="mt-1 text-xs text-slate-600">Cost: {formatMoney(log.maintenance_cost)}</p>
+                                {log.remarks ? <p className="mt-1 text-xs text-slate-600">Remarks: {log.remarks}</p> : null}
+                              </article>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </section>
+
+                    <section className="rounded-xl border border-slate-200">
+                      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <h3 className="text-sm font-bold text-slate-900">Fuel Expense Report</h3>
+                      </div>
+                      <div className="max-h-80 overflow-auto p-4">
+                        {fuelRows.length === 0 ? (
+                          <p className="text-sm text-slate-500">No fuel records for this vehicle.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {fuelRows.map((log) => (
+                              <article key={log.id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="font-semibold text-slate-900">{formatDate(log.logged_at)}</p>
+                                  <span className="text-xs font-semibold text-[#800000]">{formatMoney(log.amount_spent)}</span>
+                                </div>
+                                <p className="mt-1 text-xs text-slate-600">Liters: {Number(log.liters || 0).toFixed(2)}</p>
+                                <p className="mt-1 text-xs text-slate-600">Odometer: {Number(log.odometer_reading || 0).toFixed(2)}</p>
+                              </article>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       ) : null}

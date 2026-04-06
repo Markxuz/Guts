@@ -13,7 +13,7 @@ async function getTestClient() {
 
   if (!initializing) {
     initializing = (async () => {
-      await sequelize.sync({ force: false });
+      await sequelize.authenticate();
       await ensureDefaultUsers();
       cached = request(createApp());
       return cached;
@@ -27,29 +27,45 @@ async function getTestClient() {
 }
 
 async function loginAsAdmin(client) {
-  const response = await client.post("/api/auth/login").send({
-    email: "admin@guts.local",
-    password: "admin123",
-  });
+  const adminPasswords = [
+    process.env.SEED_ADMIN_PASSWORD,
+    "admin123",
+    "ChangeMe!Admin123",
+  ].filter(Boolean);
 
-  if (response.status !== 200 || !response.body?.token) {
-    throw new Error("Failed to authenticate test admin");
+  for (const password of adminPasswords) {
+    const response = await client.post("/api/auth/login").send({
+      email: process.env.SEED_ADMIN_EMAIL || "admin@guts.local",
+      password,
+    });
+
+    if (response.status === 200 && response.body?.token) {
+      return response.body.token;
+    }
   }
 
-  return response.body.token;
+  throw new Error("Failed to authenticate test admin");
 }
 
 async function loginAsStaff(client) {
-  const response = await client.post("/api/auth/login").send({
-    email: "staff@guts.local",
-    password: "staff123",
-  });
+  const staffPasswords = [
+    process.env.SEED_STAFF_PASSWORD,
+    "staff123",
+    "ChangeMe!Staff123",
+  ].filter(Boolean);
 
-  if (response.status !== 200 || !response.body?.token) {
-    throw new Error("Failed to authenticate test staff");
+  for (const password of staffPasswords) {
+    const response = await client.post("/api/auth/login").send({
+      email: process.env.SEED_STAFF_EMAIL || "staff@guts.local",
+      password,
+    });
+
+    if (response.status === 200 && response.body?.token) {
+      return response.body.token;
+    }
   }
 
-  return response.body.token;
+  throw new Error("Failed to authenticate test staff");
 }
 
 module.exports = {

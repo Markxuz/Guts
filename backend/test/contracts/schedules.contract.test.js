@@ -182,12 +182,12 @@ test.describe("Schedules API contract", () => {
   }
 
   test("POST /api/schedules returns wrapped success payload with mapped item", async () => {
-    const scheduleDate = nextWeekdayIso(1, 4); // Monday
     const { course, instructor, vehicle } = await createScheduleDependencies({
       courseName: "PDC Beginner",
       specialization: "PDC Certified",
       pdcBeginnerCertified: true,
     });
+    const scheduleDate = await findAvailableBeginnerStartDate(instructor.id, vehicle.id);
 
     const response = await client
       .post("/api/schedules")

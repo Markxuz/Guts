@@ -47,9 +47,12 @@ function getDateRangeFromPreset(preset, customStartDate, customEndDate) {
     const diffToMonday = (day + 6) % 7;
     start.setDate(start.getDate() - diffToMonday);
 
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+
     return {
       startDate: formatDateToISO(start),
-      endDate: formatDateToISO(now),
+      endDate: formatDateToISO(end),
     };
   }
 
@@ -116,25 +119,40 @@ function toReportHeading(filter) {
 
 function filterDailyReports(rows, activeFilter, search) {
   return rows.filter((row) => {
-    const filter = String(activeFilter || "overall").toLowerCase();
+    const navbarFilter = String(activeFilter || "overall").toLowerCase();
     const courseType = String(row.courseType || "").toLowerCase();
-    const promoText = [row.course, row.description, row.remarks].filter(Boolean).join(" ").toLowerCase();
-    const isPromo = promoText.includes("promo");
+    const courseLabel = String(row.course || "").toLowerCase();
 
-    const matchesFilter =
-      filter === "overall"
+    const scheduleMatchesFilter =
+      courseType === "schedule"
+        ? navbarFilter === "overall"
+          ? true
+          : navbarFilter === "tdc"
+            ? courseLabel.includes("tdc")
+            : navbarFilter === "pdc"
+              ? courseLabel.includes("pdc")
+              : navbarFilter === "pdc_beginner"
+                ? courseLabel.includes("pdc") && courseLabel.includes("beginner")
+                : navbarFilter === "pdc_experience"
+                  ? courseLabel.includes("pdc") && courseLabel.includes("experience")
+                  : true
+        : false;
+
+    // Check navbar filter (activeFilter)
+    const matchesNavbarFilter =
+      navbarFilter === "overall"
         ? true
-        : filter === "tdc"
-          ? courseType === "tdc" || isPromo
-          : filter === "pdc"
-            ? courseType === "pdc_beginner" || courseType === "pdc_experience" || isPromo
-            : filter === "pdc_beginner"
-              ? courseType === "pdc_beginner"
-              : filter === "pdc_experience"
-                ? courseType === "pdc_experience"
+        : navbarFilter === "tdc"
+          ? courseType === "tdc" || scheduleMatchesFilter
+          : navbarFilter === "pdc"
+            ? courseType === "pdc_beginner" || courseType === "pdc_experience" || scheduleMatchesFilter
+            : navbarFilter === "pdc_beginner"
+              ? courseType === "pdc_beginner" || scheduleMatchesFilter
+              : navbarFilter === "pdc_experience"
+                ? courseType === "pdc_experience" || scheduleMatchesFilter
                 : true;
 
-    if (!matchesFilter) return false;
+    if (!matchesNavbarFilter) return false;
 
     const text = search.trim().toLowerCase();
     if (text) {
@@ -191,8 +209,11 @@ export default function DashboardPage() {
     endDate: reportFilter.endDate,
     course: activeFilter,
   });
-  const { data: dailyReportData, isLoading: dailyLoading, isError: dailyError } = useDailyReports(reportFilter);
-  const { data: monthStatusData } = useScheduleMonthStatus(calendarView);
+  const { data: dailyReportData, isLoading: dailyLoading, isError: dailyError } = useDailyReports({
+    ...reportFilter,
+    course: activeFilter,
+  });
+  const { data: monthStatusData } = useScheduleMonthStatus({ ...calendarView, course: scheduleCourseType });
   const createScheduleMutation = useCreateSchedule();
   const cancelScheduleMutation = useCancelSchedule();
   const requestScheduleChangeMutation = useCreateScheduleChangeRequest();
@@ -237,9 +258,17 @@ export default function DashboardPage() {
     }, 50);
   };
 
+  // Use monthStatusData items for activity dates since they're already filtered by course from the backend
+  // When in calendar view, only show activity dots for the selected scheduleCourseType
+  const calendarActivityDates = (monthStatusData?.items || []).map((item) => item.date);
+  
+  // For reports and other views, include all activity dates from report overview
+  const reportActivityDates = reportOverview?.activityDates || [];
+  
+  // Combine activity dates: use calendar-filtered ones + report dates (for non-calendar context)
   const allActivityDates = [
-    ...(reportOverview?.activityDates || []),
-    ...((monthStatusData?.items || []).map((item) => item.date)),
+    ...calendarActivityDates,
+    ...reportActivityDates,
   ].map((dateValue) => parseDateValue(dateValue));
 
   const summary = dashboardSummaryPayload?.stats || {
@@ -323,7 +352,7 @@ export default function DashboardPage() {
 
               <DailyReportsCard
                 rows={dailyReports}
-                total={dailyReportData?.total || dailyReports.length}
+                total={dailyReports.length}
                 loading={dailyLoading}
                 error={dailyError}
                 title={dailyReportHeading.title}

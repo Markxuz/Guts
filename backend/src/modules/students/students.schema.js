@@ -23,6 +23,7 @@ const studentUpdateSchema = Joi.object({
   }),
   profile: Joi.object({
     birthdate: Joi.date().iso().allow(null, ""),
+    birthplace: Joi.string().trim().allow(null, ""),
     age: Joi.number().integer().allow(null, ""),
     gender: Joi.string().trim().allow(null, ""),
     civil_status: Joi.string().trim().allow(null, ""),
@@ -40,6 +41,8 @@ const studentUpdateSchema = Joi.object({
     emergency_contact_person: Joi.string().trim().allow(null, ""),
     emergency_contact_number: Joi.string().trim().allow(null, ""),
     lto_portal_account: Joi.string().trim().allow(null, ""),
+    driving_school_tdc: Joi.string().trim().allow(null, ""),
+    year_completed_tdc: Joi.string().trim().allow(null, ""),
   }),
 }).min(1);
 
