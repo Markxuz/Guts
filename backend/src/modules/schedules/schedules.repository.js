@@ -1,7 +1,9 @@
 const { Op } = require("sequelize");
-const { sequelize, Schedule, Course, Instructor, Vehicle, Enrollment, Student, DLCode, MaintenanceLog } = require("../../../models");
+const { sequelize, Schedule, Course, Instructor, Vehicle, Enrollment, Student, StudentProfile, DLCode, MaintenanceLog } = require("../../../models");
 
 let remarksColumnAvailable;
+let studentRemarksColumnAvailable;
+let instructorRemarksColumnAvailable;
 let careOfColumnAvailable;
 let enrollmentColumnAvailable;
 let studentColumnAvailable;
@@ -19,6 +21,36 @@ async function hasRemarksColumn() {
   }
 
   return remarksColumnAvailable;
+}
+
+async function hasStudentRemarksColumn() {
+  if (typeof studentRemarksColumnAvailable === "boolean") {
+    return studentRemarksColumnAvailable;
+  }
+
+  try {
+    const definition = await sequelize.getQueryInterface().describeTable("schedules");
+    studentRemarksColumnAvailable = Object.prototype.hasOwnProperty.call(definition, "student_remarks");
+  } catch {
+    studentRemarksColumnAvailable = false;
+  }
+
+  return studentRemarksColumnAvailable;
+}
+
+async function hasInstructorRemarksColumn() {
+  if (typeof instructorRemarksColumnAvailable === "boolean") {
+    return instructorRemarksColumnAvailable;
+  }
+
+  try {
+    const definition = await sequelize.getQueryInterface().describeTable("schedules");
+    instructorRemarksColumnAvailable = Object.prototype.hasOwnProperty.call(definition, "instructor_remarks");
+  } catch {
+    instructorRemarksColumnAvailable = false;
+  }
+
+  return instructorRemarksColumnAvailable;
 }
 
 async function hasCareOfColumn() {
@@ -94,6 +126,14 @@ async function scheduleAttributes() {
     baseAttributes.push("remarks");
   }
 
+  if (await hasStudentRemarksColumn()) {
+    baseAttributes.push("student_remarks");
+  }
+
+  if (await hasInstructorRemarksColumn()) {
+    baseAttributes.push("instructor_remarks");
+  }
+
   return baseAttributes;
 }
 
@@ -104,8 +144,19 @@ async function getScheduleIncludes() {
     { model: Vehicle, attributes: ["id", "vehicle_name", "vehicle_type", "plate_number", "transmission_type"] },
     {
       model: Enrollment,
+      attributes: ["id", "status", "pdc_type", "is_already_driver", "target_vehicle", "transmission_type"],
       include: [
-        { model: Student, attributes: ["id", "first_name", "last_name"] },
+        {
+          model: Student,
+          attributes: ["id", "first_name", "middle_name", "last_name", "email", "phone"],
+          include: [
+            {
+              model: StudentProfile,
+              attributes: ["lto_portal_account"],
+              required: false,
+            },
+          ],
+        },
         { model: DLCode, attributes: ["id", "code"] },
       ],
     },
@@ -124,9 +175,19 @@ async function getScheduleIncludes() {
     includes.push({
       model: Enrollment,
       as: "selectedEnrollment",
-      attributes: ["id", "status", "pdc_type"],
+      attributes: ["id", "status", "pdc_type", "is_already_driver", "target_vehicle", "transmission_type"],
       include: [
-        { model: Student, attributes: ["id", "first_name", "last_name"] },
+        {
+          model: Student,
+          attributes: ["id", "first_name", "middle_name", "last_name", "email", "phone"],
+          include: [
+            {
+              model: StudentProfile,
+              attributes: ["lto_portal_account"],
+              required: false,
+            },
+          ],
+        },
         { model: DLCode, attributes: ["id", "code"] },
       ],
       required: false,
@@ -137,7 +198,14 @@ async function getScheduleIncludes() {
     includes.push({
       model: Student,
       as: "scheduledStudent",
-      attributes: ["id", "first_name", "last_name"],
+      attributes: ["id", "first_name", "middle_name", "last_name", "email", "phone"],
+      include: [
+        {
+          model: StudentProfile,
+          attributes: ["lto_portal_account"],
+          required: false,
+        },
+      ],
       required: false,
     });
   }
@@ -149,6 +217,12 @@ async function createSchedule(payload, transaction) {
   const nextPayload = { ...payload };
   if (!(await hasRemarksColumn())) {
     delete nextPayload.remarks;
+  }
+  if (!(await hasStudentRemarksColumn())) {
+    delete nextPayload.student_remarks;
+  }
+  if (!(await hasInstructorRemarksColumn())) {
+    delete nextPayload.instructor_remarks;
   }
   if (!(await hasCareOfColumn())) {
     delete nextPayload.care_of_instructor_id;
@@ -204,6 +278,25 @@ async function findScheduleById(id, transaction) {
     include,
     transaction,
   });
+}
+
+async function updateSchedule(schedule, payload, transaction) {
+  if (!schedule) {
+    return null;
+  }
+
+  const nextPayload = { ...payload };
+  if (!(await hasRemarksColumn())) {
+    delete nextPayload.remarks;
+  }
+  if (!(await hasStudentRemarksColumn())) {
+    delete nextPayload.student_remarks;
+  }
+  if (!(await hasInstructorRemarksColumn())) {
+    delete nextPayload.instructor_remarks;
+  }
+
+  return schedule.update(nextPayload, { transaction });
 }
 
 async function findSchedulesByDateRange(startDate, endDate, transaction) {
@@ -309,9 +402,11 @@ async function findSchedulesByRemarksToken(token, transaction) {
   const include = await getScheduleIncludes();
   return Schedule.findAll({
     where: {
-      remarks: {
-        [Op.like]: `%${token}%`,
-      },
+      [Op.or]: [
+        { remarks: { [Op.like]: `%${token}%` } },
+        ...(await hasStudentRemarksColumn() ? [{ student_remarks: { [Op.like]: `%${token}%` } }] : []),
+        ...(await hasInstructorRemarksColumn() ? [{ instructor_remarks: { [Op.like]: `%${token}%` } }] : []),
+      ],
     },
     attributes,
     include,
@@ -343,6 +438,7 @@ module.exports = {
   createSchedule,
   findSchedulesByDate,
   findScheduleById,
+  updateSchedule,
   findSchedulesByDateRange,
   findSchedulesByDateAndTime,
   findSchedulesByIds,
@@ -356,6 +452,8 @@ module.exports = {
   findSchedulesByRemarksToken,
   deleteSchedulesByIds,
   hasRemarksColumn,
+  hasStudentRemarksColumn,
+  hasInstructorRemarksColumn,
   hasCareOfColumn,
   hasEnrollmentColumn,
   hasStudentColumn,

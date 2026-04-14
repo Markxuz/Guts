@@ -76,6 +76,20 @@ export async function rejectScheduleChangeRequest({ id, reviewer_note = null }) 
   return unwrapScheduleResponse(response);
 }
 
+export async function updateScheduleRemarks({ scheduleId, remarks, studentRemarks, instructorRemarks }) {
+  const resolvedRemarks =
+    (typeof remarks === "string" && remarks.trim())
+    || (typeof studentRemarks === "string" && studentRemarks.trim())
+    || "";
+
+  const response = await api.patch(`/schedules/${scheduleId}/remarks`, {
+    remarks: resolvedRemarks,
+    student_remarks: studentRemarks,
+    instructor_remarks: instructorRemarks,
+  });
+  return unwrapScheduleResponse(response);
+}
+
 export async function fetchActivityLogs({ dateIso, limit = 10 } = {}) {
   const params = new URLSearchParams();
   if (dateIso) params.set("date", dateIso);

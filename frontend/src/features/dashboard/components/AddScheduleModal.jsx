@@ -264,12 +264,6 @@ export default function AddScheduleModal({
       .map((item) => ({ value: String(item.id), label: item.name }));
   }, [resources, form.course_type]);
 
-  const careOfOptions = useMemo(
-    () => (resources?.instructors || [])
-      .filter((item) => String(item.status || "Active") === "Active")
-      .map((item) => ({ value: String(item.id), label: item.name })),
-    [resources]
-  );
   const vehicleOptions = useMemo(() => {
     const rows = resources?.vehicles || [];
     const targetVehicle = selectedEnrollmentRow?.target_vehicle || "";
@@ -503,7 +497,10 @@ export default function AddScheduleModal({
   }
 
   return (
-    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-[#1f1111]/70 p-4 backdrop-blur-sm">
+    <div
+      style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+      className="fixed inset-y-0 right-0 z-9999 flex items-center justify-center bg-[#1f1111]/70 p-4 backdrop-blur-sm"
+    >
       <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-[#d4af37]/30 bg-[linear-gradient(180deg,#fffdf7_0%,#f8f2e4_100%)] shadow-[0_32px_80px_rgba(40,8,8,0.45)]">
         {/* Fixed Header */}
         <div className="flex shrink-0 items-start justify-between border-b border-[#e6d7b6] bg-[#800000] px-6 py-5 text-white">
@@ -737,7 +734,10 @@ export default function AddScheduleModal({
 
         {/* Modal inside modal conditionally rendered */}
         {activeAvailabilitySlot && activeSlotDetails ? (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4">
+          <div
+            style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+            className="fixed inset-y-0 right-0 z-[70] flex items-center justify-center bg-black/45 p-4"
+          >
             <div className="w-full max-w-xl rounded-2xl border border-[#d9c9a0] bg-white p-5 shadow-2xl">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>

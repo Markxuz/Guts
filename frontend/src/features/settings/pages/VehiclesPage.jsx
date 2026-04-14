@@ -303,6 +303,8 @@ export default function VehiclesPage() {
 
   useEffect(() => {
     loadVehicles();
+    // loadVehicles is intentionally recreated from component state; statusDate drives refreshes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusDate]);
 
   const rowsWithStatus = useMemo(() => {
@@ -892,7 +894,10 @@ export default function VehiclesPage() {
       </div>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/30 p-4"
+        >
           <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">Add Vehicle</h2>
@@ -986,7 +991,10 @@ export default function VehiclesPage() {
       ) : null}
 
       {isMaintenanceOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/30 p-4"
+        >
           <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="inline-flex items-center gap-2 text-lg font-bold text-slate-900">
@@ -1115,7 +1123,10 @@ export default function VehiclesPage() {
       ) : null}
 
       {isFuelOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/30 p-4"
+        >
           <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="inline-flex items-center gap-2 text-lg font-bold text-slate-900">
@@ -1239,7 +1250,10 @@ export default function VehiclesPage() {
       ) : null}
 
       {isUsageOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/35 p-4"
+        >
           <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="inline-flex items-center gap-2 text-lg font-bold text-slate-900">
@@ -1322,7 +1336,10 @@ export default function VehiclesPage() {
       ) : null}
 
       {isReportOpen && reportVehicle ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+        >
           <div className="w-full max-w-4xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <div>

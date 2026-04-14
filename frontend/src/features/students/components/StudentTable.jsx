@@ -1,5 +1,44 @@
-import { Clock, Eye, Pencil, Trash2 } from "lucide-react";
-import { buildAddress, getCourseCode, getLatestEnrollment, toTitleCase } from "../utils/studentsPageUtils";
+import { ArrowUpDown, ChevronDown, ChevronUp, Clock, Eye, Pencil, Trash2 } from "lucide-react";
+import {
+  buildAddress,
+  getCourseCode,
+  getLatestEnrollment,
+  getLatestScheduleForEnrollment,
+  getStudentScheduleRemarks,
+} from "../utils/studentsPageUtils";
+import { getDisplayStatusLabel } from "../utils/statusUpdateConfig";
+
+const twoLineClampStyle = {
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+
+function getStatusTone(statusLabel) {
+  const normalizedStatusLabel = String(statusLabel || "").toUpperCase();
+  if (normalizedStatusLabel.includes("FAILED")) return "red";
+  if (normalizedStatusLabel.includes("PASSED")) return "green";
+  if (
+    normalizedStatusLabel.includes("RETAKE") ||
+    normalizedStatusLabel.includes("ABSENT") ||
+    normalizedStatusLabel.includes("RESCHED") ||
+    normalizedStatusLabel.includes("PENALTY")
+  ) {
+    return "amber";
+  }
+  if (normalizedStatusLabel.includes("NOT SET")) return "slate";
+  return "maroon";
+}
+
+function ClampedText({ value }) {
+  const safeValue = value || "-";
+  return (
+    <p style={twoLineClampStyle} className="break-words" title={safeValue}>
+      {safeValue}
+    </p>
+  );
+}
 
 function Badge({ label, tone }) {
   const styles = {
@@ -17,6 +56,47 @@ function Badge({ label, tone }) {
   );
 }
 
+function getSortState(sortBy, column) {
+  const map = {
+    student: { asc: "name_asc", desc: "name_desc" },
+    contact: { asc: "contact_asc", desc: "contact_desc" },
+    course: { asc: "course_asc", desc: "course_desc" },
+    status: { asc: "status_asc", desc: "status_desc" },
+  };
+
+  const config = map[column];
+  if (!config) return { active: false, direction: null };
+  if (sortBy === config.asc || (column === "status" && sortBy === "status")) {
+    return { active: true, direction: "asc" };
+  }
+  if (sortBy === config.desc) {
+    return { active: true, direction: "desc" };
+  }
+  return { active: false, direction: null };
+}
+
+function SortableHeader({ label, column, sortBy, onToggleSort, className }) {
+  const state = getSortState(sortBy, column);
+
+  return (
+    <th className={className}>
+      <button
+        type="button"
+        onClick={() => onToggleSort?.(column)}
+        className="inline-flex items-center gap-1 font-semibold text-white/95 hover:text-white"
+        title={`Sort by ${label}`}
+      >
+        <span>{label}</span>
+        {state.active ? (
+          state.direction === "asc" ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+        ) : (
+          <ArrowUpDown size={13} className="opacity-80" />
+        )}
+      </button>
+    </th>
+  );
+}
+
 export default function StudentTable({
   students,
   isLoading,
@@ -28,20 +108,23 @@ export default function StudentTable({
   onUpdateStatus,
   onDelete,
   canDelete,
+  onClickPendingBadge,
   selectedStudentIds,
   allVisibleSelected,
   onToggleSelectStudent,
   onToggleSelectAllVisible,
   onPreviousPage,
   onNextPage,
+  sortBy,
+  onToggleSort,
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
-      <div className="w-full overflow-x-auto">
-        <table className="min-w-full table-fixed text-sm">
-          <thead className="bg-[#800000] text-left text-white">
+      <div className="thin-scrollbar overflow-auto max-h-[440px]">
+        <table className="min-w-[1700px] table-fixed text-sm">
+          <thead className="sticky top-0 z-10 bg-[#800000] text-left text-white">
             <tr>
-              <th className="w-[4%] px-4 py-3 font-semibold">
+              <th className="w-12 rounded-tl-xl px-4 py-3 font-semibold">
                 <input
                   type="checkbox"
                   checked={allVisibleSelected}
@@ -50,18 +133,20 @@ export default function StudentTable({
                   className="h-4 w-4 rounded border-slate-300 text-[#800000] focus:ring-[#800000]/30"
                 />
               </th>
-              <th className="w-[20%] px-4 py-3 font-semibold">Student</th>
-              <th className="w-[16%] px-4 py-3 font-semibold">Contact</th>
-              <th className="w-[10%] px-4 py-3 font-semibold">Course</th>
-              <th className="w-[12%] px-4 py-3 font-semibold">Status</th>
-              <th className="w-[24%] px-4 py-3 font-semibold">Address</th>
-              <th className="w-[14%] px-4 py-3 font-semibold">Actions</th>
+              <SortableHeader label="Student" column="student" sortBy={sortBy} onToggleSort={onToggleSort} className="w-[230px] px-4 py-3" />
+              <SortableHeader label="Contact" column="contact" sortBy={sortBy} onToggleSort={onToggleSort} className="w-[210px] px-4 py-3" />
+              <SortableHeader label="Course" column="course" sortBy={sortBy} onToggleSort={onToggleSort} className="w-[130px] px-4 py-3" />
+              <SortableHeader label="Status" column="status" sortBy={sortBy} onToggleSort={onToggleSort} className="w-[200px] px-4 py-3" />
+              <th className="w-[220px] px-4 py-3 font-semibold">Instructor Remarks</th>
+              <th className="w-[220px] px-4 py-3 font-semibold">Student Remarks</th>
+              <th className="w-[220px] px-4 py-3 font-semibold">Address</th>
+              <th className="w-[210px] rounded-tr-xl px-4 py-3 font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                   Loading students...
                 </td>
               </tr>
@@ -69,7 +154,7 @@ export default function StudentTable({
 
             {!isLoading && isError ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-rose-700">
+                <td colSpan={9} className="px-4 py-8 text-center text-rose-700">
                   {error?.message || "Failed to load students"}
                 </td>
               </tr>
@@ -77,7 +162,7 @@ export default function StudentTable({
 
             {!isLoading && !isError && students.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                   No students found for the selected filters.
                 </td>
               </tr>
@@ -86,18 +171,22 @@ export default function StudentTable({
             {!isLoading && !isError
               ? students.map((student, index) => {
                   const enrollmentStatus = getLatestEnrollment(student)?.status || "pending";
+                  const latestEnrollment = getLatestEnrollment(student);
+                  const latestSchedule = getLatestScheduleForEnrollment(latestEnrollment);
                   const course = getCourseCode(student);
                   const isPromo = course === "PROMO";
                   const fullName = [student.first_name, student.middle_name, student.last_name]
                     .filter(Boolean)
                     .join(" ");
+                  const statusLabel = getDisplayStatusLabel(course, latestEnrollment?.score, enrollmentStatus);
+                  const statusTone = getStatusTone(statusLabel);
 
                   return (
                     <tr
                       key={student.id}
                       className={`${index % 2 === 0 ? "bg-white" : "bg-slate-50"} transition-colors hover:bg-[#D4AF37]/10`}
                     >
-                      <td className="px-4 py-3 align-top">
+                      <td className="px-4 py-2.5 align-top">
                         <input
                           type="checkbox"
                           checked={selectedStudentIds.includes(student.id)}
@@ -106,33 +195,51 @@ export default function StudentTable({
                           className="mt-1 h-4 w-4 rounded border-slate-300 text-[#800000] focus:ring-[#800000]/30"
                         />
                       </td>
-                      <td className="px-4 py-3 align-top">
+                      <td className="px-4 py-2.5 align-top">
                         <p className="font-semibold text-slate-900 [overflow-wrap:anywhere]">
                           {fullName || "N/A"}
                           {isPromo ? <span className="ml-2 rounded-full bg-[#D4AF37]/20 px-2 py-0.5 text-[10px] font-bold text-[#800000]">Promo</span> : null}
                         </p>
                         <p className="text-xs text-slate-500">ID #{student.id}</p>
                       </td>
-                      <td className="px-4 py-3 align-top text-slate-700">
-                        <p className="[overflow-wrap:anywhere]">{student.email || "N/A"}</p>
-                        <p className="text-xs text-slate-500 [overflow-wrap:anywhere]">{student.phone || "No phone"}</p>
+                      <td className="px-4 py-2.5 align-top text-slate-700">
+                        <p className="truncate" title={student.email || "N/A"}>{student.email || "N/A"}</p>
+                        <p className="truncate text-xs text-slate-500" title={student.phone || "No phone"}>{student.phone || "No phone"}</p>
                       </td>
-                      <td className="px-4 py-3 align-top">
+                      <td className="px-4 py-2.5 align-top">
                         <Badge label={course} tone="maroon" />
                       </td>
-                      <td className="px-4 py-3 align-top">
-                        <Badge
-                          label={toTitleCase(enrollmentStatus)}
-                          tone={enrollmentStatus === "completed" ? "green" : enrollmentStatus === "pending" ? "amber" : "maroon"}
-                        />
+                      <td className="px-4 py-2.5 align-top">
+                        {enrollmentStatus === "pending" ? (
+                          <button
+                            type="button"
+                            onClick={() => onClickPendingBadge?.(student)}
+                            className="cursor-pointer"
+                            title="Click to accept pending enrollment"
+                          >
+                            <Badge
+                              label={statusLabel}
+                              tone={statusTone}
+                            />
+                          </button>
+                        ) : (
+                          <Badge
+                            label={statusLabel}
+                            tone={statusTone}
+                          />
+                        )}
                       </td>
-                      <td className="px-4 py-3 align-top text-slate-700">
-                        <p className="[overflow-wrap:anywhere]" title={buildAddress(student.StudentProfile)}>
-                          {buildAddress(student.StudentProfile)}
-                        </p>
+                      <td className="px-4 py-2.5 align-top text-slate-700">
+                        <ClampedText value={latestSchedule?.instructor_remarks} />
                       </td>
-                      <td className="px-4 py-3 align-top whitespace-nowrap">
-                        <div className="flex flex-wrap items-center gap-1.5 text-slate-700">
+                      <td className="px-4 py-2.5 align-top text-slate-700">
+                        <ClampedText value={getStudentScheduleRemarks(latestSchedule)} />
+                      </td>
+                      <td className="px-4 py-2.5 align-top text-slate-700">
+                        <ClampedText value={buildAddress(student.StudentProfile)} />
+                      </td>
+                      <td className="px-4 py-2.5 align-top whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap text-slate-700">
                           <button
                             type="button"
                             onClick={() => onView(student)}

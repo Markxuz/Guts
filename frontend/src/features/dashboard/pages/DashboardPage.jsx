@@ -1,23 +1,18 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/hooks/useAuth";
-import AddScheduleModal from "../components/AddScheduleModal";
 import CalendarWidget from "../components/CalendarWidget";
 import DashboardGrid from "../components/DashboardGrid";
 import DailyReportsCard from "../components/DailyReportsCard";
 import MonthlyEnrollmentCard from "../components/MonthlyEnrollmentCard";
 import PendingApprovalsCard from "../components/PendingApprovalsCard";
-import PrintReport from "../components/PrintReport";
 import QuickActionsCard from "../components/QuickActionsCard";
 import RecentActivitiesCard from "../components/RecentActivitiesCard";
 import StatsGrid from "../components/StatsGrid";
 import TopControls from "../components/TopControls";
-import { useCreateSchedule } from "../hooks/useCreateSchedule";
-import { useCancelSchedule } from "../hooks/useCancelSchedule";
 import {
   useApproveScheduleChangeRequest,
-  useCreateScheduleChangeRequest,
   usePendingScheduleChangeRequests,
   useRejectScheduleChangeRequest,
 } from "../hooks/useScheduleChangeRequests";
@@ -28,7 +23,10 @@ import { useScheduleMonthStatus } from "../hooks/useScheduleMonthStatus";
 import { formatDateToISO, parseDateValue } from "../../../shared/utils/date";
 import ToastStack from "../../../shared/utils/ToastStack";
 import { useToast } from "../../../shared/utils/toast";
-import { fetchStudents } from "../../students/services/studentsApi";
+import { deleteStudent, fetchStudents, updateEnrollmentStatus } from "../../students/services/studentsApi";
+
+const CalendarScheduleModal = lazy(() => import("../components/CalendarScheduleModal"));
+const PrintReport = lazy(() => import("../components/PrintReport"));
 
 function getDateRangeFromPreset(preset, customStartDate, customEndDate) {
   const now = new Date();
@@ -176,10 +174,10 @@ function filterRecentActivities(rows, search) {
 }
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { auth } = useAuth();
   const [activeFilter, setActiveFilter] = useState("overall");
-  const [scheduleCourseType, setScheduleCourseType] = useState("tdc");
   const [search, setSearch] = useState("");
   const [toasts, addToast, removeToast] = useToast();
   const [printedAt, setPrintedAt] = useState(new Date());
@@ -213,10 +211,10 @@ export default function DashboardPage() {
     ...reportFilter,
     course: activeFilter,
   });
-  const { data: monthStatusData } = useScheduleMonthStatus({ ...calendarView, course: scheduleCourseType });
-  const createScheduleMutation = useCreateSchedule();
-  const cancelScheduleMutation = useCancelSchedule();
-  const requestScheduleChangeMutation = useCreateScheduleChangeRequest();
+  const calendarCourseType = ["overall", "tdc", "pdc", "pdc_beginner", "pdc_experience"].includes(activeFilter)
+    ? activeFilter
+    : "overall";
+  const { data: monthStatusData } = useScheduleMonthStatus({ ...calendarView, course: calendarCourseType });
   const approveScheduleChangeMutation = useApproveScheduleChangeRequest();
   const rejectScheduleChangeMutation = useRejectScheduleChangeRequest();
   const { data: pendingRequestsData, isLoading: pendingRequestsLoading } = usePendingScheduleChangeRequests(auth?.user?.role === "admin");
@@ -242,6 +240,32 @@ export default function DashboardPage() {
       })
       .filter(Boolean);
   }, [studentsData]);
+
+  const approveEnrollmentMutation = useMutation({
+    mutationFn: async (row) => updateEnrollmentStatus(row.id, { enrollmentStatus: "confirmed" }),
+    onSuccess: async (_data, row) => {
+      addToast(`Enrollment accepted for ${row?.studentName || "student"}.`, "success");
+      await queryClient.invalidateQueries({ queryKey: ["students"] });
+      await queryClient.invalidateQueries({ queryKey: ["students", "pending-approvals"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
+    },
+    onError: (mutationError) => {
+      addToast(mutationError?.message || "Failed to approve pending enrollment.", "error");
+    },
+  });
+
+  const rejectEnrollmentMutation = useMutation({
+    mutationFn: async (row) => deleteStudent(row.id),
+    onSuccess: async (_data, row) => {
+      addToast(`Pending enrollment rejected for ${row?.studentName || "student"}.`, "success");
+      await queryClient.invalidateQueries({ queryKey: ["students"] });
+      await queryClient.invalidateQueries({ queryKey: ["students", "pending-approvals"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
+    },
+    onError: (mutationError) => {
+      addToast(mutationError?.message || "Failed to reject pending enrollment.", "error");
+    },
+  });
 
 
 
@@ -283,6 +307,17 @@ export default function DashboardPage() {
 
   const generatedBy = `${auth?.user?.name || "System Admin"}${auth?.user?.id ? ` (Admin ID: ${auth.user.id})` : ""}`;
 
+  function applySingleDayFilter(date) {
+    const dateIso = formatDateToISO(date);
+    setReportFilter({
+      mode: "day",
+      preset: "today",
+      date: dateIso,
+      startDate: dateIso,
+      endDate: dateIso,
+    });
+  }
+
   return (
     <>
       <section className="space-y-4 print:hidden">
@@ -313,27 +348,11 @@ export default function DashboardPage() {
             <>
               <CalendarWidget
                 view={calendarView}
-                courseFilter={scheduleCourseType}
-                onCourseFilterChange={setScheduleCourseType}
+                courseFilter={calendarCourseType}
                 reportFilter={reportFilter}
-                onSelectDate={(date) => {
-                  const dateIso = formatDateToISO(date);
-                  setReportFilter({
-                    mode: "day",
-                    preset: "today",
-                    date: dateIso,
-                    startDate: dateIso,
-                    endDate: dateIso,
-                  });
-                }}
+                onSelectDate={applySingleDayFilter}
                 onOpenSchedule={(date) => {
-                  setReportFilter({
-                    mode: "day",
-                    preset: "today",
-                    date: formatDateToISO(date),
-                    startDate: formatDateToISO(date),
-                    endDate: formatDateToISO(date),
-                  });
+                  applySingleDayFilter(date);
                   setScheduleModalOpen(true);
                 }}
                 activityDates={allActivityDates}
@@ -392,8 +411,19 @@ export default function DashboardPage() {
                   loading={pendingRequestsLoading || pendingEnrollmentsLoading}
                   approveMutation={approveScheduleChangeMutation}
                   rejectMutation={rejectScheduleChangeMutation}
+                  approveEnrollmentMutation={approveEnrollmentMutation}
+                  rejectEnrollmentMutation={rejectEnrollmentMutation}
+                  onOpenEnrollment={(row) => navigate(`/students?focusStudentId=${encodeURIComponent(row.id)}`)}
                   onApproved={(row) => addToast(`Approved schedule change for ${row.currentSchedule?.studentName || "student"}.`, "success")}
                   onRejected={(row) => addToast(`Rejected schedule change for ${row.currentSchedule?.studentName || "student"}.`, "success")}
+                  onBulkCompleted={({ action, successCount, failedCount }) => {
+                    const actionLabel = action === "accept" ? "accepted/approved" : "rejected";
+                    if (failedCount > 0) {
+                      addToast(`Bulk ${actionLabel}: ${successCount} success, ${failedCount} failed.`, "error");
+                      return;
+                    }
+                    addToast(`Bulk ${actionLabel}: ${successCount} request${successCount === 1 ? "" : "s"} processed.`, "success");
+                  }}
                 />
               ) : null}
             </>
@@ -401,38 +431,28 @@ export default function DashboardPage() {
         />
       </section>
 
-      <PrintReport
-        className="hidden print:block"
-        reportRange={{ startDate: reportFilter.startDate, endDate: reportFilter.endDate }}
-        stats={summary}
-        monthlyEnrollment={reportOverview?.monthlyEnrollment || []}
-        dailyTransactions={unfilteredDailyReports}
-        recentActivities={unfilteredRecentActivities}
-        maintenanceSummary={reportOverview?.maintenanceSummary}
-        fuelSummary={reportOverview?.fuelSummary}
-        generatedBy={generatedBy}
-        printedAt={printedAt}
-      />
+      <Suspense fallback={null}>
+        <PrintReport
+          className={scheduleModalOpen ? "hidden" : "hidden print:block"}
+          reportRange={{ startDate: reportFilter.startDate, endDate: reportFilter.endDate }}
+          stats={summary}
+          monthlyEnrollment={reportOverview?.monthlyEnrollment || []}
+          dailyTransactions={unfilteredDailyReports}
+          recentActivities={unfilteredRecentActivities}
+          maintenanceSummary={reportOverview?.maintenanceSummary}
+          fuelSummary={reportOverview?.fuelSummary}
+          generatedBy={generatedBy}
+          printedAt={printedAt}
+        />
+      </Suspense>
 
-      <AddScheduleModal
-        isOpen={scheduleModalOpen}
-        selectedDate={selectedDate}
-        defaultCourseType={scheduleCourseType}
-        availability={dailyReportData?.availability || []}
-        loadingAvailability={dailyLoading}
-        createScheduleMutation={createScheduleMutation}
-        cancelScheduleMutation={cancelScheduleMutation}
-        requestScheduleChangeMutation={requestScheduleChangeMutation}
-        onScheduleSaved={(message) => addToast(message, "success")}
-        onScheduleCancelled={(message) => addToast(message, "success")}
-        onScheduleChangeRequested={(message) => addToast(message, "success")}
-        onClose={() => {
-          createScheduleMutation.reset();
-          cancelScheduleMutation.reset();
-          requestScheduleChangeMutation.reset();
-          setScheduleModalOpen(false);
-        }}
-      />
+      <Suspense fallback={null}>
+        <CalendarScheduleModal
+          isOpen={scheduleModalOpen}
+          selectedDate={selectedDate}
+          onClose={() => setScheduleModalOpen(false)}
+        />
+      </Suspense>
 
       <ToastStack
         toasts={toasts}

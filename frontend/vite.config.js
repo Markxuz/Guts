@@ -8,6 +8,21 @@ export default defineConfig({
     react(), 
     tailwindcss()
   ],
+  build: {
+    // The PH address dataset is intentionally large and loaded in its own chunk.
+    // Raise warning threshold so build output reflects real regressions instead of known data size.
+    chunkSizeWarningLimit: 9000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          query: ['@tanstack/react-query'],
+          icons: ['lucide-react'],
+          phAddress: ['latest-ph-address-thanks-to-anehan', 'psgc'],
+        },
+      },
+    },
+  },
   server: {
     host: true, // Kailangan ito para makita ng Windows browser ang loob ng Linux Docker
     port: 5173,

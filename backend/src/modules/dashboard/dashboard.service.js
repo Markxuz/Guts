@@ -176,7 +176,107 @@ async function getLogsByDate(isoDate) {
   };
 }
 
+function formatStudentName(student) {
+  if (!student) return "-";
+  return [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`;
+}
+
+function toIsoDateOnly(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function isDateWithin(dateOnly, startDateOnly, endDateOnly) {
+  if (!dateOnly || !startDateOnly || !endDateOnly) return false;
+  return dateOnly >= startDateOnly && dateOnly <= endDateOnly;
+}
+
+function mapOperationalEnrollment(row) {
+  return {
+    id: row.id,
+    student_id: row.student_id,
+    student_name: formatStudentName(row.Student),
+    student_email: row?.Student?.email || null,
+    student_phone: row?.Student?.phone || null,
+    dl_code: row?.DLCode?.code || null,
+    enrollment_state: row.enrollment_state || "active",
+    pdc_start_mode: row.pdc_start_mode || null,
+    tdc_completion_deadline: row.tdc_completion_deadline || null,
+    pdc_valid_until: row.pdc_valid_until || null,
+    pdc_eligibility_date: row.pdc_eligibility_date || null,
+    promo_package_id: row.promo_package_id || row?.promoPackage?.id || null,
+    promo_package_status: row?.promoPackage?.status || null,
+    created_at: row.created_at || row.createdAt || null,
+  };
+}
+
+async function getOperationsSnapshot({ daysAhead = 7, limit = 50 } = {}) {
+  const maxItems = Math.min(200, Math.max(1, Number(limit || 50)));
+  const lookahead = Math.min(60, Math.max(1, Number(daysAhead || 7)));
+
+  const now = new Date();
+  const todayDateOnly = toIsoDateOnly(now);
+  const endDate = new Date(now);
+  endDate.setDate(endDate.getDate() + lookahead);
+  const endDateOnly = toIsoDateOnly(endDate);
+
+  const [rows, forReview, errorQueue, receivedQueue] = await Promise.all([
+    repository.findOperationalEnrollments(1000),
+    repository.findOnlineIntakeByStatus("for_review", maxItems),
+    repository.findOnlineIntakeByStatus("error", maxItems),
+    repository.findOnlineIntakeByStatus("received", maxItems),
+  ]);
+
+  const mapped = rows.map(mapOperationalEnrollment);
+
+  const tdcIncomplete = mapped
+    .filter((item) => item.enrollment_state === "tdc_in_progress")
+    .slice(0, maxItems);
+
+  const promoPdcUnscheduled = mapped
+    .filter((item) => item.promo_package_id && item.pdc_start_mode === "later")
+    .filter((item) => item.enrollment_state === "pdc_pending_schedule" || item.enrollment_state === "active")
+    .slice(0, maxItems);
+
+  const promoExpiringSoon = mapped
+    .filter((item) => item.promo_package_id)
+    .filter((item) => ["active", "pdc_pending_schedule", "pdc_in_progress", "tdc_in_progress"].includes(item.enrollment_state))
+    .filter((item) => isDateWithin(item.pdc_valid_until, todayDateOnly, endDateOnly))
+    .slice(0, maxItems);
+
+  const tdcDeadlinesSoon = mapped
+    .filter((item) => ["tdc_in_progress", "active"].includes(item.enrollment_state))
+    .filter((item) => isDateWithin(item.tdc_completion_deadline, todayDateOnly, endDateOnly))
+    .slice(0, maxItems);
+
+  return {
+    generated_at: new Date().toISOString(),
+    lookahead_days: lookahead,
+    metrics: {
+      tdcIncompleteCount: tdcIncomplete.length,
+      promoPdcUnscheduledCount: promoPdcUnscheduled.length,
+      promoExpiringSoonCount: promoExpiringSoon.length,
+      tdcDeadlinesSoonCount: tdcDeadlinesSoon.length,
+      onlineIntakeForReviewCount: forReview.length,
+      onlineIntakeErrorCount: errorQueue.length,
+      onlineIntakeReceivedCount: receivedQueue.length,
+    },
+    queues: {
+      tdc_incomplete: tdcIncomplete,
+      promo_pdc_unscheduled: promoPdcUnscheduled,
+      promo_expiring_soon: promoExpiringSoon,
+      tdc_deadlines_soon: tdcDeadlinesSoon,
+      online_intake_for_review: forReview,
+      online_intake_errors: errorQueue,
+      online_intake_received: receivedQueue,
+    },
+  };
+}
+
 module.exports = {
   getSummary,
   getLogsByDate,
+  getOperationsSnapshot,
 };

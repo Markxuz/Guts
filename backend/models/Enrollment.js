@@ -56,6 +56,41 @@ module.exports = (sequelize) => {
 			type: DataTypes.STRING,
 			allowNull: true,
 		},
+		enrollment_channel: {
+			type: DataTypes.STRING,
+			allowNull: true,
+			defaultValue: "walk_in",
+		},
+		external_application_ref: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		promo_package_id: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+		},
+		tdc_completion_deadline: {
+			type: DataTypes.DATEONLY,
+			allowNull: true,
+		},
+		pdc_eligibility_date: {
+			type: DataTypes.DATEONLY,
+			allowNull: true,
+		},
+		pdc_valid_until: {
+			type: DataTypes.DATEONLY,
+			allowNull: true,
+		},
+		pdc_start_mode: {
+			type: DataTypes.STRING,
+			allowNull: true,
+			defaultValue: "later",
+		},
+		enrollment_state: {
+			type: DataTypes.STRING,
+			allowNull: true,
+			defaultValue: "active",
+		},
 		status: {
 			type: DataTypes.ENUM("pending", "confirmed", "completed"),
 			allowNull: true,

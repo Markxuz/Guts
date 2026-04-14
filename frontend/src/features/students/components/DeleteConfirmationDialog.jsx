@@ -3,8 +3,13 @@ import { AlertTriangle, LoaderCircle } from "lucide-react";
 export default function DeleteConfirmationDialog({ student, onCancel, onConfirm, isPending }) {
   if (!student) return null;
 
+  const modalViewportStyle = {
+    left: "var(--app-sidebar-width, 0px)",
+    width: "calc(100vw - var(--app-sidebar-width, 0px))",
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+    <div style={modalViewportStyle} className="fixed inset-y-0 right-0 z-[120] flex items-center justify-center bg-black/45 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
         <div className="rounded-t-2xl bg-[#800000] px-5 py-4 text-white">
           <div className="flex items-center gap-2">

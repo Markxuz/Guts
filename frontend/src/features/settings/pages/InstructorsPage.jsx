@@ -628,7 +628,10 @@ export default function InstructorsPage() {
       </div>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/30 p-4"
+        >
           <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">
@@ -754,7 +757,10 @@ export default function InstructorsPage() {
       ) : null}
 
       {isProfileModalOpen && selectedInstructor ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/30 p-4"
+        >
           <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">Instructor Profile</h2>
@@ -903,7 +909,10 @@ export default function InstructorsPage() {
       ) : null}
 
       {isCertificationModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/30 p-4"
+        >
           <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900">Manage Certifications</h2>

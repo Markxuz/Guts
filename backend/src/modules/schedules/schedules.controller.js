@@ -116,10 +116,31 @@ async function updateSchedule(req, res) {
   }
 }
 
+async function updateScheduleRemarks(req, res) {
+  try {
+    ensureAdminScheduleModification(req.user);
+    const payload = await service.updateScheduleRemarks(Number(req.params.id), req.body);
+
+    await recordActivity({
+      userId: req.user?.id,
+      action: `Updated remarks for schedule #${req.params.id}`,
+    });
+
+    return sendSuccess(res, payload, {
+      meta: {
+        type: "schedule-remarks-update",
+      },
+    });
+  } catch (error) {
+    return sendHttpError(res, error, 400, "Failed to update schedule remarks");
+  }
+}
+
 module.exports = {
   getSchedulesByDate,
   getMonthStatus,
   createSchedule,
   updateSchedule,
+  updateScheduleRemarks,
   cancelSchedule,
 };

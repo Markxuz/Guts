@@ -1,11 +1,70 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useToast } from "../../../shared/utils/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useStudentsList } from "./useStudentsList";
 import { deleteStudent, updateEnrollmentStatus, updateStudent } from "../services/studentsApi";
 import { getCourseCode, getLatestEnrollment, mapStudentToEditForm } from "../utils/studentsPageUtils";
+import {
+  formatPromoScoreValue,
+  formatScoreValue,
+  mapOutcomeToEnrollmentStatus,
+  parseScoreValue,
+} from "../utils/statusUpdateConfig";
 
 const PAGE_SIZE = 10;
+const STATUS_RANK = {
+  pending: 1,
+  confirmed: 2,
+  completed: 3,
+};
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildNameSearchTargets(student) {
+  const first = normalizeSearchText(student?.first_name);
+  const middle = normalizeSearchText(student?.middle_name);
+  const last = normalizeSearchText(student?.last_name);
+
+  const parts = [first, middle, last].filter(Boolean);
+  const fullWithMiddle = [first, middle, last].filter(Boolean).join(" ");
+  const fullNoMiddle = [first, last].filter(Boolean).join(" ");
+  const middleLast = [middle, last].filter(Boolean).join(" ");
+
+  return [
+    ...parts,
+    fullWithMiddle,
+    fullNoMiddle,
+    middleLast,
+  ].filter(Boolean);
+}
+
+function matchesStudentSearch(student, rawQuery) {
+  const query = normalizeSearchText(rawQuery);
+  if (!query) return true;
+
+  const tokens = query.split(" ").filter(Boolean);
+  const nameTargets = buildNameSearchTargets(student);
+  const emailTarget = normalizeSearchText(student?.email);
+  const phoneTarget = normalizeSearchText(student?.phone);
+
+  const tokenMatch = tokens.every((token) => {
+    return nameTargets.some((target) => target.includes(token));
+  });
+
+  if (tokenMatch) return true;
+
+  return [emailTarget, phoneTarget]
+    .filter(Boolean)
+    .some((target) => target.includes(query));
+}
 
 function getCourseMembership(student) {
   const enrollment = getLatestEnrollment(student);
@@ -54,7 +113,8 @@ function matchesCourseFilter(student, filter) {
   return getCourseCode(student) === filter;
 }
 
-export function useStudentsPageLogic() {
+export function useStudentsPageLogic(options = {}) {
+  const focusedStudentId = options.focusedStudentId ? Number(options.focusedStudentId) : null;
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
@@ -67,10 +127,21 @@ export function useStudentsPageLogic() {
   const [editForm, setEditForm] = useState(() => mapStudentToEditForm(null));
   const [deletingStudent, setDeletingStudent] = useState(null);
   const [updatingStatusStudent, setUpdatingStatusStudent] = useState(null);
-  const [statusForm, setStatusForm] = useState({ enrollmentStatus: "" });
+  const [statusForm, setStatusForm] = useState({
+    enrollmentStatus: "",
+    courseOutcome: "",
+    promoCategory: "TDC",
+    promoTdcOutcome: "",
+    promoPdcOutcome: "",
+  });
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [isBulkStatusModalOpen, setIsBulkStatusModalOpen] = useState(false);
-  const [bulkStatusForm, setBulkStatusForm] = useState({ enrollmentStatus: "" });
+  const [bulkStatusForm, setBulkStatusForm] = useState({
+    tdcOutcome: "",
+    pdcOutcome: "",
+    promoTdcOutcome: "",
+    promoPdcOutcome: "",
+  });
   const [toasts, addToast, removeToast] = useToast();
 
   const { data, isLoading, isError, error } = useStudentsList();
@@ -103,11 +174,25 @@ export function useStudentsPageLogic() {
   });
 
   const statusUpdateMutation = useMutation({
-    mutationFn: ({ id, enrollmentStatus }) => updateEnrollmentStatus(id, { enrollmentStatus }),
-    onSuccess: async () => {
+    mutationFn: ({ id, enrollmentStatus, courseOutcome, promoCategory, score }) =>
+      updateEnrollmentStatus(id, { enrollmentStatus, courseOutcome, promoCategory, score }),
+    onSuccess: async (updatedStudent) => {
+      queryClient.setQueryData(["students"], (current) => {
+        if (!Array.isArray(current)) return current;
+        return current.map((student) =>
+          Number(student.id) === Number(updatedStudent?.id) ? updatedStudent : student
+        );
+      });
+
       addToast("Status updated successfully.", "success");
       setUpdatingStatusStudent(null);
-      setStatusForm({ enrollmentStatus: "" });
+      setStatusForm({
+        enrollmentStatus: "",
+        courseOutcome: "",
+        promoCategory: "TDC",
+        promoTdcOutcome: "",
+        promoPdcOutcome: "",
+      });
       await queryClient.invalidateQueries({ queryKey: ["students"] });
     },
     onError: (mutationError) => {
@@ -116,17 +201,17 @@ export function useStudentsPageLogic() {
   });
 
   const bulkStatusUpdateMutation = useMutation({
-    mutationFn: async ({ ids, enrollmentStatus }) => {
+    mutationFn: async ({ updates }) => {
       const results = await Promise.allSettled(
-        ids.map((id) => updateEnrollmentStatus(id, { enrollmentStatus }))
+        updates.map((item) => updateEnrollmentStatus(item.id, item.payload))
       );
 
       const failed = results
-        .map((result, index) => ({ result, id: ids[index] }))
+        .map((result, index) => ({ result, id: updates[index]?.id }))
         .filter((item) => item.result.status === "rejected");
 
       return {
-        total: ids.length,
+        total: updates.length,
         failed,
       };
     },
@@ -142,7 +227,12 @@ export function useStudentsPageLogic() {
       }
 
       setIsBulkStatusModalOpen(false);
-      setBulkStatusForm({ enrollmentStatus: "" });
+      setBulkStatusForm({
+        tdcOutcome: "",
+        pdcOutcome: "",
+        promoTdcOutcome: "",
+        promoPdcOutcome: "",
+      });
       setSelectedStudentIds([]);
       await queryClient.invalidateQueries({ queryKey: ["students"] });
     },
@@ -184,26 +274,24 @@ export function useStudentsPageLogic() {
   }, [students, courseFilter]);
 
   const filteredStudents = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
     const filtered = students.filter((student) => {
-      const fullName = [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(" ");
-      const matchesSearch =
-        !query ||
-        [fullName, student.email, student.phone]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(query));
+      const matchesSearch = matchesStudentSearch(student, search);
 
       const matchesCourse = matchesCourseFilter(student, courseFilter);
       const enrollmentStatus = String(getLatestEnrollment(student)?.status || "pending").toLowerCase();
       const matchesStatus = statusFilter === "all" || enrollmentStatus === statusFilter;
+      const matchesFocusedStudent = !focusedStudentId || Number(student.id) === focusedStudentId;
 
-      return matchesSearch && matchesCourse && matchesStatus;
+      return matchesSearch && matchesCourse && matchesStatus && matchesFocusedStudent;
     });
 
     const sorted = [...filtered].sort((a, b) => {
       const nameA = [a.first_name, a.middle_name, a.last_name].filter(Boolean).join(" ").trim().toLowerCase();
       const nameB = [b.first_name, b.middle_name, b.last_name].filter(Boolean).join(" ").trim().toLowerCase();
+      const contactA = `${String(a.email || "").toLowerCase()} ${String(a.phone || "").toLowerCase()}`.trim();
+      const contactB = `${String(b.email || "").toLowerCase()} ${String(b.phone || "").toLowerCase()}`.trim();
+      const courseA = String(getCourseCode(a) || "").toLowerCase();
+      const courseB = String(getCourseCode(b) || "").toLowerCase();
       const statusA = String(getLatestEnrollment(a)?.status || "").toLowerCase();
       const statusB = String(getLatestEnrollment(b)?.status || "").toLowerCase();
 
@@ -223,16 +311,37 @@ export function useStudentsPageLogic() {
         return Number(a.id) - Number(b.id);
       }
 
-      if (sortBy === "status") {
-        const rank = {
-          pending: 1,
-          confirmed: 2,
-          completed: 3,
-        };
-        const rankA = rank[statusA] || 99;
-        const rankB = rank[statusB] || 99;
+      if (sortBy === "contact_asc") {
+        return contactA.localeCompare(contactB);
+      }
+
+      if (sortBy === "contact_desc") {
+        return contactB.localeCompare(contactA);
+      }
+
+      if (sortBy === "course_asc") {
+        return courseA.localeCompare(courseB);
+      }
+
+      if (sortBy === "course_desc") {
+        return courseB.localeCompare(courseA);
+      }
+
+      if (sortBy === "status" || sortBy === "status_asc") {
+        const rankA = STATUS_RANK[statusA] || 99;
+        const rankB = STATUS_RANK[statusB] || 99;
         if (rankA !== rankB) {
           return rankA - rankB;
+        }
+
+        return nameA.localeCompare(nameB);
+      }
+
+      if (sortBy === "status_desc") {
+        const rankA = STATUS_RANK[statusA] || 99;
+        const rankB = STATUS_RANK[statusB] || 99;
+        if (rankA !== rankB) {
+          return rankB - rankA;
         }
 
         return nameA.localeCompare(nameB);
@@ -242,7 +351,17 @@ export function useStudentsPageLogic() {
     });
 
     return sorted;
-  }, [students, search, courseFilter, statusFilter, sortBy]);
+  }, [students, search, courseFilter, statusFilter, sortBy, focusedStudentId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [focusedStudentId]);
 
   const totalEntries = filteredStudents.length;
   const totalPages = Math.max(1, Math.ceil(totalEntries / PAGE_SIZE));
@@ -260,6 +379,25 @@ export function useStudentsPageLogic() {
 
   const pagedStudentIds = pagedStudents.map((student) => student.id);
   const allVisibleSelected = pagedStudentIds.length > 0 && pagedStudentIds.every((id) => selectedStudentIds.includes(id));
+
+  const selectedStudentsForBulk = useMemo(
+    () => students.filter((student) => selectedStudentIds.includes(student.id)),
+    [students, selectedStudentIds]
+  );
+
+  const bulkSelectionMeta = useMemo(() => {
+    return selectedStudentsForBulk.reduce(
+      (acc, student) => {
+        const course = getCourseCode(student);
+        if (course === "TDC") acc.tdc += 1;
+        else if (course === "PDC") acc.pdc += 1;
+        else if (course === "PROMO") acc.promo += 1;
+        else acc.other += 1;
+        return acc;
+      },
+      { tdc: 0, pdc: 0, promo: 0, other: 0 }
+    );
+  }, [selectedStudentsForBulk]);
 
   const toggleSelectStudent = (id) => {
     setSelectedStudentIds((current) => {
@@ -293,25 +431,97 @@ export function useStudentsPageLogic() {
 
   const closeBulkStatusModal = () => {
     setIsBulkStatusModalOpen(false);
-    setBulkStatusForm({ enrollmentStatus: "" });
+    setBulkStatusForm({
+      tdcOutcome: "",
+      pdcOutcome: "",
+      promoTdcOutcome: "",
+      promoPdcOutcome: "",
+    });
   };
 
   const submitBulkStatusUpdate = (event) => {
     event.preventDefault();
-
-    if (!bulkStatusForm.enrollmentStatus) {
-      addToast("Please choose a status for selected students.", "error");
-      return;
-    }
 
     if (selectedStudentIds.length === 0) {
       addToast("No students selected.", "error");
       return;
     }
 
+    if (bulkSelectionMeta.tdc > 0 && !bulkStatusForm.tdcOutcome) {
+      addToast("Please choose a TDC outcome for selected TDC students.", "error");
+      return;
+    }
+
+    if (bulkSelectionMeta.pdc > 0 && !bulkStatusForm.pdcOutcome) {
+      addToast("Please choose a PDC outcome for selected PDC students.", "error");
+      return;
+    }
+
+    if (bulkSelectionMeta.promo > 0 && (!bulkStatusForm.promoTdcOutcome || !bulkStatusForm.promoPdcOutcome)) {
+      addToast("Please choose both Promo TDC and Promo PDC outcomes.", "error");
+      return;
+    }
+
+    const updates = selectedStudentsForBulk
+      .map((student) => {
+        const course = getCourseCode(student);
+        if (course === "TDC") {
+          const outcome = bulkStatusForm.tdcOutcome;
+          return {
+            id: student.id,
+            payload: {
+              enrollmentStatus: mapOutcomeToEnrollmentStatus(outcome),
+              courseOutcome: outcome,
+              score: formatScoreValue("TDC", outcome),
+            },
+          };
+        }
+
+        if (course === "PDC") {
+          const outcome = bulkStatusForm.pdcOutcome;
+          return {
+            id: student.id,
+            payload: {
+              enrollmentStatus: mapOutcomeToEnrollmentStatus(outcome),
+              courseOutcome: outcome,
+              score: formatScoreValue("PDC", outcome),
+            },
+          };
+        }
+
+        if (course === "PROMO") {
+          const promoTdcOutcome = bulkStatusForm.promoTdcOutcome;
+          const promoPdcOutcome = bulkStatusForm.promoPdcOutcome;
+          const mappedFromPdc = mapOutcomeToEnrollmentStatus(promoPdcOutcome);
+          const mappedFromTdc = mapOutcomeToEnrollmentStatus(promoTdcOutcome);
+          const enrollmentStatus =
+            mappedFromPdc === "completed" || mappedFromTdc === "completed"
+              ? "completed"
+              : mappedFromPdc === "pending" || mappedFromTdc === "pending"
+                ? "pending"
+                : "confirmed";
+
+          return {
+            id: student.id,
+            payload: {
+              enrollmentStatus,
+              courseOutcome: `TDC:${promoTdcOutcome} | PDC:${promoPdcOutcome}`,
+              score: formatPromoScoreValue(promoTdcOutcome, promoPdcOutcome),
+            },
+          };
+        }
+
+        return {
+          id: student.id,
+          payload: {
+            enrollmentStatus: "confirmed",
+          },
+        };
+      })
+      .filter(Boolean);
+
     bulkStatusUpdateMutation.mutate({
-      ids: selectedStudentIds,
-      enrollmentStatus: bulkStatusForm.enrollmentStatus,
+      updates,
     });
   };
 
@@ -340,24 +550,80 @@ export function useStudentsPageLogic() {
   const openStatusUpdateModal = (student) => {
     setUpdatingStatusStudent(student);
     const latestEnrollment = getLatestEnrollment(student);
+    const courseCode = getCourseCode(student);
+    const parsedScore = parseScoreValue(latestEnrollment?.score);
     setStatusForm({
       enrollmentStatus: latestEnrollment?.status || "",
+      courseOutcome:
+        courseCode === "PROMO"
+          ? parsedScore.promoCategory === "PDC"
+            ? parsedScore.promoPdcOutcome || ""
+            : parsedScore.promoTdcOutcome || ""
+          : parsedScore.outcome || "",
+      promoCategory: courseCode === "PROMO" ? parsedScore.promoCategory || "TDC" : courseCode,
+      promoTdcOutcome: parsedScore.promoTdcOutcome || "",
+      promoPdcOutcome: parsedScore.promoPdcOutcome || "",
     });
   };
 
   const closeStatusUpdateModal = () => {
     setUpdatingStatusStudent(null);
-    setStatusForm({ enrollmentStatus: "" });
+    setStatusForm({
+      enrollmentStatus: "",
+      courseOutcome: "",
+      promoCategory: "TDC",
+      promoTdcOutcome: "",
+      promoPdcOutcome: "",
+    });
   };
 
   const submitStatusUpdate = (event) => {
     event.preventDefault();
     if (!updatingStatusStudent?.id) return;
-    if (!statusForm.enrollmentStatus) return;
+
+    const courseCode = getCourseCode(updatingStatusStudent);
+
+    if (courseCode === "PROMO") {
+      if (!statusForm.promoTdcOutcome || !statusForm.promoPdcOutcome) {
+        addToast("For Promo students, please set both TDC and PDC outcomes.", "error");
+        return;
+      }
+    }
+
+    if (!statusForm.courseOutcome) {
+      addToast("Please choose a course outcome.", "error");
+      return;
+    }
+
+    const mappedEnrollmentStatus = mapOutcomeToEnrollmentStatus(statusForm.courseOutcome);
+    const scoreValue =
+      courseCode === "PROMO"
+        ? formatPromoScoreValue(statusForm.promoTdcOutcome, statusForm.promoPdcOutcome)
+        : formatScoreValue(courseCode, statusForm.courseOutcome, statusForm.promoCategory);
 
     statusUpdateMutation.mutate({
       id: updatingStatusStudent.id,
-      enrollmentStatus: statusForm.enrollmentStatus,
+      enrollmentStatus: mappedEnrollmentStatus,
+      courseOutcome: statusForm.courseOutcome,
+      promoCategory: statusForm.promoCategory,
+      score: scoreValue,
+    });
+  };
+
+  const quickApprovePendingStudent = (student) => {
+    if (!student?.id) return;
+
+    const latestEnrollment = getLatestEnrollment(student);
+    const currentStatus = String(latestEnrollment?.status || "").toLowerCase();
+    if (currentStatus !== "pending") return;
+
+    const fullName = [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`;
+    const confirmed = window.confirm(`Accept pending enrollment for ${fullName}?`);
+    if (!confirmed) return;
+
+    statusUpdateMutation.mutate({
+      id: student.id,
+      enrollmentStatus: "confirmed",
     });
   };
 
@@ -365,6 +631,27 @@ export function useStudentsPageLogic() {
     if (deletingStudent?.id) {
       deleteMutation.mutate(deletingStudent.id);
     }
+  };
+
+  const toggleTableSort = (column) => {
+    const nextByColumn = {
+      student: { asc: "name_asc", desc: "name_desc" },
+      contact: { asc: "contact_asc", desc: "contact_desc" },
+      course: { asc: "course_asc", desc: "course_desc" },
+      status: { asc: "status_asc", desc: "status_desc" },
+    };
+
+    const config = nextByColumn[column];
+    if (!config) return;
+
+    setSortBy((current) => {
+      const isAsc = current === config.asc || (column === "status" && current === "status");
+      const isDesc = current === config.desc;
+      if (isAsc) return config.desc;
+      if (isDesc) return config.asc;
+      return config.asc;
+    });
+    setPage(1);
   };
 
   return {
@@ -381,6 +668,7 @@ export function useStudentsPageLogic() {
     selectedStudentIds,
     isBulkStatusModalOpen,
     bulkStatusForm,
+    bulkSelectionMeta,
     allVisibleSelected,
     toasts,
     students: pagedStudents,
@@ -431,6 +719,8 @@ export function useStudentsPageLogic() {
     openStatusUpdateModal,
     closeStatusUpdateModal,
     submitStatusUpdate,
+    quickApprovePendingStudent,
     confirmDelete,
+    toggleTableSort,
   };
 }

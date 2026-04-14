@@ -142,7 +142,10 @@ export default function ManageUsersPage() {
 
       {/* Add User Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
           <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
             <div className="flex items-center justify-between bg-[#800000] px-6 py-4">
               <h2 className="text-base font-semibold text-white">Add New User</h2>
@@ -197,7 +200,10 @@ export default function ManageUsersPage() {
 
       {/* Edit Role Modal */}
       {editUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
           <div className="w-full max-w-sm overflow-hidden rounded-xl bg-white shadow-2xl">
             <div className="flex items-center justify-between bg-[#800000] px-6 py-4">
               <h2 className="text-base font-semibold text-white">Change Role — {editUser.name}</h2>

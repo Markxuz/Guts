@@ -47,7 +47,6 @@ function isPastDate(date) {
 export default function CalendarWidget({
   view,
   courseFilter = "tdc",
-  onCourseFilterChange,
   onPrevMonth,
   onNextMonth,
   reportFilter,
@@ -77,18 +76,6 @@ export default function CalendarWidget({
           <p className="mt-1 text-[11px] text-slate-500">Single-click to view the day. Double-click to open the schedule modal.</p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-            Booking Course
-            <select
-              value={courseFilter}
-              onChange={(event) => onCourseFilterChange?.(event.target.value)}
-              className="h-9 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold normal-case tracking-normal text-slate-700 outline-none"
-            >
-              <option value="tdc">TDC</option>
-              <option value="pdc_beginner">PDC Beginner</option>
-              <option value="pdc_experience">PDC Experience</option>
-            </select>
-          </label>
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
           <button type="button" onClick={onPrevMonth} className="rounded-md border border-slate-300 px-2">
             &lt;

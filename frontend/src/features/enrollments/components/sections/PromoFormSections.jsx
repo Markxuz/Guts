@@ -5,7 +5,17 @@ const yesNoOptions = [
   { value: "false", label: "No" },
 ];
 
-const vehicleTypeOptions = [
+const tdcVehicleOptions = [
+  { value: "Car", label: "Car" },
+  { value: "Motorcycle", label: "Motorcycle" },
+];
+
+const tdcTransmissionOptions = [
+  { value: "Manual", label: "Manual" },
+  { value: "Automatic", label: "Automatic" },
+];
+
+const pdcVehicleTypeOptions = [
   { value: "DL Codes A - Motorcycle (2 wheels)", label: "DL Codes A - Motorcycle (2 wheels)" },
   { value: "DL Codes A1 - Tricycle (3 wheels)", label: "DL Codes A1 - Tricycle (3 wheels)" },
   { value: "DL Codes B - Car/Sedan (4 wheels - 8 seaters below)", label: "DL Codes B - Car/Sedan (4 wheels - 8 seaters below)" },
@@ -13,9 +23,10 @@ const vehicleTypeOptions = [
   { value: "Other", label: "Other" },
 ];
 
-const transmissionTypeOptions = [
-  { value: "MANUAL TRANSMISSION (M/T) allowed to drive A/T", label: "Manual Transmission (M/T) allowed to drive A/T" },
-  { value: "AUTOMATIC TRANSMISSION (A/T) not allowed to drive M/T", label: "Automatic Transmission (A/T) not allowed to drive M/T" },
+const pdcTransmissionTypeOptions = [
+  { value: "AUTOMATIC TRANSMISSION (A/T) not allowed to drive M/T", label: "AUTOMATIC TRANSMISSION (A/T) not allowed to drive M/T" },
+  { value: "MANUAL TRANSMISSION (M/T) allowed to drive A/T", label: "MANUAL TRANSMISSION (M/T) allowed to drive A/T" },
+  { value: "Other", label: "Other" },
 ];
 
 const promoPdcEnrollingForOptions = [
@@ -29,13 +40,26 @@ const promoPdcEnrollingForOptions = [
 
 const promoPdcModeOptions = [
   {
-    value: "Experience",
+    value: "Experienced (w/ experience in driving/Applicable para sa marunong na talaga magdrive)",
     label: "Experienced (w/ experience in driving/Applicable para sa marunong na talaga magdrive)",
   },
   {
-    value: "Beginner",
+    value: "BEGINNER ( w/out Experience in Driving / Driving Enhancement/ Magpapaturo pa magdrive)",
     label: "BEGINNER ( w/out Experience in Driving / Driving Enhancement/ Magpapaturo pa magdrive)",
   },
+  {
+    value: "ADD RC/DL Codes -EXPERIENCED ( Para sa mga magpapadagdag ng DL Codes na marunong na talaga magdrive)",
+    label: "ADD RC/DL Codes -EXPERIENCED ( Para sa mga magpapadagdag ng DL Codes na marunong na talaga magdrive)",
+  },
+  {
+    value: "ADD RC/DL Codes -BEGINNER ( Para sa mga magpapadagdag ng DL Codes na Magpapaturo pa mag drive)",
+    label: "ADD RC/DL Codes -BEGINNER ( Para sa mga magpapadagdag ng DL Codes na Magpapaturo pa mag drive)",
+  },
+  {
+    value: "DRIVING LESSON ( Para sa mga may lisensya na at may DLCodes na B/B1 na Magpapaturo pa magdrive)",
+    label: "DRIVING LESSON ( Para sa mga may lisensya na at may DLCodes na B/B1 na Magpapaturo pa magdrive)",
+  },
+  { value: "Other", label: "Other" },
 ];
 
 const promoDrivingSchoolOptions = [
@@ -43,9 +67,29 @@ const promoDrivingSchoolOptions = [
   { value: "Other", label: "Other" },
 ];
 
+const pdcClassificationOptions = [
+  { value: "Beginner", label: "Beginner" },
+  { value: "Experience", label: "Experience" },
+];
+
+function inferPdcCategory(value) {
+  const normalized = String(value || "").toLowerCase();
+
+  if (normalized.includes("beginner")) {
+    return "Beginner";
+  }
+
+  if (normalized.includes("experience") || normalized.includes("experienced") || normalized.includes("driving lesson")) {
+    return "Experience";
+  }
+
+  return "";
+}
+
 export default function PromoFormSections({
   form,
   onFieldChange,
+  onPromoPdcScheduleModeChange,
   promoTdcInstructorOptions,
   promoPdcInstructorOptions,
   promoVehicleOptions,
@@ -58,6 +102,18 @@ export default function PromoFormSections({
   loadingPromoTdcAvailability,
   loadingPromoPdcAvailability,
 }) {
+  const isPromoDriver = form.enrollment.is_already_driver === true;
+  const schedulePdcNow = form.promo_schedule_pdc.enabled === true;
+
+  const handlePdcSelectionChange = (field, value) => {
+    const inferredCategory = inferPdcCategory(value);
+    onFieldChange("extras", field, value);
+
+    if (inferredCategory) {
+      onFieldChange("enrollment", "pdc_category", inferredCategory);
+    }
+  };
+
   return (
     <>
       <div className="rounded-lg border-l-4 border-l-[#800000] bg-[#fff9ef] px-4 py-3 mb-8 mt-12">
@@ -77,7 +133,7 @@ export default function PromoFormSections({
         />
       </div>
 
-      {form.enrollment.is_already_driver !== true ? (
+      {!isPromoDriver ? (
         <p className="mt-3 rounded-xl border border-[#D4AF37]/30 bg-[#fff8e7] px-4 py-3 text-sm text-slate-700">
           Vehicle and transmission details are optional when the student is not yet driving.
         </p>
@@ -89,7 +145,7 @@ export default function PromoFormSections({
             value={form.enrollment.target_vehicle}
             onChange={(event) => onFieldChange("enrollment", "target_vehicle", event.target.value)}
             placeholder="Select target vehicle"
-            options={vehicleTypeOptions}
+            options={tdcVehicleOptions}
             inputClassName="text-slate-900"
             required
           />
@@ -99,7 +155,7 @@ export default function PromoFormSections({
             value={form.enrollment.transmission_type}
             onChange={(event) => onFieldChange("enrollment", "transmission_type", event.target.value)}
             placeholder="Select transmission type"
-            options={transmissionTypeOptions}
+            options={tdcTransmissionOptions}
             inputClassName="text-slate-900"
             required
           />
@@ -173,6 +229,37 @@ export default function PromoFormSections({
         ) : null}
       </section>
 
+        <section className="mt-6 rounded-2xl border border-[#d9c9a0] bg-[#fff9ef] p-4">
+          <p className="text-sm font-semibold text-slate-900">PDC Start Option</p>
+          <p className="mt-1 text-xs text-slate-600">Choose if the client wants to schedule PDC now or later.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onPromoPdcScheduleModeChange("now")}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                schedulePdcNow
+                  ? "bg-[#800000] text-white"
+                  : "border border-[#d9c9a0] bg-white text-slate-700"
+              }`}
+            >
+              Schedule PDC Now
+            </button>
+            <button
+              type="button"
+              onClick={() => onPromoPdcScheduleModeChange("later")}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                !schedulePdcNow
+                  ? "bg-[#800000] text-white"
+                  : "border border-[#d9c9a0] bg-white text-slate-700"
+              }`}
+            >
+              Schedule PDC Later
+            </button>
+          </div>
+        </section>
+
+      {schedulePdcNow ? (
+      <>
       <div className="rounded-lg border-l-4 border-l-[#800000] bg-[#fff9ef] px-4 py-3 mb-8 mt-8">
         <h3 className="text-sm font-bold tracking-wide text-[#800000]">PDC</h3>
       </div>
@@ -183,7 +270,7 @@ export default function PromoFormSections({
           label="ENROLLING FOR"
           name="enrolling_for"
           value={form.extras.enrolling_for}
-          onChange={(event) => onFieldChange("extras", "enrolling_for", event.target.value)}
+          onChange={(event) => handlePdcSelectionChange("enrolling_for", event.target.value)}
           placeholder="Select enrollment purpose"
           options={promoPdcEnrollingForOptions}
           required
@@ -192,13 +279,31 @@ export default function PromoFormSections({
 
       <div className="mt-2 grid gap-3 md:grid-cols-1">
         <SelectField
-          label="MODE OF TRAINING"
+          label="PDC CLASSIFICATION"
           name="pdc_category"
           value={form.enrollment.pdc_category}
           onChange={(event) => onFieldChange("enrollment", "pdc_category", event.target.value)}
+          placeholder="Select Beginner or Experience"
+          options={pdcClassificationOptions}
+          inputClassName="text-slate-900"
+          required
+        />
+      </div>
+
+      <div className="mt-2 grid gap-3 md:grid-cols-1">
+        <SelectField
+          label="MODE OF TRAINING"
+          name="training_method"
+          value={form.enrollment.training_method}
+          onChange={(event) => {
+            onFieldChange("enrollment", "training_method", event.target.value);
+            const inferredCategory = inferPdcCategory(event.target.value);
+            if (inferredCategory) {
+              onFieldChange("enrollment", "pdc_category", inferredCategory);
+            }
+          }}
           placeholder="Select mode of training"
           options={promoPdcModeOptions}
-          inputClassName="text-slate-900"
           required
         />
       </div>
@@ -214,7 +319,7 @@ export default function PromoFormSections({
           value={form.enrollment.target_vehicle}
           onChange={(event) => onFieldChange("enrollment", "target_vehicle", event.target.value)}
           placeholder="Select vehicle"
-          options={vehicleTypeOptions}
+          options={pdcVehicleTypeOptions}
           inputClassName="text-slate-900"
           required
         />
@@ -224,7 +329,7 @@ export default function PromoFormSections({
           value={form.enrollment.transmission_type}
           onChange={(event) => onFieldChange("enrollment", "transmission_type", event.target.value)}
           placeholder="Select transmission"
-          options={transmissionTypeOptions}
+          options={pdcTransmissionTypeOptions}
           inputClassName="text-slate-900"
           required
         />
@@ -383,6 +488,15 @@ export default function PromoFormSections({
           ) : null}
         </div>
       </section>
+      </>
+      ) : (
+      <section className="mt-8 rounded-2xl border border-dashed border-[#d9c9a0] bg-[#fff9ef] p-5">
+        <h3 className="text-base font-semibold text-slate-900">PDC Details</h3>
+        <p className="mt-2 text-sm text-slate-600">
+          PDC is set to Schedule Later. PDC course information and schedule fields are hidden for now and can be filled once Schedule PDC Now is selected.
+        </p>
+      </section>
+      )}
     </>
   );
 }

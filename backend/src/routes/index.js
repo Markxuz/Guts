@@ -16,6 +16,8 @@ const activityLogRoutes = require("../modules/activity-logs/activity-logs.routes
 const reportsRoutes = require("../modules/reports/reports.routes");
 const studentRoutes = require("../modules/students/students.routes");
 const enrollmentRoutes = require("../modules/enrollments/enrollments.routes");
+const attendanceRoutes = require("../modules/attendance/attendance.routes");
+const onlineIntakeRoutes = require("../modules/online-intake/online-intake.routes");
 const dashboardRoutes = require("../modules/dashboard/dashboard.routes");
 const notificationRoutes = require("../modules/notifications/notifications.routes");
 const scheduleChangeRequestRoutes = require("../modules/schedule-change-requests/schedule-change-requests.routes");
@@ -33,6 +35,8 @@ function createApiRouter() {
   router.use("/reports", reportsRoutes);
   router.use("/students", studentRoutes);
   router.use("/enrollments", enrollmentRoutes);
+  router.use("/attendance", attendanceRoutes);
+  router.use("/online-intake", onlineIntakeRoutes);
   router.use("/notifications", notificationRoutes);
   router.use("/schedule-change-requests", scheduleChangeRequestRoutes);
   router.use("/users", usersRoutes);

@@ -10,6 +10,19 @@ export function getLatestEnrollment(student) {
   return student?.Enrollments?.[0] || null;
 }
 
+export function getLatestScheduleForEnrollment(enrollment) {
+  if (!enrollment) return null;
+  if (enrollment.Schedule) return enrollment.Schedule;
+  if (Array.isArray(enrollment.scheduledSessions) && enrollment.scheduledSessions.length) {
+    return enrollment.scheduledSessions[0];
+  }
+  return null;
+}
+
+export function getStudentScheduleRemarks(schedule) {
+  return schedule?.student_remarks || schedule?.remarks || "-";
+}
+
 export function getCourseCode(student) {
   const latestEnrollment = getLatestEnrollment(student);
   const rawCode = latestEnrollment?.DLCode?.code || "";
