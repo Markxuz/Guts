@@ -21,6 +21,7 @@
 2. Update [CHANGELOG.md](../CHANGELOG.md) under an explicit version heading.
 3. Deploy app and run migrations.
 4. Smoke test auth, users, enrollments, schedules, reports.
+5. Run [remarks flow regression checklist](./remarks-flow-regression-checklist.md).
 
 ## Post-Release
 

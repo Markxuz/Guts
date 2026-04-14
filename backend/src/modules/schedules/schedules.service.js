@@ -524,13 +524,14 @@ function capacityFromResources(instructorCount, vehicleCount) {
 
 function studentName(student) {
   if (!student) return null;
-  return [student.first_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`;
+  return [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`;
 }
 
 function mapSchedule(row) {
   const selectedEnrollment = row?.selectedEnrollment || null;
   const firstEnrollment = selectedEnrollment || row?.Enrollments?.[0];
-  const linkedStudent = row?.scheduledStudent || selectedEnrollment?.Student || firstEnrollment?.Student;
+  const linkedStudent = selectedEnrollment?.Student || firstEnrollment?.Student || row?.scheduledStudent;
+  const resolvedCourseType = scheduleCourseType(row) || inferCourseTypeFromEnrollment(firstEnrollment);
   const trainerName = row?.Instructor?.name || "-";
   const careOfName = row?.careOfInstructor?.name || trainerName;
   const instructorDisplay = careOfName === trainerName
@@ -545,16 +546,30 @@ function mapSchedule(row) {
     slot: row.start_time === SLOT_MAP.morning.startTime ? "morning" : "afternoon",
     slotLabel: row.start_time === SLOT_MAP.morning.startTime ? SLOT_MAP.morning.label : SLOT_MAP.afternoon.label,
     course: row?.Course?.course_name || firstEnrollment?.DLCode?.code || "Course",
+    courseType: resolvedCourseType,
+    dlCodes: firstEnrollment?.DLCode?.code || "-",
     vehicleName: row?.Vehicle?.vehicle_name || row?.Vehicle?.plate_number || null,
-    vehicleType: row?.Vehicle?.vehicle_type || (scheduleCourseType(row) === "tdc" ? "Lecture / No Vehicle" : "-"),
+    vehicleType: row?.Vehicle?.vehicle_type || (resolvedCourseType === "tdc" ? "Lecture / No Vehicle" : "-"),
     transmissionType: row?.Vehicle?.transmission_type || "-",
     instructor: instructorDisplay,
     careOfInstructor: careOfName,
     trainerInstructor: trainerName,
     studentName: studentName(linkedStudent) || "Open Slot",
+    studentEmail: linkedStudent?.email || firstEnrollment?.Student?.email || "",
+    studentContact: linkedStudent?.phone || firstEnrollment?.Student?.phone || "",
+    ltoPortalAccount:
+      linkedStudent?.StudentProfile?.lto_portal_account ||
+      firstEnrollment?.Student?.StudentProfile?.lto_portal_account ||
+      selectedEnrollment?.Student?.StudentProfile?.lto_portal_account ||
+      "",
+    transmissionRule: firstEnrollment?.transmission_type || row?.Vehicle?.transmission_type || "",
+    isAlreadyDriver: firstEnrollment?.is_already_driver ?? null,
+    targetVehicle: firstEnrollment?.target_vehicle || "-",
     enrollmentId: row?.enrollment_id || selectedEnrollment?.id || firstEnrollment?.id || null,
     studentId: row?.student_id || linkedStudent?.id || null,
-    remarks: row.remarks || "Available schedule slot",
+    remarks: row.student_remarks || row.remarks || "Available schedule slot",
+    studentRemarks: row.student_remarks || row.remarks || "",
+    instructorRemarks: row.instructor_remarks || "",
   };
 }
 
@@ -738,13 +753,16 @@ async function addSchedule(payload, options = {}) {
       throw error;
     }
 
+    const explicitCourseType = normalizeCourseType(payload.course_type);
+    const preferredCourseType = explicitCourseType || enrollmentCourseType;
+
     const resolvedInput = {
       ...payload,
-      course_type: enrollmentCourseType || payload.course_type,
+      course_type: preferredCourseType || payload.course_type,
     };
 
     const resolvedCourseId = await resolveCourseId(resolvedInput, transaction);
-    const effectiveCourseType = enrollmentCourseType
+    const effectiveCourseType = preferredCourseType
       || await resolveEffectiveCourseType(resolvedInput, resolvedCourseId, transaction);
 
     const [selectedInstructor, careOfInstructor, qualifiedInstructorCount, vehicleCount] = await Promise.all([
@@ -1038,6 +1056,62 @@ async function rescheduleSchedule(scheduleId, payload, options = {}) {
   }
 }
 
+async function updateScheduleRemarks(scheduleId, remarks, options = {}) {
+  const ownTransaction = !options.transaction;
+  const transaction = options.transaction || await sequelize.transaction();
+
+  try {
+    const target = await repository.findScheduleById(scheduleId, transaction);
+    if (!target) {
+      const error = new Error("Schedule not found");
+      error.status = 404;
+      throw error;
+    }
+
+    const payload = typeof remarks === "object" && remarks !== null ? remarks : { remarks };
+    const hasStudentRemarks = Object.prototype.hasOwnProperty.call(payload, "studentRemarks")
+      || Object.prototype.hasOwnProperty.call(payload, "student_remarks")
+      || Object.prototype.hasOwnProperty.call(payload, "remarks");
+    const hasInstructorRemarks = Object.prototype.hasOwnProperty.call(payload, "instructorRemarks")
+      || Object.prototype.hasOwnProperty.call(payload, "instructor_remarks");
+    const studentRemarks = hasStudentRemarks
+      ? String(payload.studentRemarks ?? payload.student_remarks ?? payload.remarks ?? "").trim() || null
+      : undefined;
+    const instructorRemarks = hasInstructorRemarks
+      ? String(payload.instructorRemarks ?? payload.instructor_remarks ?? "").trim() || null
+      : undefined;
+    const updatePayload = {};
+
+    if (hasStudentRemarks && (await repository.hasRemarksColumn())) {
+      updatePayload.remarks = studentRemarks;
+    }
+
+    if (hasStudentRemarks && (await repository.hasStudentRemarksColumn())) {
+      updatePayload.student_remarks = studentRemarks;
+    }
+
+    if (hasInstructorRemarks && (await repository.hasInstructorRemarksColumn())) {
+      updatePayload.instructor_remarks = instructorRemarks;
+    }
+
+    await repository.updateSchedule(target, updatePayload, transaction);
+    const updated = await repository.findScheduleById(scheduleId, transaction);
+
+    if (ownTransaction) {
+      await transaction.commit();
+    }
+
+    return {
+      item: mapSchedule(updated),
+    };
+  } catch (error) {
+    if (ownTransaction) {
+      await transaction.rollback();
+    }
+    throw error;
+  }
+}
+
 module.exports = {
   SLOT_MAP,
   listSchedulesByDate,
@@ -1047,5 +1121,6 @@ module.exports = {
   isBeginnerSchedule: (row) => matchesCourseType(row, "pdc_beginner"),
   addSchedule,
   rescheduleSchedule,
+  updateScheduleRemarks,
   cancelSchedule,
 };

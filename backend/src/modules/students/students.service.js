@@ -158,7 +158,7 @@ async function removeStudent(id) {
   }
 }
 
-async function updateEnrollmentStatus(studentId, { enrollmentStatus }) {
+async function updateEnrollmentStatus(studentId, payload) {
   const transaction = await sequelize.transaction();
 
   try {
@@ -169,7 +169,7 @@ async function updateEnrollmentStatus(studentId, { enrollmentStatus }) {
       throw error;
     }
 
-    await repository.updateEnrollmentStatus(studentId, enrollmentStatus, transaction);
+    await repository.updateEnrollmentStatus(studentId, payload, transaction);
     await transaction.commit();
     return getStudent(studentId);
   } catch (error) {

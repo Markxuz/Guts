@@ -10,6 +10,7 @@ html,
 body,
 #root {
 	scroll-behavior: smooth;
+	overflow-x: hidden;
 }
 
 button,
@@ -63,6 +64,7 @@ a:active,
 
 .thin-scrollbar::-webkit-scrollbar {
 	width: 6px;
+	height: 8px;
 }
 
 .thin-scrollbar::-webkit-scrollbar-track {

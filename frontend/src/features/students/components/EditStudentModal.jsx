@@ -1,7 +1,36 @@
+import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, X } from "lucide-react";
+import {
+  findBarangayCodeByName,
+  findCityCodeByName,
+  findProvinceCodeByName,
+  findRegionCodeByLabel,
+  getBarangayLabel,
+  getBarangayOptions,
+  getCityLabel,
+  getCityOptions,
+  getProvinceLabel,
+  getProvinceOptions,
+  getRegionLabel,
+  getRegionOptions,
+} from "../../enrollments/utils/phLocations";
+
+const genderOptions = ["male", "female", "prefer_not_to_say"];
+const nationalityOptions = ["Filipino", "Foreign", "Others"];
+const civilStatusOptions = ["single", "married", "widowed", "divorced", "separated", "other"];
 
 export default function EditStudentModal({ student, form, onChange, onClose, onSubmit, isPending }) {
-  if (!student) return null;
+  const modalViewportStyle = {
+    left: "var(--app-sidebar-width, 0px)",
+    width: "calc(100vw - var(--app-sidebar-width, 0px))",
+  };
+
+  const [regionCode, setRegionCode] = useState("");
+  const [provinceCode, setProvinceCode] = useState("");
+  const [cityCode, setCityCode] = useState("");
+  const [barangayCode, setBarangayCode] = useState("");
+  const [nationalitySelection, setNationalitySelection] = useState("");
+  const [nationalityOther, setNationalityOther] = useState("");
 
   const handleFieldChange = (section, field, value) => {
     onChange((current) => ({
@@ -13,12 +42,118 @@ export default function EditStudentModal({ student, form, onChange, onClose, onS
     }));
   };
 
+  const regionOptions = useMemo(() => getRegionOptions(), []);
+  const provinceOptions = useMemo(() => getProvinceOptions(regionCode), [regionCode]);
+  const cityOptions = useMemo(() => getCityOptions(regionCode, provinceCode), [regionCode, provinceCode]);
+  const barangayOptions = useMemo(() => getBarangayOptions(cityCode), [cityCode]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!student || !form?.profile) {
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setRegionCode("");
+        setProvinceCode("");
+        setCityCode("");
+        setBarangayCode("");
+        setNationalitySelection("");
+        setNationalityOther("");
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const nextRegionCode = findRegionCodeByLabel(form.profile.region);
+    const nextProvinceCode = findProvinceCodeByName(nextRegionCode, form.profile.province);
+    const nextCityCode = findCityCodeByName(nextRegionCode, nextProvinceCode, form.profile.city);
+    const nextBarangayCode = findBarangayCodeByName(nextCityCode, form.profile.barangay);
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setRegionCode(nextRegionCode);
+      setProvinceCode(nextProvinceCode);
+      setCityCode(nextCityCode);
+      setBarangayCode(nextBarangayCode);
+
+      const currentNationality = String(form.profile.nationality || "").trim();
+      if (currentNationality === "Filipino" || currentNationality === "Foreign") {
+        setNationalitySelection(currentNationality);
+        setNationalityOther("");
+      } else if (currentNationality) {
+        setNationalitySelection("Others");
+        setNationalityOther(currentNationality);
+      } else {
+        setNationalitySelection("");
+        setNationalityOther("");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [student, form.profile]);
+
+  if (!student) return null;
+
+  const handleRegionChange = (value) => {
+    setRegionCode(value);
+    setProvinceCode("");
+    setCityCode("");
+    setBarangayCode("");
+
+    handleFieldChange("profile", "region", getRegionLabel(value));
+    handleFieldChange("profile", "province", "");
+    handleFieldChange("profile", "city", "");
+    handleFieldChange("profile", "barangay", "");
+  };
+
+  const handleProvinceChange = (value) => {
+    setProvinceCode(value);
+    setCityCode("");
+    setBarangayCode("");
+
+    handleFieldChange("profile", "province", getProvinceLabel(regionCode, value));
+    handleFieldChange("profile", "city", "");
+    handleFieldChange("profile", "barangay", "");
+  };
+
+  const handleCityChange = (value) => {
+    setCityCode(value);
+    setBarangayCode("");
+
+    handleFieldChange("profile", "city", getCityLabel(regionCode, provinceCode, value));
+    handleFieldChange("profile", "barangay", "");
+  };
+
+  const handleBarangayChange = (value) => {
+    setBarangayCode(value);
+    handleFieldChange("profile", "barangay", getBarangayLabel(cityCode, value));
+  };
+
+  const handleNationalityChange = (value) => {
+    setNationalitySelection(value);
+    if (value === "Others") {
+      handleFieldChange("profile", "nationality", nationalityOther);
+      return;
+    }
+
+    setNationalityOther("");
+    handleFieldChange("profile", "nationality", value);
+  };
+
+  const handleNationalityOtherChange = (value) => {
+    setNationalityOther(value);
+    handleFieldChange("profile", "nationality", value);
+  };
+
   const sectionHeadingClass = "mb-2 text-xs font-bold uppercase tracking-wide text-[#800000]";
   const inputClass =
     "rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-500 outline-none transition focus:border-[#800000] focus:ring-2 focus:ring-[#800000]/15";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div style={modalViewportStyle} className="fixed inset-y-0 right-0 z-[120] flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 bg-[#800000] px-5 py-4 text-white">
           <div>
@@ -86,33 +221,47 @@ export default function EditStudentModal({ student, form, onChange, onClose, onS
               type="number"
               className={inputClass}
             />
-            <input
-              value={form.profile.gender}
+            <select
+              value={form.profile.gender || ""}
               onChange={(event) => handleFieldChange("profile", "gender", event.target.value)}
-              placeholder="Gender"
               className={inputClass}
-            />
+            >
+              <option value="">Select Gender</option>
+              {genderOptions.map((option) => (
+                <option key={option} value={option}>{option.replace(/_/g, " ")}</option>
+              ))}
+            </select>
           </div>
 
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
-            <input
-              value={form.profile.civil_status}
+          <div className={`mt-3 grid gap-3 ${nationalitySelection === "Others" ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+            <select
+              value={form.profile.civil_status || ""}
               onChange={(event) => handleFieldChange("profile", "civil_status", event.target.value)}
-              placeholder="Civil Status"
               className={inputClass}
-            />
-            <input
-              value={form.profile.nationality}
-              onChange={(event) => handleFieldChange("profile", "nationality", event.target.value)}
-              placeholder="Nationality"
+            >
+              <option value="">Select Civil Status</option>
+              {civilStatusOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <select
+              value={nationalitySelection}
+              onChange={(event) => handleNationalityChange(event.target.value)}
               className={inputClass}
-            />
-            <input
-              value={form.profile.region}
-              onChange={(event) => handleFieldChange("profile", "region", event.target.value)}
-              placeholder="Region"
-              className={inputClass}
-            />
+            >
+              <option value="">Select Nationality</option>
+              {nationalityOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            {nationalitySelection === "Others" ? (
+              <input
+                value={nationalityOther}
+                onChange={(event) => handleNationalityOtherChange(event.target.value)}
+                placeholder="Specify Nationality"
+                className={inputClass}
+              />
+            ) : null}
           </div>
 
           <h4 className={`${sectionHeadingClass} mt-5`}>Address</h4>
@@ -132,24 +281,49 @@ export default function EditStudentModal({ student, form, onChange, onClose, onS
           </div>
 
           <div className="mt-3 grid gap-3 md:grid-cols-3">
-            <input
-              value={form.profile.barangay}
-              onChange={(event) => handleFieldChange("profile", "barangay", event.target.value)}
-              placeholder="Barangay"
+            <select
+              value={regionCode}
+              onChange={(event) => handleRegionChange(event.target.value)}
               className={inputClass}
-            />
-            <input
-              value={form.profile.city}
-              onChange={(event) => handleFieldChange("profile", "city", event.target.value)}
-              placeholder="City"
+            >
+              <option value="">Select Region</option>
+              {regionOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+            <select
+              value={provinceCode}
+              onChange={(event) => handleProvinceChange(event.target.value)}
               className={inputClass}
-            />
-            <input
-              value={form.profile.province}
-              onChange={(event) => handleFieldChange("profile", "province", event.target.value)}
-              placeholder="Province"
+            >
+              <option value="">{regionCode ? "Select Province" : "Select region first"}</option>
+              {provinceOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+            <select
+              value={cityCode}
+              onChange={(event) => handleCityChange(event.target.value)}
               className={inputClass}
-            />
+            >
+              <option value="">{provinceCode ? "Select City / Municipality" : "Select province first"}</option>
+              {cityOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-1">
+            <select
+              value={barangayCode}
+              onChange={(event) => handleBarangayChange(event.target.value)}
+              className={inputClass}
+            >
+              <option value="">{cityCode ? "Select Barangay / District" : "Select city first"}</option>
+              {barangayOptions.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </select>
           </div>
 
           <div className="mt-3 grid gap-3 md:grid-cols-2">

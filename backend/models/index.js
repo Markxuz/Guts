@@ -18,6 +18,10 @@ const Certificate = require("./Certificate")(sequelize);
 const ActivityLog = require("./ActivityLog")(sequelize);
 const MaintenanceLog = require("./MaintenanceLog")(sequelize);
 const FuelLog = require("./FuelLog")(sequelize);
+const PromoPackage = require("./PromoPackage")(sequelize);
+const PromoEntitlement = require("./PromoEntitlement")(sequelize);
+const SessionAttendance = require("./SessionAttendance")(sequelize);
+const OnlineImportQueue = require("./OnlineImportQueue")(sequelize);
 
 // Associations
 
@@ -72,6 +76,27 @@ Enrollment.belongsTo(DLCode, { foreignKey: "dl_code_id" });
 Enrollment.hasOne(Payment, { foreignKey: "enrollment_id" });
 Payment.belongsTo(Enrollment, { foreignKey: "enrollment_id" });
 
+Student.hasMany(PromoPackage, { foreignKey: "student_id", as: "promoPackages" });
+PromoPackage.belongsTo(Student, { foreignKey: "student_id", as: "student" });
+
+Enrollment.hasMany(PromoPackage, { foreignKey: "enrollment_id", as: "promoPackages" });
+PromoPackage.belongsTo(Enrollment, { foreignKey: "enrollment_id", as: "enrollment" });
+
+PromoPackage.hasMany(PromoEntitlement, { foreignKey: "promo_package_id", as: "entitlements" });
+PromoEntitlement.belongsTo(PromoPackage, { foreignKey: "promo_package_id", as: "promoPackage" });
+
+PromoPackage.hasMany(Enrollment, { foreignKey: "promo_package_id", as: "enrollments" });
+Enrollment.belongsTo(PromoPackage, { foreignKey: "promo_package_id", as: "promoPackage" });
+
+Enrollment.hasMany(SessionAttendance, { foreignKey: "enrollment_id", as: "sessionAttendance" });
+SessionAttendance.belongsTo(Enrollment, { foreignKey: "enrollment_id", as: "enrollment" });
+
+Schedule.hasMany(SessionAttendance, { foreignKey: "schedule_id", as: "sessionAttendance" });
+SessionAttendance.belongsTo(Schedule, { foreignKey: "schedule_id", as: "schedule" });
+
+User.hasMany(OnlineImportQueue, { foreignKey: "reviewed_by_user_id", as: "reviewedOnlineImports" });
+OnlineImportQueue.belongsTo(User, { foreignKey: "reviewed_by_user_id", as: "reviewer" });
+
 Enrollment.hasOne(Certificate);
 Certificate.belongsTo(Enrollment);
 
@@ -113,4 +138,8 @@ module.exports = {
   NotificationRead,
   MaintenanceLog,
   FuelLog,
+  PromoPackage,
+  PromoEntitlement,
+  SessionAttendance,
+  OnlineImportQueue,
 };

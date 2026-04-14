@@ -1,22 +1,26 @@
+import { lazy, Suspense } from "react";
 import { Search } from "lucide-react";
-import DeleteConfirmationDialog from "../components/DeleteConfirmationDialog";
-import EditStudentModal from "../components/EditStudentModal";
-import StatusUpdateModal from "../components/StatusUpdateModal";
-import StudentDetailsModal from "../components/StudentDetailsModal";
 import StudentTable from "../components/StudentTable";
 import SummaryCards from "../components/SummaryCards";
-import BulkStatusUpdateModal from "../components/BulkStatusUpdateModal";
 import ToastStack from "../../../shared/utils/ToastStack";
 import { useStudentsPageLogic } from "../hooks/useStudentsPageLogic";
 import { useAuth } from "../../auth/hooks/useAuth";
+import { useSearchParams } from "react-router-dom";
+
+const StudentDetailsModal = lazy(() => import("../components/StudentDetailsModal"));
+const EditStudentModal = lazy(() => import("../components/EditStudentModal"));
+const DeleteConfirmationDialog = lazy(() => import("../components/DeleteConfirmationDialog"));
+const StatusUpdateModal = lazy(() => import("../components/StatusUpdateModal"));
+const BulkStatusUpdateModal = lazy(() => import("../components/BulkStatusUpdateModal"));
 
 function StudentsPage() {
   const { role } = useAuth();
+  const [searchParams] = useSearchParams();
+  const focusedStudentId = searchParams.get("focusStudentId");
 
   const {
     search,
     courseFilter,
-    statusFilter,
     sortBy,
     selectedStudent,
     editingStudent,
@@ -27,6 +31,7 @@ function StudentsPage() {
     selectedStudentIds,
     isBulkStatusModalOpen,
     bulkStatusForm,
+    bulkSelectionMeta,
     allVisibleSelected,
     toasts,
     students,
@@ -47,8 +52,6 @@ function StudentsPage() {
     removeToast,
     setSearch,
     setCourseFilter,
-    setStatusFilter,
-    setSortBy,
     toggleSelectStudent,
     toggleSelectAllVisible,
     openBulkStatusModal,
@@ -62,8 +65,10 @@ function StudentsPage() {
     openStatusUpdateModal,
     closeStatusUpdateModal,
     submitStatusUpdate,
+    quickApprovePendingStudent,
     confirmDelete,
-  } = useStudentsPageLogic();
+    toggleTableSort,
+  } = useStudentsPageLogic({ focusedStudentId });
 
   return (
     <section className="min-w-0 space-y-4">
@@ -115,29 +120,6 @@ function StudentsPage() {
                 PDC
               </button>
             </div>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="h-10 w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-[#800000]"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Active</option>
-              <option value="completed">Completed</option>
-            </select>
-
-            <select
-              value={sortBy}
-              onChange={(event) => setSortBy(event.target.value)}
-              className="h-10 w-full sm:w-auto rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-[#800000]"
-            >
-              <option value="name_asc">Sort: Name A-Z</option>
-              <option value="name_desc">Sort: Name Z-A</option>
-              <option value="id_desc">Sort: Newest First</option>
-              <option value="id_asc">Sort: Oldest First</option>
-              <option value="status">Sort: Status</option>
-            </select>
-
             <button
               type="button"
               onClick={openBulkStatusModal}
@@ -163,50 +145,56 @@ function StudentsPage() {
         onUpdateStatus={openStatusUpdateModal}
         onDelete={setDeletingStudent}
         canDelete={role === "admin"}
+        onClickPendingBadge={quickApprovePendingStudent}
         selectedStudentIds={selectedStudentIds}
         allVisibleSelected={allVisibleSelected}
         onToggleSelectStudent={toggleSelectStudent}
         onToggleSelectAllVisible={toggleSelectAllVisible}
         onPreviousPage={goToPreviousPage}
         onNextPage={goToNextPage}
+        sortBy={sortBy}
+        onToggleSort={toggleTableSort}
       />
 
-      <StudentDetailsModal student={selectedStudent} onClose={() => setSelectedStudent(null)} />
+      <Suspense fallback={null}>
+        <StudentDetailsModal student={selectedStudent} onClose={() => setSelectedStudent(null)} />
 
-      <EditStudentModal
-        student={editingStudent}
-        form={editForm}
-        onChange={setEditForm}
-        onClose={closeEditModal}
-        onSubmit={submitEdit}
-        isPending={isUpdatingStudent}
-      />
+        <EditStudentModal
+          student={editingStudent}
+          form={editForm}
+          onChange={setEditForm}
+          onClose={closeEditModal}
+          onSubmit={submitEdit}
+          isPending={isUpdatingStudent}
+        />
 
-      <DeleteConfirmationDialog
-        student={deletingStudent}
-        onCancel={() => setDeletingStudent(null)}
-        onConfirm={confirmDelete}
-        isPending={isDeletingStudent}
-      />
+        <DeleteConfirmationDialog
+          student={deletingStudent}
+          onCancel={() => setDeletingStudent(null)}
+          onConfirm={confirmDelete}
+          isPending={isDeletingStudent}
+        />
 
-      <StatusUpdateModal
-        student={updatingStatusStudent}
-        form={statusForm}
-        onChange={setStatusForm}
-        onClose={closeStatusUpdateModal}
-        onSubmit={submitStatusUpdate}
-        isPending={isUpdatingStatus}
-      />
+        <StatusUpdateModal
+          student={updatingStatusStudent}
+          form={statusForm}
+          onChange={setStatusForm}
+          onClose={closeStatusUpdateModal}
+          onSubmit={submitStatusUpdate}
+          isPending={isUpdatingStatus}
+        />
 
-      <BulkStatusUpdateModal
-        isOpen={isBulkStatusModalOpen}
-        selectedCount={selectedStudentIds.length}
-        form={bulkStatusForm}
-        onChange={setBulkStatusForm}
-        onClose={closeBulkStatusModal}
-        onSubmit={submitBulkStatusUpdate}
-        isPending={isBulkUpdatingStatus}
-      />
+        <BulkStatusUpdateModal
+          isOpen={isBulkStatusModalOpen}
+          selectedCount={selectedStudentIds.length}
+          selectionMeta={bulkSelectionMeta}
+          form={bulkStatusForm}
+          onChange={setBulkStatusForm}
+          onClose={closeBulkStatusModal}
+          onSubmit={submitBulkStatusUpdate}
+          isPending={isBulkUpdatingStatus}
+        />
+      </Suspense>
     </section>
   );
 }

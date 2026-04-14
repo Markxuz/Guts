@@ -13,8 +13,8 @@ export function deleteStudent(id) {
   return resourceServices.students.remove(id);
 }
 
-export function updateEnrollmentStatus(id, { enrollmentStatus }) {
+export function updateEnrollmentStatus(id, payload) {
   return api.put(`/students/${id}/enrollment-status`, {
-    enrollmentStatus,
+    ...payload,
   });
 }

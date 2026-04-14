@@ -1,13 +1,26 @@
-import { buildAddress, getCourseCode, getLatestEnrollment, toTitleCase } from "../utils/studentsPageUtils";
+import {
+  buildAddress,
+  getCourseCode,
+  getLatestEnrollment,
+  getLatestScheduleForEnrollment,
+  getStudentScheduleRemarks,
+  toTitleCase,
+} from "../utils/studentsPageUtils";
 
 export default function StudentDetailsModal({ student, onClose }) {
   if (!student) return null;
 
+  const modalViewportStyle = {
+    left: "var(--app-sidebar-width, 0px)",
+    width: "calc(100vw - var(--app-sidebar-width, 0px))",
+  };
+
   const profile = student.StudentProfile || {};
   const enrollment = getLatestEnrollment(student);
+  const latestSchedule = getLatestScheduleForEnrollment(enrollment);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div style={modalViewportStyle} className="fixed inset-y-0 right-0 z-[120] flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 bg-[#800000] px-5 py-4 text-white">
           <div>
@@ -52,6 +65,14 @@ export default function StudentDetailsModal({ student, onClose }) {
           <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase text-slate-500">Address</p>
             <p className="mt-1 text-sm text-slate-900">{buildAddress(profile)}</p>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase text-slate-500">Instructor Remarks</p>
+            <p className="mt-1 text-sm text-slate-900">{latestSchedule?.instructor_remarks || "-"}</p>
+
+            <p className="mt-3 text-xs font-semibold uppercase text-slate-500">Student Remarks</p>
+            <p className="mt-1 text-sm text-slate-900">{getStudentScheduleRemarks(latestSchedule)}</p>
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-2">

@@ -26,6 +26,22 @@ module.exports = (sequelize) => {
       phone: {
         type: DataTypes.STRING,
       },
+
+      source_channel: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: "walk_in",
+      },
+
+      external_source: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
+      external_student_ref: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
     },
     {
       timestamps: true,

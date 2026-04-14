@@ -23,6 +23,7 @@ export function FormField({
         onChange={onChange}
         type={type}
         placeholder={placeholder}
+        required={required}
         className={`${baseFieldClassName} ${inputClassName}`.trim()}
       />
     </label>
@@ -50,6 +51,7 @@ export function SelectField({
         name={name}
         value={value ?? ""}
         onChange={onChange}
+        required={required}
         className={`${baseFieldClassName} ${inputClassName}`.trim()}
       >
         <option value="" disabled>

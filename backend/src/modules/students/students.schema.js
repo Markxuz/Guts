@@ -48,6 +48,9 @@ const studentUpdateSchema = Joi.object({
 
 const enrollmentStatusUpdateSchema = Joi.object({
   enrollmentStatus: Joi.string().valid("pending", "confirmed", "completed").required(),
+  courseOutcome: Joi.string().trim().allow(null, ""),
+  promoCategory: Joi.string().trim().valid("TDC", "PDC").allow(null, ""),
+  score: Joi.string().trim().allow(null, ""),
 });
 
 module.exports = {

@@ -46,6 +46,14 @@ module.exports = (sequelize) => {
 			type: DataTypes.STRING,
 			allowNull: true,
 		},
+		student_remarks: {
+			type: DataTypes.TEXT,
+			allowNull: true,
+		},
+		instructor_remarks: {
+			type: DataTypes.TEXT,
+			allowNull: true,
+		},
 	}, {
 		tableName: "schedules",
 		timestamps: false,

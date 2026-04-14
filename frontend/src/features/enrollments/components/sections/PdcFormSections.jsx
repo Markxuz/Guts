@@ -52,6 +52,11 @@ const drivingSchoolOptions = [
   { value: "Other", label: "Other" },
 ];
 
+const pdcClassificationOptions = [
+  { value: "Beginner", label: "Beginner" },
+  { value: "Experience", label: "Experience" },
+];
+
 function inferPdcCategory(value) {
   const normalized = String(value || "").toLowerCase();
 
@@ -114,6 +119,18 @@ export default function PdcFormSections({ form, onFieldChange }) {
           onChange={(event) => handlePdcSelectionChange("enrolling_for", event.target.value)}
           placeholder="Select enrollment purpose"
           options={enrollingForOptions}
+          required
+        />
+      </div>
+
+      <div className="mt-2 grid gap-3 md:grid-cols-1">
+        <SelectField
+          label="PDC CLASSIFICATION"
+          name="pdc_category"
+          value={form.enrollment.pdc_category}
+          onChange={(event) => onFieldChange("enrollment", "pdc_category", event.target.value)}
+          placeholder="Select Beginner or Experience"
+          options={pdcClassificationOptions}
           required
         />
       </div>

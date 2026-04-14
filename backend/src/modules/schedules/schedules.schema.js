@@ -33,6 +33,12 @@ const scheduleUpdateSchema = Joi.object({
   slot: Joi.string().valid("morning", "afternoon").required(),
 });
 
+const scheduleRemarksUpdateSchema = Joi.object({
+  remarks: Joi.string().trim().allow("", null),
+  student_remarks: Joi.string().trim().allow("", null),
+  instructor_remarks: Joi.string().trim().allow("", null),
+});
+
 const scheduleMonthStatusQuerySchema = Joi.object({
   year: Joi.number().integer().min(2000).max(2100).required(),
   month: Joi.number().integer().min(1).max(12).required(),
@@ -45,4 +51,5 @@ module.exports = {
   scheduleCancelParamsSchema,
   scheduleCancelQuerySchema,
   scheduleUpdateSchema,
+  scheduleRemarksUpdateSchema,
 };

@@ -1,4 +1,15 @@
+import { useState } from "react";
+
+const twoLineClampStyle = {
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+
 export default function DailyReportsCard({ rows, total, loading, error, title, subtitle, emptyMessage }) {
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const entryCount = total ?? rows.length;
 
   return (
@@ -8,11 +19,40 @@ export default function DailyReportsCard({ rows, total, loading, error, title, s
           <p className="text-sm font-bold text-slate-900">{title}</p>
           <p className="text-xs text-slate-500">{subtitle}</p>
         </div>
-        <span className="rounded-full bg-[#D4AF37]/20 px-2 py-0.5 text-xs font-semibold text-[#800000]">
-          {entryCount} entries
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-[#D4AF37]/20 px-2 py-0.5 text-xs font-semibold text-[#800000]">
+            {entryCount} entries
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setIsMinimized(true);
+              setIsMaximized(false);
+            }}
+            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+            title="Minimize report card"
+          >
+            Minimize
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsMinimized(false);
+              setIsMaximized((current) => !current);
+            }}
+            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+            title="Maximize report card"
+          >
+            {isMaximized ? "Normal" : "Maximize"}
+          </button>
+        </div>
       </div>
 
+      {isMinimized ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          Report card is minimized.
+        </div>
+      ) : (
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         {loading ? <p className="p-4 text-sm text-slate-500">Loading daily reports...</p> : null}
         {error ? <p className="p-4 text-sm text-red-500">Failed to load daily reports.</p> : null}
@@ -20,20 +60,22 @@ export default function DailyReportsCard({ rows, total, loading, error, title, s
           <p className="p-4 text-sm text-slate-500">{emptyMessage}</p>
         ) : null}
         {!loading && !error && entryCount > 0 ? (
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Student Name</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Course</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Vehicle Type</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Type of Transmission</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Session</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Instructor / Care Of</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">Remarks</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {rows.map((row) => {
+          <div className={`thin-scrollbar overflow-auto ${isMaximized ? "max-h-[70vh]" : "max-h-[440px]"}`}>
+            <table className="min-w-[1100px] divide-y divide-slate-200 text-sm">
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Student Name</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Course</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Vehicle Type</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Type of Transmission</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Session</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Instructor / Care Of</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Instructor Remarks</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Student Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {rows.map((row) => {
 
                 // Prefer slotLabel (e.g. '08:00 AM - 12:00 PM') if available, else fallback
                 let sessionLabel = row.slotLabel || "-";
@@ -54,22 +96,41 @@ export default function DailyReportsCard({ rows, total, loading, error, title, s
                   instructorCareOf = `Care of: ${row.careOf}`;
                 }
 
-                return (
-                  <tr key={row.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">{row.studentName}</td>
-                    <td className="px-4 py-3 text-slate-700">{row.course || row.transactionType || "-"}</td>
-                    <td className="px-4 py-3 text-slate-700">{row.vehicleType || "-"}</td>
-                    <td className="px-4 py-3 text-slate-700">{row.transmissionType || "-"}</td>
-                    <td className="px-4 py-3 text-slate-700">{sessionLabel}</td>
-                    <td className="px-4 py-3 whitespace-pre-line text-slate-700">{instructorCareOf}</td>
-                    <td className="px-4 py-3 text-slate-600">{row.remarks || row.description || row.transactionType}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                  return (
+                    <tr key={row.id}>
+                      <td className="px-4 py-3 font-medium text-slate-900">{row.studentName}</td>
+                      <td className="px-4 py-3 text-slate-700">{row.course || row.transactionType || "-"}</td>
+                      <td className="px-4 py-3 text-slate-700">{row.vehicleType || "-"}</td>
+                      <td className="px-4 py-3 text-slate-700">{row.transmissionType || "-"}</td>
+                      <td className="px-4 py-3 text-slate-700">{sessionLabel}</td>
+                      <td className="px-4 py-3 whitespace-pre-line text-slate-700">{instructorCareOf}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        <p
+                          style={twoLineClampStyle}
+                          className="break-words"
+                          title={row.instructorRemarks || "-"}
+                        >
+                          {row.instructorRemarks || "-"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        <p
+                          style={twoLineClampStyle}
+                          className="break-words"
+                          title={row.studentRemarks || row.remarks || row.description || row.transactionType || "-"}
+                        >
+                          {row.studentRemarks || row.remarks || row.description || row.transactionType || "-"}
+                        </p>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : null}
       </div>
+      )}
     </div>
   );
 }

@@ -69,11 +69,14 @@ const enrollmentCreateSchema = Joi.object({
     schedule_id: Joi.number().integer().allow(null),
     package_id: Joi.number().integer().allow(null),
     client_type: optionalText,
+    enrollment_channel: Joi.string().valid("walk_in", "saferoads", "otdc", "partner").allow("", null),
+    external_application_ref: optionalText,
     is_already_driver: Joi.boolean().allow(null),
     target_vehicle: targetVehicleSchema,
     transmission_type: transmissionSchema,
     motorcycle_type: transmissionSchema,
     training_method: optionalText,
+    pdc_start_mode: Joi.string().valid("now", "later").allow("", null),
     pdc_type: Joi.string().valid("beginner", "experience").allow(null, ""),
     pdc_category: Joi.string().valid("Beginner", "Experience").allow(null, ""),
     enrolling_for: optionalText,
@@ -87,6 +90,12 @@ const enrollmentCreateSchema = Joi.object({
     pdc: schedulePayloadSchema.default({ enabled: false }),
   }).allow(null),
 }).custom((value, helpers) => {
+  const normalize = (input) => String(input || "").trim().toLowerCase();
+  const isMotorcycleTarget = (input) => {
+    const normalized = normalize(input);
+    return normalized === "motorcycle";
+  };
+
   const hasPdcSelection = Boolean(value.enrollment?.pdc_category || value.enrollment?.pdc_type);
   const scheduleEnabled = Boolean(value.schedule?.enabled);
 
@@ -128,7 +137,20 @@ const enrollmentCreateSchema = Joi.object({
     });
   }
 
-  if (value.enrollment_type === "PROMO" && !hasPdcSelection) {
+  if (
+    value.enrollment_type === "PROMO" &&
+    value.enrollment?.is_already_driver &&
+    isMotorcycleTarget(value.enrollment?.target_vehicle) &&
+    !value.enrollment?.motorcycle_type
+  ) {
+    return helpers.error("any.custom", {
+      message: "motorcycle_type is required when Motorcycle is selected",
+    });
+  }
+
+  const promoPdcEnabled = Boolean(value.promo_schedule?.pdc?.enabled);
+
+  if (value.enrollment_type === "PROMO" && promoPdcEnabled && !hasPdcSelection) {
     return helpers.error("any.custom", {
       message: "pdc_category is required for PROMO enrollments",
     });
@@ -138,6 +160,7 @@ const enrollmentCreateSchema = Joi.object({
   if (value.enrollment_type === "PROMO" && promoScheduleEnabled) {
     const promoTdc = value.promo_schedule?.tdc || {};
     const promoPdc = value.promo_schedule?.pdc || {};
+    const promoPdcEnabled = Boolean(promoPdc.enabled);
 
     if (!promoTdc.schedule_date || !promoTdc.slot || !promoTdc.instructor_id) {
       return helpers.error("any.custom", {
@@ -145,7 +168,7 @@ const enrollmentCreateSchema = Joi.object({
       });
     }
 
-    if (!promoPdc.schedule_date || !promoPdc.slot || !promoPdc.instructor_id || !promoPdc.vehicle_id) {
+    if (promoPdcEnabled && (!promoPdc.schedule_date || !promoPdc.slot || !promoPdc.instructor_id || !promoPdc.vehicle_id)) {
       return helpers.error("any.custom", {
         message: "promo_schedule.pdc requires schedule_date, slot, instructor_id, and vehicle_id",
       });
@@ -187,6 +210,26 @@ const enrollmentUpdateSchema = Joi.object({
   package_id: Joi.number().integer(),
   dl_code_id: Joi.number().integer(),
   client_type: optionalText,
+  enrollment_channel: Joi.string().valid("walk_in", "saferoads", "otdc", "partner").allow("", null),
+  external_application_ref: optionalText,
+  promo_package_id: Joi.number().integer().allow(null),
+  tdc_completion_deadline: Joi.date().iso().allow(null, ""),
+  pdc_eligibility_date: Joi.date().iso().allow(null, ""),
+  pdc_valid_until: Joi.date().iso().allow(null, ""),
+  pdc_start_mode: Joi.string().valid("now", "later").allow("", null),
+  enrollment_state: Joi.string()
+    .valid(
+      "draft",
+      "active",
+      "tdc_in_progress",
+      "tdc_completed",
+      "pdc_pending_schedule",
+      "pdc_in_progress",
+      "completed",
+      "expired",
+      "cancelled"
+    )
+    .allow("", null),
   is_already_driver: Joi.boolean(),
   target_vehicle: targetVehicleSchema,
   transmission_type: transmissionSchema,

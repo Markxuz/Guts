@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, FileText, LayoutDashboard, LogOut, Settings, UserRound, Users, Users2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Clock, FileText, LayoutDashboard, LogOut, Settings, UserRound, Users, Users2 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/hooks/useAuth";
+import { prefetchRoute, prefetchRoutesWhenIdle } from "../../app/router/routeLoaders";
 
 const ROLE_LABEL = {
   admin: "Main Admin",
@@ -22,6 +23,7 @@ function buildNavItems(role) {
   const all = [
     { label: "Dashboard", to: "/", icon: LayoutDashboard, roles: ["admin", "sub_admin", "staff"] },
     { label: "Enrollments", to: "/enrollments", icon: UserRound, roles: ["admin", "sub_admin", "staff"] },
+    { label: "Schedule PDC Later", to: "/enrollments/schedule-pdc-later", icon: Clock, roles: ["admin", "sub_admin", "staff"] },
     { label: "Students", to: "/students", icon: Users, roles: ["admin", "sub_admin", "staff"] },
     { label: "Reports", to: "/reports", icon: FileText, roles: ["admin", "sub_admin"] },
   ];
@@ -79,6 +81,25 @@ export default function AppLayout() {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, [isSettingsPopoverOpen]);
+
+  useEffect(() => {
+    const sidebarWidth = isCollapsed ? "5rem" : "16rem";
+    document.documentElement.style.setProperty("--app-sidebar-width", sidebarWidth);
+
+    return () => {
+      document.documentElement.style.setProperty("--app-sidebar-width", "0px");
+    };
+  }, [isCollapsed]);
+
+  useEffect(() => {
+    const commonRoutes = ["/", "/enrollments", "/students"];
+    const privilegedRoutes = role === "admin" || role === "sub_admin"
+      ? ["/reports", "/settings/instructors", "/settings/vehicles"]
+      : [];
+    const adminOnly = role === "admin" ? ["/settings/users"] : [];
+
+    prefetchRoutesWhenIdle([...commonRoutes, ...privilegedRoutes, ...adminOnly]);
+  }, [role]);
 
   function handleSettingsToggle(event) {
     event.preventDefault();
@@ -145,6 +166,8 @@ export default function AppLayout() {
               <Link
                 key={item.to}
                 to={item.to}
+                onMouseEnter={() => prefetchRoute(item.to)}
+                onFocus={() => prefetchRoute(item.to)}
                 title={isCollapsed ? item.label : undefined}
                 className={`flex items-center border-l-[3px] py-3 text-sm transition ${
                   isCollapsed ? "justify-center px-2" : "gap-3 px-5"
@@ -198,6 +221,8 @@ export default function AppLayout() {
                     <Link
                       key={to}
                       to={to}
+                      onMouseEnter={() => prefetchRoute(to)}
+                      onFocus={() => prefetchRoute(to)}
                       onClick={() => setIsSettingsPopoverOpen(false)}
                       className={`flex items-center gap-2 px-4 py-2.5 text-sm transition ${
                         pathname === to
@@ -218,6 +243,8 @@ export default function AppLayout() {
                     <Link
                       key={to}
                       to={to}
+                      onMouseEnter={() => prefetchRoute(to)}
+                      onFocus={() => prefetchRoute(to)}
                       className={`ml-5 flex items-center border-l-2 py-2 pl-5 pr-4 text-sm transition ${
                         pathname === to
                           ? "border-[#D4AF37] bg-linear-to-r from-[#6d1224]/25 to-transparent font-semibold text-[#D4AF37]"
@@ -262,10 +289,10 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      <div className={`flex min-h-screen flex-1 flex-col bg-slate-200 transition-all duration-300 print:ml-0 print:bg-white ${isCollapsed ? "ml-20" : "ml-64"}`}>
-        <main className="flex-1 overflow-y-auto p-6 scroll-smooth print:overflow-visible print:p-0">
-          <div className="mx-auto w-full max-w-full">
-            <div key={pathname} className="route-fade-enter">
+      <div className={`flex min-h-screen min-w-0 flex-1 flex-col bg-slate-200 transition-all duration-300 print:ml-0 print:bg-white ${isCollapsed ? "ml-20" : "ml-64"}`}>
+        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-6 scroll-smooth print:overflow-visible print:p-0">
+          <div className="mx-auto min-w-0 w-full max-w-full">
+            <div key={pathname} className="route-fade-enter min-w-0">
               <Outlet />
             </div>
           </div>
