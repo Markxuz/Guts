@@ -3,6 +3,7 @@ require("dotenv").config();
 const { sequelize } = require("../models");
 const { createApp } = require("./app");
 const { ensureDefaultUsers } = require("./modules/auth/auth.service");
+const { startReportScheduler } = require("./modules/reports/reportScheduler");
 const logger = require("./shared/logging/logger");
 
 const PORT = process.env.PORT || 5000;
@@ -20,6 +21,8 @@ async function startServer() {
 
     await ensureDefaultUsers();
     logger.info("database_connected", { host: process.env.DB_HOST || "localhost" });
+
+    startReportScheduler();
 
     const app = createApp();
     app.listen(PORT, () => {

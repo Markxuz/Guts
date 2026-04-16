@@ -56,6 +56,14 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REQUEST_LOG_INCLUDE_HEALTH: ${REQUEST_LOG_INCLUDE_HEALTH:-false}
       BACKUP_ALERT_WEBHOOK_URL: ${BACKUP_ALERT_WEBHOOK_URL:-}
+      REPORT_EMAIL_WORKER_ENABLED: ${REPORT_EMAIL_WORKER_ENABLED:-true}
+      REPORT_EMAIL_POLL_INTERVAL_MS: ${REPORT_EMAIL_POLL_INTERVAL_MS:-60000}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
     volumes:
       - ./backend:/app              # <--- HOT RELOAD MAGIC: Nakakonekta na ang live files mo
       - /app/node_modules           # <--- Para hindi mag-conflict ang Windows at Linux modules

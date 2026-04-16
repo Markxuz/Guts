@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { Course, Enrollment, Instructor, Schedule, Student, StudentProfile, Vehicle } = require("../../models");
+const { Course, Enrollment, Instructor, ReportSchedule, Schedule, Student, StudentProfile, Vehicle } = require("../../models");
 const { getTestClient, loginAsAdmin } = require("../helpers/appTestHarness");
 
 function uniqueEmail() {
@@ -241,5 +241,68 @@ test.describe("Reports API contract", () => {
     const scheduleRows = (response.body.items || []).filter((item) => item.courseType === "schedule");
     assert.ok(scheduleRows.length > 0, "Expected at least one schedule row in daily reports");
     assert.ok(scheduleRows.some((item) => String(item.course || "").toUpperCase().includes("PDC")));
+  });
+
+  test("POST /api/reports/schedule-email creates an email schedule", async () => {
+    const response = await client
+      .post("/api/reports/schedule-email")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        recipients: ["owner@example.com", "staff@example.com"],
+        frequency: "weekly",
+        fileFormat: "pdf",
+        course: "overall",
+      });
+
+    assert.equal(response.status, 201, JSON.stringify(response.body));
+    assert.equal(response.body.message, "Email report schedule saved");
+    assert.equal(response.body.schedule.frequency, "weekly");
+    assert.equal(response.body.schedule.fileFormat, "pdf");
+    assert.equal(Array.isArray(response.body.schedule.recipients), true);
+    assert.equal(response.body.schedule.recipients.length, 2);
+
+    const persisted = await ReportSchedule.findByPk(response.body.schedule.id);
+    assert.ok(persisted, "Expected report schedule to persist in the database");
+    assert.deepEqual(persisted.recipients, ["owner@example.com", "staff@example.com"]);
+    assert.equal(persisted.frequency, "weekly");
+    assert.equal(persisted.file_format, "pdf");
+
+    await ReportSchedule.destroy({ where: { id: persisted.id } });
+  });
+
+  test("POST /api/reports/test-email sends a report preview to the requested recipients", async () => {
+    const response = await client
+      .post("/api/reports/test-email")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        recipients: ["worst.gen00@gmail.com", "joefreysacay28@gmail.com"],
+        frequency: "weekly",
+        fileFormat: "pdf",
+        course: "overall",
+      });
+
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(response.body.message, "Test report email sent");
+    assert.deepEqual(response.body.recipients, ["worst.gen00@gmail.com", "joefreysacay28@gmail.com"]);
+    assert.equal(response.body.fileFormat, "pdf");
+    assert.equal(response.body.transportMode === "smtp" || response.body.transportMode === "json-preview", true);
+  });
+
+  test("POST /api/reports/send-email sends a real report email payload to recipients", async () => {
+    const response = await client
+      .post("/api/reports/send-email")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        recipients: ["owner@example.com"],
+        frequency: "weekly",
+        fileFormat: "pdf",
+        course: "overall",
+      });
+
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(response.body.message, "Report email sent");
+    assert.deepEqual(response.body.recipients, ["owner@example.com"]);
+    assert.equal(response.body.fileFormat, "pdf");
+    assert.equal(response.body.transportMode === "smtp" || response.body.transportMode === "json-preview", true);
   });
 });

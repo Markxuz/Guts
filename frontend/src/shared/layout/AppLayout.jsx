@@ -25,7 +25,6 @@ function buildNavItems(role) {
     { label: "Enrollments", to: "/enrollments", icon: UserRound, roles: ["admin", "sub_admin", "staff"] },
     { label: "Schedule PDC Later", to: "/enrollments/schedule-pdc-later", icon: Clock, roles: ["admin", "sub_admin", "staff"] },
     { label: "Students", to: "/students", icon: Users, roles: ["admin", "sub_admin", "staff"] },
-    { label: "Reports", to: "/reports", icon: FileText, roles: ["admin", "sub_admin"] },
   ];
   return all.filter((item) => item.roles.includes(role));
 }
@@ -34,14 +33,26 @@ export default function AppLayout() {
   const { pathname } = useLocation();
   const { logout, auth, role } = useAuth();
   const currentYear = new Date().getFullYear();
+  const isInReportsSection = pathname === "/reports" || pathname.startsWith("/reports/");
   const isInSettingsSection = pathname.startsWith("/settings/");
+  const [isReportsExpanded, setIsReportsExpanded] = useState(false);
+  const [isReportsPopoverOpen, setIsReportsPopoverOpen] = useState(false);
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [isSettingsPopoverOpen, setIsSettingsPopoverOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const reportsContainerRef = useRef(null);
   const settingsContainerRef = useRef(null);
 
   const navItems = buildNavItems(role || "staff");
+  const showReports = role === "admin" || role === "sub_admin";
   const showSettings = role === "admin" || role === "sub_admin";
+  const reportsItems = useMemo(
+    () => [
+      { to: "/reports", label: "Operations Reports" },
+      { to: "/reports/overview", label: "Overview Reports" },
+    ],
+    []
+  );
   const settingsItems = useMemo(() => {
     const items = [
       { to: "/settings/instructors", label: "Instructors" },
@@ -58,19 +69,30 @@ export default function AppLayout() {
     () => !isCollapsed && (isInSettingsSection || isSettingsExpanded),
     [isCollapsed, isInSettingsSection, isSettingsExpanded]
   );
+  const isReportsOpen = useMemo(
+    () => !isCollapsed && (isInReportsSection || isReportsExpanded),
+    [isCollapsed, isInReportsSection, isReportsExpanded]
+  );
 
   useEffect(() => {
     if (!isCollapsed) {
       // Use a microtask to avoid cascading renders
-      Promise.resolve().then(() => setIsSettingsPopoverOpen(false));
+      Promise.resolve().then(() => {
+        setIsReportsPopoverOpen(false);
+        setIsSettingsPopoverOpen(false);
+      });
     }
   }, [isCollapsed]);
 
   useEffect(() => {
-    if (!isSettingsPopoverOpen) return undefined;
+    if (!isReportsPopoverOpen && !isSettingsPopoverOpen) return undefined;
 
     function handleOutsideClick(event) {
-      if (!settingsContainerRef.current?.contains(event.target)) {
+      const inReports = reportsContainerRef.current?.contains(event.target);
+      const inSettings = settingsContainerRef.current?.contains(event.target);
+
+      if (!inReports && !inSettings) {
+        setIsReportsPopoverOpen(false);
         setIsSettingsPopoverOpen(false);
       }
     }
@@ -80,7 +102,7 @@ export default function AppLayout() {
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, [isSettingsPopoverOpen]);
+  }, [isReportsPopoverOpen, isSettingsPopoverOpen]);
 
   useEffect(() => {
     const sidebarWidth = isCollapsed ? "5rem" : "16rem";
@@ -94,7 +116,7 @@ export default function AppLayout() {
   useEffect(() => {
     const commonRoutes = ["/", "/enrollments", "/students"];
     const privilegedRoutes = role === "admin" || role === "sub_admin"
-      ? ["/reports", "/settings/instructors", "/settings/vehicles"]
+      ? ["/reports", "/reports/overview", "/settings/instructors", "/settings/vehicles"]
       : [];
     const adminOnly = role === "admin" ? ["/settings/users"] : [];
 
@@ -111,6 +133,18 @@ export default function AppLayout() {
     }
 
     setIsSettingsExpanded((prev) => !prev);
+  }
+
+  function handleReportsToggle(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isCollapsed) {
+      setIsReportsPopoverOpen((prev) => !prev);
+      return;
+    }
+
+    setIsReportsExpanded((prev) => !prev);
   }
 
   return (
@@ -170,7 +204,7 @@ export default function AppLayout() {
                 onFocus={() => prefetchRoute(item.to)}
                 title={isCollapsed ? item.label : undefined}
                 className={`flex items-center border-l-[3px] py-3 text-sm transition ${
-                  isCollapsed ? "justify-center px-2" : "gap-3 px-5"
+                  isCollapsed ? "justify-center px-2" : `gap-3 ${item.isIndented ? "px-10 pl-10" : "px-5"}`
                 } ${
                   isActive
                     ? "border-[#D4AF37] bg-linear-to-r from-[#6d1224]/30 to-transparent font-semibold text-[#D4AF37]"
@@ -182,6 +216,81 @@ export default function AppLayout() {
               </Link>
             );
           })}
+
+          {showReports && (
+            <div
+              ref={reportsContainerRef}
+              className="relative mt-1"
+            >
+              <button
+                type="button"
+                onClick={handleReportsToggle}
+                title={isCollapsed ? "Reports" : undefined}
+                className={`flex w-full cursor-pointer items-center border-l-[3px] py-3 text-sm transition ${
+                  isCollapsed ? "justify-center px-2" : "gap-3 px-5"
+                } ${
+                  isInReportsSection
+                    ? "border-[#D4AF37] bg-linear-to-r from-[#6d1224]/30 to-transparent font-semibold text-[#D4AF37]"
+                    : "border-transparent text-[#c4c8cd] hover:bg-white/5"
+                }`}
+                aria-expanded={isCollapsed ? isReportsPopoverOpen : isReportsOpen}
+                aria-controls="reports-submenu"
+              >
+                <FileText size={15} />
+                {!isCollapsed ? <span>Reports</span> : null}
+                {!isCollapsed ? (
+                  <ChevronDown
+                    size={14}
+                    className={`ml-auto transition-transform duration-200 ${isReportsOpen ? "rotate-180" : "rotate-0"}`}
+                  />
+                ) : null}
+              </button>
+
+              {isCollapsed && isReportsPopoverOpen ? (
+                <div
+                  id="reports-submenu"
+                  className="absolute left-full top-0 z-60 ml-2 w-56 overflow-hidden rounded-xl border border-white/15 bg-[#1b1823] py-1 shadow-2xl"
+                >
+                  {reportsItems.map(({ to, label }) => (
+                    <Link
+                      key={to}
+                      to={to}
+                      onMouseEnter={() => prefetchRoute(to)}
+                      onFocus={() => prefetchRoute(to)}
+                      onClick={() => setIsReportsPopoverOpen(false)}
+                      className={`flex items-center gap-2 px-4 py-2.5 text-sm transition ${
+                        pathname === to
+                          ? "bg-linear-to-r from-[#6d1224]/35 to-transparent font-semibold text-[#D4AF37]"
+                          : "text-[#c4c8cd] hover:bg-white/10 hover:text-[#e8e5e0]"
+                      }`}
+                    >
+                      <span>{label}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+
+              {!isCollapsed && isReportsOpen ? (
+                <div id="reports-submenu" className="mt-1 space-y-0.5 overflow-visible">
+                  {reportsItems.map(({ to, label }) => (
+                    <Link
+                      key={to}
+                      to={to}
+                      onMouseEnter={() => prefetchRoute(to)}
+                      onFocus={() => prefetchRoute(to)}
+                      className={`ml-5 flex items-center border-l-2 py-2 pl-5 pr-4 text-sm transition ${
+                        pathname === to
+                          ? "border-[#D4AF37] bg-linear-to-r from-[#6d1224]/25 to-transparent font-semibold text-[#D4AF37]"
+                          : "border-transparent text-[#b0b5bc] hover:bg-white/5 hover:text-[#e8e5e0]"
+                      }`}
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
 
           {showSettings && (
             <div

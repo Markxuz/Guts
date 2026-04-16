@@ -28,7 +28,15 @@ const overviewReportsQuerySchema = Joi.object({
   course: Joi.string().valid("overall", "tdc", "pdc", "pdc_beginner", "pdc_experience").default("overall"),
 });
 
+const scheduleEmailReportBodySchema = Joi.object({
+  recipients: Joi.array().items(Joi.string().email().required()).min(1).required(),
+  frequency: Joi.string().valid("daily", "weekly", "monthly").required(),
+  fileFormat: Joi.string().valid("csv", "excel", "pdf").required(),
+  course: Joi.string().valid("overall", "tdc", "pdc", "pdc_beginner", "pdc_experience").default("overall"),
+});
+
 module.exports = {
   dailyReportsQuerySchema,
   overviewReportsQuerySchema,
+  scheduleEmailReportBodySchema,
 };

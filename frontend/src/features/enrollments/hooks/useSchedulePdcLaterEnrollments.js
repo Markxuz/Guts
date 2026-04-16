@@ -12,12 +12,10 @@ async function fetchSchedulePdcLaterEnrollments() {
     const hasPdcLater = enrollment?.pdc_start_mode === "later";
     const isPendingPdcSchedule = String(enrollment?.enrollment_state || "") === "pdc_pending_schedule";
     const isNotCompleted = String(enrollment?.status || "") !== "completed";
-    const hasNoLinkedSchedule = !enrollment?.schedule_id;
 
     return isPromo
       && hasPdcLater
       && isNotCompleted
-      && hasNoLinkedSchedule
       && (isPendingPdcSchedule || !enrollment?.pdc_eligibility_date);
   });
 }

@@ -1,5 +1,35 @@
 const repository = require("./reports.repository");
 const { listSchedulesByDate, listSchedulesByRange } = require("../schedules/schedules.service");
+const { ReportSchedule } = require("../../../models");
+
+function buildNextRunAt(frequency) {
+  const now = new Date();
+  const next = new Date(now);
+
+  if (frequency === "daily") {
+    next.setDate(next.getDate() + 1);
+  } else if (frequency === "weekly") {
+    next.setDate(next.getDate() + 7);
+  } else {
+    next.setMonth(next.getMonth() + 1);
+  }
+
+  return next.toISOString();
+}
+
+function normalizeRecipients(recipients) {
+  if (!Array.isArray(recipients)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      recipients
+        .map((recipient) => String(recipient || "").trim())
+        .filter(Boolean)
+    )
+  );
+}
 
 function classifyCourseType(row) {
   const code = String(row?.DLCode?.code || "").toLowerCase();
@@ -406,7 +436,85 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
   };
 }
 
+async function scheduleEmailReports({ recipients, frequency, fileFormat, course = "overall", requestedByUserId = null }) {
+  const normalizedRecipients = normalizeRecipients(recipients);
+  if (normalizedRecipients.length === 0) {
+    const error = new Error("At least one valid recipient is required");
+    error.status = 400;
+    throw error;
+  }
+
+  const schedule = await ReportSchedule.create({
+    recipients: normalizedRecipients,
+    frequency,
+    file_format: fileFormat,
+    course,
+    created_by_user_id: requestedByUserId,
+    next_run_at: buildNextRunAt(frequency),
+    status: "scheduled",
+    is_active: true,
+  });
+
+  return {
+    message: "Email report schedule saved",
+    schedule: {
+      id: schedule.id,
+      recipients: schedule.recipients,
+      frequency: schedule.frequency,
+      fileFormat: schedule.file_format,
+      course: schedule.course,
+      requestedByUserId: schedule.created_by_user_id,
+      nextRunAt: schedule.next_run_at,
+      lastSentAt: schedule.last_sent_at,
+      isActive: schedule.is_active,
+      status: schedule.status,
+      createdAt: schedule.created_at,
+    },
+  };
+}
+
+async function sendTestEmailReport({ recipients, frequency, fileFormat, course = "overall", requestedByUserId = null }) {
+  const normalizedRecipients = normalizeRecipients(recipients);
+  if (normalizedRecipients.length === 0) {
+    const error = new Error("At least one valid recipient is required");
+    error.status = 400;
+    throw error;
+  }
+
+  const { sendReportEmailNow } = require("./reportEmail.service");
+  return sendReportEmailNow({
+    recipients: normalizedRecipients,
+    frequency,
+    fileFormat,
+    course,
+    requestedByUserId,
+    isTest: true,
+  });
+}
+
+async function sendEmailReport({ recipients, frequency, fileFormat, course = "overall", requestedByUserId = null }) {
+  const normalizedRecipients = normalizeRecipients(recipients);
+  if (normalizedRecipients.length === 0) {
+    const error = new Error("At least one valid recipient is required");
+    error.status = 400;
+    throw error;
+  }
+
+  const { sendReportEmailNow } = require("./reportEmail.service");
+  return sendReportEmailNow({
+    recipients: normalizedRecipients,
+    frequency,
+    fileFormat,
+    course,
+    requestedByUserId,
+    isTest: false,
+  });
+}
+
 module.exports = {
   getDailyReports,
   getOverviewReports,
+  scheduleEmailReports,
+  sendTestEmailReport,
+  sendEmailReport,
 };

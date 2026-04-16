@@ -32,6 +32,45 @@ function specializationFromQualifications(value) {
   return parts.length ? parts.join(" + ") : "";
 }
 
+function normalizeAssignedVehicleIds(value) {
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0)
+      )
+    );
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        return normalizeAssignedVehicleIds(JSON.parse(trimmed));
+      } catch {
+        return [];
+      }
+    }
+
+    return Array.from(
+      new Set(
+        trimmed
+          .split(",")
+          .map((id) => Number(id.trim()))
+          .filter((id) => Number.isInteger(id) && id > 0)
+      )
+    );
+  }
+
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+    return [value];
+  }
+
+  return [];
+}
+
 function emptyForm() {
   return {
     name: "",
@@ -41,7 +80,7 @@ function emptyForm() {
     pdc_beginner_certified: false,
     pdc_experience_certified: false,
     status: "Active",
-    assigned_vehicle_id: "",
+    assigned_vehicle_ids: [],
     phone: "",
     tdc_cert_expiry: "",
     pdc_cert_expiry: "",
@@ -121,6 +160,8 @@ export default function InstructorsPage() {
         resourceServices.courses.list(),
       ]);
 
+      const vehiclesById = new Map((vehicles || []).map((vehicle) => [Number(vehicle.id), vehicle]));
+
       setVehicles(vehicles || []);
       setCourses(courses || []);
 
@@ -133,8 +174,27 @@ export default function InstructorsPage() {
         pdc_experience_certified: Boolean(item.pdc_experience_certified),
         specialization: specializationFromQualifications(item) || item.specialization || "Unspecified",
         status: item.status || "Active",
-        assignedVehicle: item?.assignedVehicle?.vehicle_name || "Unassigned",
+        assignedVehicle: (() => {
+          const normalizedIds = normalizeAssignedVehicleIds(item.assigned_vehicle_ids);
+          const fallbackIds = item.assigned_vehicle_id ? [Number(item.assigned_vehicle_id)] : [];
+          const resolvedIds = normalizedIds.length > 0 ? normalizedIds : fallbackIds;
+
+          const names = resolvedIds
+            .map((id) => vehiclesById.get(id)?.vehicle_name)
+            .filter(Boolean);
+
+          if (names.length > 0) {
+            return names.join(", ");
+          }
+
+          return item?.assignedVehicle?.vehicle_name || "Unassigned";
+        })(),
         assignedVehicleId: item.assigned_vehicle_id || null,
+        assignedVehicleIds: (() => {
+          const normalizedIds = normalizeAssignedVehicleIds(item.assigned_vehicle_ids);
+          if (normalizedIds.length > 0) return normalizedIds;
+          return item.assigned_vehicle_id ? [Number(item.assigned_vehicle_id)] : [];
+        })(),
         contact: item.phone || "",
         tdc_cert_expiry: item.tdc_cert_expiry || "",
         pdc_cert_expiry: item.pdc_cert_expiry || "",
@@ -185,6 +245,21 @@ export default function InstructorsPage() {
   const safePage = Math.min(page, totalPages);
   const startIndex = (safePage - 1) * PAGE_SIZE;
   const pagedRows = filteredRows.slice(startIndex, startIndex + PAGE_SIZE);
+  const assignVehicleOptions = useMemo(() => {
+    const selectedIds = (selectedInstructor?.assignedVehicleIds || [])
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (selectedIds.length === 0) {
+      return vehicles;
+    }
+
+    const allowed = new Set(selectedIds);
+    const filteredVehicles = vehicles.filter((vehicle) => allowed.has(Number(vehicle.id)));
+
+    // Fallback to all vehicles if assigned IDs are stale or missing from current fleet list.
+    return filteredVehicles.length > 0 ? filteredVehicles : vehicles;
+  }, [selectedInstructor, vehicles]);
 
   function printInstructors() {
     window.print();
@@ -207,7 +282,7 @@ export default function InstructorsPage() {
       pdc_beginner_certified: Boolean(row.pdc_beginner_certified),
       pdc_experience_certified: Boolean(row.pdc_experience_certified),
       status: row.status,
-      assigned_vehicle_id: row.assignedVehicleId ? String(row.assignedVehicleId) : "",
+      assigned_vehicle_ids: (row.assignedVehicleIds || []).map((id) => String(id)),
       phone: row.contact || "",
       tdc_cert_expiry: row.tdc_cert_expiry || "",
       pdc_cert_expiry: row.pdc_cert_expiry || "",
@@ -238,6 +313,9 @@ export default function InstructorsPage() {
     setIsSubmitting(true);
     try {
       const payload = {
+        assigned_vehicle_ids: (form.assigned_vehicle_ids || [])
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0),
         name: form.name.trim(),
         license_number: form.license_number.trim(),
         specialization: specializationFromQualifications(form),
@@ -245,7 +323,7 @@ export default function InstructorsPage() {
         pdc_beginner_certified: Boolean(form.pdc_beginner_certified),
         pdc_experience_certified: Boolean(form.pdc_experience_certified),
         status: form.status,
-        assigned_vehicle_id: form.assigned_vehicle_id ? Number(form.assigned_vehicle_id) : null,
+        assigned_vehicle_id: (form.assigned_vehicle_ids || []).length > 0 ? Number(form.assigned_vehicle_ids[0]) : null,
         phone: form.phone.trim(),
         tdc_cert_expiry: form.tdc_cert_expiry || null,
         pdc_cert_expiry: form.pdc_cert_expiry || null,
@@ -271,7 +349,7 @@ export default function InstructorsPage() {
     setSelectedInstructor(row);
     setAssignForm({
       ...emptyScheduleForm(),
-      vehicle_id: row.assignedVehicleId ? String(row.assignedVehicleId) : "",
+      vehicle_id: row.assignedVehicleIds?.[0] ? String(row.assignedVehicleIds[0]) : "",
     });
     setIsAssignOpen(false);
     setIsProfileModalOpen(true);
@@ -524,7 +602,7 @@ export default function InstructorsPage() {
                     <th className="px-4 py-3 font-semibold text-slate-700">ID / License Number</th>
                     <th className="px-4 py-3 font-semibold text-slate-700">Specialization</th>
                     <th className="px-4 py-3 font-semibold text-slate-700">Status</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">Assigned Vehicle</th>
+                    <th className="px-4 py-3 font-semibold text-slate-700">Assigned Vehicles</th>
                     <th className="px-4 py-3 font-semibold text-slate-700">Contact Number</th>
                   </tr>
                 </thead>
@@ -708,21 +786,51 @@ export default function InstructorsPage() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
-                  Assigned Vehicle
-                  <select
-                    value={form.assigned_vehicle_id}
-                    onChange={(event) => setForm((current) => ({ ...current, assigned_vehicle_id: event.target.value }))}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#800000]"
-                  >
-                    <option value="">Unassigned</option>
-                    {vehicles.map((vehicle) => (
-                      <option key={vehicle.id} value={String(vehicle.id)}>
-                        {vehicle.vehicle_name} ({vehicle.plate_number || "No Plate"})
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <fieldset className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
+                  <legend className="text-xs font-semibold text-slate-600">Assigned Vehicles</legend>
+                  <div className="max-h-44 overflow-auto rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900">
+                    {vehicles.length === 0 ? (
+                      <p className="text-xs text-slate-500">No vehicles available.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {vehicles.map((vehicle) => {
+                          const vehicleId = String(vehicle.id);
+                          const isChecked = (form.assigned_vehicle_ids || []).includes(vehicleId);
+
+                          return (
+                            <label key={vehicle.id} className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(event) => {
+                                  setForm((current) => {
+                                    const currentIds = Array.isArray(current.assigned_vehicle_ids)
+                                      ? current.assigned_vehicle_ids
+                                      : [];
+
+                                    if (event.target.checked) {
+                                      return {
+                                        ...current,
+                                        assigned_vehicle_ids: Array.from(new Set([...currentIds, vehicleId])),
+                                      };
+                                    }
+
+                                    return {
+                                      ...current,
+                                      assigned_vehicle_ids: currentIds.filter((id) => id !== vehicleId),
+                                    };
+                                  });
+                                }}
+                                className="h-4 w-4 rounded border-slate-300 text-[#800000] focus:ring-[#800000]"
+                              />
+                              {vehicle.vehicle_name} ({vehicle.plate_number || "No Plate"})
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </fieldset>
 
                 <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
                   Contact Number
@@ -779,7 +887,7 @@ export default function InstructorsPage() {
               <p><span className="font-semibold text-slate-900">Specialization:</span> {selectedInstructor.specialization}</p>
               <p><span className="font-semibold text-slate-900">Contact Number:</span> {selectedInstructor.contact || "-"}</p>
               <p><span className="font-semibold text-slate-900">Status:</span> {selectedInstructor.status}</p>
-              <p><span className="font-semibold text-slate-900">Assigned Vehicle:</span> {selectedInstructor.assignedVehicle}</p>
+              <p><span className="font-semibold text-slate-900">Assigned Vehicles:</span> {selectedInstructor.assignedVehicle}</p>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -874,12 +982,17 @@ export default function InstructorsPage() {
                       required
                     >
                       <option value="">Select vehicle</option>
-                      {vehicles.map((vehicle) => (
+                      {assignVehicleOptions.map((vehicle) => (
                         <option key={vehicle.id} value={String(vehicle.id)}>
                           {vehicle.vehicle_name} ({vehicle.plate_number || "No Plate"})
                         </option>
                       ))}
                     </select>
+                    {selectedInstructor.assignedVehicleIds?.length > 0 ? (
+                      <span className="text-[11px] text-slate-500">Showing assigned vehicles for this instructor.</span>
+                    ) : (
+                      <span className="text-[11px] text-slate-500">No assigned vehicles yet; showing all vehicles.</span>
+                    )}
                   </label>
                 </div>
 

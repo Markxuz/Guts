@@ -98,8 +98,45 @@ function getCourseMembership(student) {
   return membership;
 }
 
+function isPassedOutcome(value) {
+  return String(value || "").trim().toUpperCase() === "PASSED";
+}
+
+function getCompletionFlags(student) {
+  const latestEnrollment = getLatestEnrollment(student);
+  const courseCode = getCourseCode(student);
+  const enrollmentStatus = String(latestEnrollment?.status || "").toLowerCase();
+  const parsed = parseScoreValue(latestEnrollment?.score);
+
+  const isPromo = courseCode === "PROMO";
+  const promoTdcPassed = isPassedOutcome(parsed.promoTdcOutcome);
+  const promoPdcPassed = isPassedOutcome(parsed.promoPdcOutcome);
+  const promoFullyPassed = isPromo && promoTdcPassed && promoPdcPassed;
+
+  if (isPromo) {
+    return {
+      isPassed: promoFullyPassed,
+      isCompletedOrPassed: promoFullyPassed,
+    };
+  }
+
+  const nonPromoPassed = isPassedOutcome(parsed.outcome);
+  const nonPromoCompleted = enrollmentStatus === "completed";
+
+  return {
+    isPassed: nonPromoPassed,
+    isCompletedOrPassed: nonPromoPassed || nonPromoCompleted,
+  };
+}
+
 function matchesCourseFilter(student, filter) {
-  if (filter === "all") return true;
+  if (filter === "all") {
+    return !getCompletionFlags(student).isCompletedOrPassed;
+  }
+
+  if (filter === "passed") {
+    return getCompletionFlags(student).isCompletedOrPassed;
+  }
 
   const membership = getCourseMembership(student);
   if (filter === "TDC") {

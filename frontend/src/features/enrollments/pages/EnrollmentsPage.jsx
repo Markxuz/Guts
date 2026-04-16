@@ -267,7 +267,7 @@ function buildInstructorOptionsForCourseType(rows, courseType) {
 
 function isMotorcycleVehicleType(vehicleType) {
   const normalized = normalizeText(vehicleType);
-  return normalized === "motorcycle" || normalized === "motor";
+  return normalized === "motorcycle" || normalized === "motor" || normalized === "tricycle";
 }
 
 function isCarVehicleType(vehicleType) {

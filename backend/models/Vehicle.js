@@ -14,7 +14,7 @@ module.exports = (sequelize) => {
 			type: DataTypes.STRING(50),
 			allowNull: true,
 			validate: {
-				isIn: [["Sedan", "Motorcycle", "Car", "Motor"]],
+				isIn: [["Sedan", "Motorcycle", "Tricycle", "Car", "Motor"]],
 			},
 		},
 		transmission_type: {

@@ -74,3 +74,13 @@ Structured logging:
 
 - Notification feed remains global (not recipient-scoped) in the current implementation.
 - Recent activity logs and notifications are both available, but they are separate streams with different use-cases.
+
+### Scheduled Report Emails
+
+- Report schedules persist in the `report_schedules` table.
+- The backend can send scheduled report emails when SMTP settings are provided.
+- Without SMTP settings, the worker falls back to a local JSON preview transport so the flow can still be tested safely.
+- Optional settings:
+   - `REPORT_EMAIL_WORKER_ENABLED`
+   - `REPORT_EMAIL_POLL_INTERVAL_MS`
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_SECURE`

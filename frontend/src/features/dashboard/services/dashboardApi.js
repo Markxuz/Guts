@@ -102,3 +102,30 @@ export async function fetchReportOverview({ startDate, endDate, course = "overal
   const query = new URLSearchParams({ startDate, endDate, course }).toString();
   return api.get(`/reports/overview?${query}`);
 }
+
+export async function scheduleOverviewReportEmail({ recipients, frequency, fileFormat, course = "overall" }) {
+  return api.post("/reports/schedule-email", {
+    recipients,
+    frequency,
+    fileFormat,
+    course,
+  });
+}
+
+export async function sendTestOverviewReportEmail({ recipients, frequency, fileFormat, course = "overall" }) {
+  return api.post("/reports/test-email", {
+    recipients,
+    frequency,
+    fileFormat,
+    course,
+  });
+}
+
+export async function sendOverviewReportEmail({ recipients, frequency, fileFormat, course = "overall" }) {
+  return api.post("/reports/send-email", {
+    recipients,
+    frequency,
+    fileFormat,
+    course,
+  });
+}

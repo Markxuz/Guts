@@ -38,6 +38,7 @@ const instructorCreateSchema = Joi.object({
   specialization: Joi.string().trim().allow("", null),
   status: Joi.string().valid("Active", "On Leave").required(),
   assigned_vehicle_id: Joi.number().integer().positive().allow(null),
+  assigned_vehicle_ids: Joi.array().items(Joi.number().integer().positive()).unique().default([]),
   phone: Joi.string().trim().max(20).allow("", null),
   tdc_cert_expiry: Joi.date().iso().allow(null, ""),
   pdc_cert_expiry: Joi.date().iso().allow(null, ""),
@@ -61,6 +62,7 @@ const instructorUpdateSchema = Joi.object({
   specialization: Joi.string().trim().allow("", null),
   status: Joi.string().valid("Active", "On Leave"),
   assigned_vehicle_id: Joi.number().integer().positive().allow(null),
+  assigned_vehicle_ids: Joi.array().items(Joi.number().integer().positive()).unique(),
   phone: Joi.string().trim().max(20).allow("", null),
   tdc_cert_expiry: Joi.date().iso().allow(null, ""),
   pdc_cert_expiry: Joi.date().iso().allow(null, ""),
@@ -73,7 +75,7 @@ const instructorUpdateSchema = Joi.object({
 const vehicleCreateSchema = Joi.object({
   vehicle_name: Joi.string().trim().allow("", null),
   plate_number: Joi.string().trim().required(),
-  vehicle_type: Joi.string().valid("Sedan", "Motorcycle", "Car", "Motor").required(),
+  vehicle_type: Joi.string().valid("Sedan", "Motorcycle", "Tricycle", "Car", "Motor").required(),
   transmission_type: Joi.string().valid("Automatic", "Manual").default("Automatic"),
   status: Joi.string().valid("Available", "In Service", "Maintenance", "Archived").default("Available"),
 });
@@ -81,7 +83,7 @@ const vehicleCreateSchema = Joi.object({
 const vehicleUpdateSchema = Joi.object({
   vehicle_name: Joi.string().trim().allow("", null),
   plate_number: Joi.string().trim(),
-  vehicle_type: Joi.string().valid("Sedan", "Motorcycle", "Car", "Motor"),
+  vehicle_type: Joi.string().valid("Sedan", "Motorcycle", "Tricycle", "Car", "Motor"),
   transmission_type: Joi.string().valid("Automatic", "Manual"),
   status: Joi.string().valid("Available", "In Service", "Maintenance", "Archived"),
 }).min(1);

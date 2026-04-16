@@ -83,7 +83,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="hidden print:block">
-        <h1 className="text-xl font-bold text-slate-900">Reports Summary</h1>
+        <h1 className="text-xl font-bold text-slate-900">Operations Reports</h1>
         <p className="text-sm text-slate-600">
           Filter: {String(activeFilter || "overall").toUpperCase()} | Printed on {new Date().toLocaleString()}
         </p>
@@ -91,7 +91,7 @@ export default function ReportsPage() {
 
       <div className="rounded-xl border-t-2 border-t-[#D4AF37] border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-bold text-slate-900">Reports Summary</p>
+          <p className="text-sm font-bold text-slate-900">Operations Reports</p>
           <button
             type="button"
             onClick={handlePrintSummary}

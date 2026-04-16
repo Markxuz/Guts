@@ -9,6 +9,7 @@ const DashboardPage = lazy(routeLoaders.dashboardPage);
 const EnrollmentsPage = lazy(routeLoaders.enrollmentsPage);
 const SchedulePdcLaterPage = lazy(routeLoaders.schedulePdcLaterPage);
 const ReportsPage = lazy(routeLoaders.reportsPage);
+const OverviewReportsPage = lazy(routeLoaders.overviewReportsPage);
 const InstructorsPage = lazy(routeLoaders.instructorsPage);
 const ManageUsersPage = lazy(routeLoaders.manageUsersPage);
 const StudentsPage = lazy(routeLoaders.studentsPage);
@@ -51,6 +52,14 @@ export default function AppRouter() {
             element={
               <RoleRoute allowedRoles={["admin", "sub_admin"]}>
                 <ReportsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/reports/overview"
+            element={
+              <RoleRoute allowedRoles={["admin", "sub_admin"]}>
+                <OverviewReportsPage />
               </RoleRoute>
             }
           />

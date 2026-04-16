@@ -34,6 +34,19 @@ function normalizeVehicleType(type, name) {
   const raw = String(type || "").toLowerCase();
   const label = String(name || "").toLowerCase();
 
+  if (
+    raw.includes("tricycle") ||
+    raw.includes("3wheel") ||
+    raw.includes("3-wheel") ||
+    raw.includes("three wheel") ||
+    label.includes("tricycle") ||
+    label.includes("3wheel") ||
+    label.includes("3-wheel") ||
+    label.includes("three wheel")
+  ) {
+    return "Tricycle";
+  }
+
   if (raw.includes("motor") || raw.includes("bike") || label.includes("motor") || label.includes("bike")) {
     return "Motorcycle";
   }
@@ -46,7 +59,9 @@ function normalizeVehicleType(type, name) {
 }
 
 function vehicleTypeLabel(type) {
-  return type === "Sedan" ? "Four Wheels" : type;
+  if (type === "Sedan") return "Four Wheels";
+  if (type === "Tricycle") return "Tricycle (3 Wheels)";
+  return type;
 }
 
 function normalizeVehicleStatus(value) {
@@ -339,6 +354,7 @@ export default function VehiclesPage() {
       const matchesTab =
         (activeTab === "all" && row.status !== "Archived") ||
         (activeTab === "sedans" && row.vehicleType === "Sedan") ||
+        (activeTab === "tricycles" && row.vehicleType === "Tricycle") ||
         (activeTab === "motorcycles" && row.vehicleType === "Motorcycle") ||
         (activeTab === "maintenance" && row.status === "Under Maintenance") ||
         (activeTab === "archived" && row.status === "Archived");
@@ -684,6 +700,15 @@ export default function VehiclesPage() {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab("tricycles")}
+                className={`rounded-lg px-4 py-2 text-xs font-semibold ${
+                  activeTab === "tricycles" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                Tricycle (3 Wheels)
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab("maintenance")}
                 className={`rounded-lg px-4 py-2 text-xs font-semibold ${
                   activeTab === "maintenance" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600"
@@ -716,7 +741,7 @@ export default function VehiclesPage() {
               {!loading && pagedRows.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {pagedRows.map((row) => {
-                    const isBike = row.vehicleType === "Motorcycle";
+                    const isBike = row.vehicleType === "Motorcycle" || row.vehicleType === "Tricycle";
                     const TypeIcon = isBike ? Bike : Car;
 
                     return (
@@ -948,6 +973,7 @@ export default function VehiclesPage() {
                   >
                     <option value="Sedan">Four Wheels</option>
                     <option value="Motorcycle">Motorcycle</option>
+                    <option value="Tricycle">Tricycle (3 Wheels)</option>
                   </select>
                 </label>
               </div>

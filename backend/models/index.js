@@ -22,6 +22,7 @@ const PromoPackage = require("./PromoPackage")(sequelize);
 const PromoEntitlement = require("./PromoEntitlement")(sequelize);
 const SessionAttendance = require("./SessionAttendance")(sequelize);
 const OnlineImportQueue = require("./OnlineImportQueue")(sequelize);
+const ReportSchedule = require("./ReportSchedule")(sequelize);
 
 // Associations
 
@@ -118,6 +119,9 @@ ScheduleChangeRequest.belongsTo(User, { foreignKey: "requested_by_user_id", as: 
 User.hasMany(ScheduleChangeRequest, { foreignKey: "reviewed_by_user_id", as: "reviewedScheduleChanges" });
 ScheduleChangeRequest.belongsTo(User, { foreignKey: "reviewed_by_user_id", as: "reviewer" });
 
+User.hasMany(ReportSchedule, { foreignKey: "created_by_user_id", as: "reportSchedules" });
+ReportSchedule.belongsTo(User, { foreignKey: "created_by_user_id", as: "creator" });
+
 module.exports = {
   sequelize,
   User,
@@ -142,4 +146,5 @@ module.exports = {
   PromoEntitlement,
   SessionAttendance,
   OnlineImportQueue,
+  ReportSchedule,
 };

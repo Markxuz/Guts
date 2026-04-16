@@ -94,8 +94,25 @@ a:active,
 }
 
 @media print {
+	html,
+	body,
+	#root {
+		overflow: visible !important;
+		height: auto !important;
+	}
+
+	* {
+		scrollbar-width: none !important;
+	}
+
+	*::-webkit-scrollbar {
+		width: 0 !important;
+		height: 0 !important;
+		display: none !important;
+	}
+
 	@page {
-		size: A4 portrait;
+		size: A4 landscape;
 		margin: 10mm;
 	}
 

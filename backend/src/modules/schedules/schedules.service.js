@@ -856,34 +856,38 @@ async function addSchedule(payload, options = {}) {
       }
     }
 
-    const categoryBookingsInSlot = existingInSlot.filter((row) => matchesCourseType(row, effectiveCourseType));
-    if (categoryBookingsInSlot.length >= capacity) {
-      const error = new Error("No instructors available for this category and time slot.");
-      error.status = 400;
-      throw error;
-    }
+    if (!options.skipSlotConflictChecks) {
+      const categoryBookingsInSlot = existingInSlot.filter((row) => matchesCourseType(row, effectiveCourseType));
+      if (categoryBookingsInSlot.length >= capacity) {
+        const error = new Error("No instructors available for this category and time slot.");
+        error.status = 400;
+        throw error;
+      }
 
-    if (existingInSlot.some((row) => row.instructor_id === payload.instructor_id)) {
-      const error = new Error("Selected instructor is already assigned to this slot");
-      error.status = 400;
-      throw error;
-    }
+      if (existingInSlot.some((row) => row.instructor_id === payload.instructor_id)) {
+        const error = new Error("Selected instructor is already assigned to this slot");
+        error.status = 400;
+        throw error;
+      }
 
-    if (requiresVehicle && existingInSlot.some((row) => row.vehicle_id === payload.vehicle_id)) {
-      const error = new Error("Selected vehicle is already assigned to this slot");
-      error.status = 400;
-      throw error;
+      if (requiresVehicle && existingInSlot.some((row) => row.vehicle_id === payload.vehicle_id)) {
+        const error = new Error("Selected vehicle is already assigned to this slot");
+        error.status = 400;
+        throw error;
+      }
     }
 
     const plan = buildSchedulePlan(effectiveCourseType, payload.schedule_date, payload.slot);
-    await validateSchedulePlanResources({
-      plan,
-      courseType: effectiveCourseType,
-      instructorId: payload.instructor_id,
-      careOfInstructorId: payload.care_of_instructor_id || null,
-      vehicleId: requiresVehicle ? payload.vehicle_id : null,
-      transaction,
-    });
+    if (!options.skipResourceValidation) {
+      await validateSchedulePlanResources({
+        plan,
+        courseType: effectiveCourseType,
+        instructorId: payload.instructor_id,
+        careOfInstructorId: payload.care_of_instructor_id || null,
+        vehicleId: requiresVehicle ? payload.vehicle_id : null,
+        transaction,
+      });
+    }
 
     const beginnerGroupId = effectiveCourseType === "pdc_beginner"
       ? `${payload.schedule_date}-${payload.slot}-${payload.instructor_id}-${Date.now()}`
@@ -1037,6 +1041,8 @@ async function rescheduleSchedule(scheduleId, payload, options = {}) {
       transaction,
       selectedEnrollment,
       allowPendingEnrollment: true,
+      skipSlotConflictChecks: true,
+      skipResourceValidation: true,
     });
 
     if (ownTransaction) {
