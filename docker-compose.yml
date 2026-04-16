@@ -51,6 +51,8 @@ services:
       SEED_STAFF_EMAIL: ${SEED_STAFF_EMAIL:-staff@guts.local}
       SEED_STAFF_PASSWORD: ${SEED_STAFF_PASSWORD:-ChangeMe!Staff123}
       BACKUP_DIR: /app/backups
+      MYSQL_DUMP_COMMAND: ${MYSQL_DUMP_COMMAND:-mariadb-dump}
+      MYSQL_DUMP_EXTRA_ARGS: ${MYSQL_DUMP_EXTRA_ARGS:---skip-ssl --no-tablespaces}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
       BACKUP_MAX_AGE_HOURS: ${BACKUP_MAX_AGE_HOURS:-26}
       LOG_LEVEL: ${LOG_LEVEL:-info}

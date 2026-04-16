@@ -76,3 +76,34 @@ Bash:
 - Frontend API proxy target is now environment-driven for local and Docker.
 - Install + migration steps are run in consistent order.
 - Startup instructions are standardized for every machine.
+
+## 6) Quick Recovery (When Demo Login Shows 500)
+
+If your browser shows random `500` errors (usually stale Docker frontend proxy state), run:
+
+Windows PowerShell:
+
+```powershell
+.\scripts\restart-stack.ps1
+```
+
+macOS/Linux:
+
+```bash
+chmod +x ./scripts/restart-stack.sh
+./scripts/restart-stack.sh
+```
+
+Fast restart only (no rebuild):
+
+PowerShell:
+
+```powershell
+.\scripts\restart-stack.ps1 -NoBuild
+```
+
+Bash:
+
+```bash
+./scripts/restart-stack.sh --no-build
+```

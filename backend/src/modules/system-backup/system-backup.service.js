@@ -90,6 +90,10 @@ async function runManualBackup({ triggeredByUserId = null } = {}) {
   const dbUser = assertRequiredEnv("DB_USER");
   const dbPassword = assertRequiredEnv("DB_PASSWORD");
   const dbHost = process.env.DB_HOST || "localhost";
+  const dumpCommand = process.env.MYSQL_DUMP_COMMAND || "mysqldump";
+  const dumpExtraArgs = (process.env.MYSQL_DUMP_EXTRA_ARGS || "")
+    .split(/\s+/)
+    .filter(Boolean);
   const backupDir = path.resolve(process.env.BACKUP_DIR || "./backups");
   const retentionDays = Number(process.env.BACKUP_RETENTION_DAYS || 14);
 
@@ -98,8 +102,8 @@ async function runManualBackup({ triggeredByUserId = null } = {}) {
   const backupFile = path.join(backupDir, `${dbName}_${getTimestamp()}.sql`);
   const output = fs.createWriteStream(backupFile);
 
-  const args = [`--host=${dbHost}`, `--user=${dbUser}`, dbName];
-  const dump = spawn("mysqldump", args, {
+  const args = [...dumpExtraArgs, `--host=${dbHost}`, `--user=${dbUser}`, dbName];
+  const dump = spawn(dumpCommand, args, {
     env: {
       ...process.env,
       MYSQL_PWD: dbPassword,
@@ -122,7 +126,7 @@ async function runManualBackup({ triggeredByUserId = null } = {}) {
         if (code === 0) {
           resolve();
         } else {
-          reject(new Error(`mysqldump exited with code ${code}. ${stderr}`));
+          reject(new Error(`${dumpCommand} exited with code ${code}. ${stderr}`));
         }
       });
     });
