@@ -12,6 +12,13 @@ Frontend for the Guardians Technical School management system.
 
 ## Local Development
 
+Recommended: run root bootstrap first from repository root:
+
+- Windows PowerShell: `./scripts/bootstrap.ps1`
+- macOS/Linux: `./scripts/bootstrap.sh`
+
+This auto-creates `frontend/.env` from `frontend/.env.example`.
+
 1. Install dependencies:
 	- `npm install`
 2. Run development server:
@@ -20,6 +27,12 @@ Frontend for the Guardians Technical School management system.
 	- `npm run build`
 4. Preview production build:
 	- `npm run preview`
+
+## Env Variables
+
+- `VITE_API_BASE_URL` (default `/api`)
+- `VITE_API_PROXY_TARGET` (local default `http://localhost:5000`, Docker `http://backend:5000`)
+- `VITE_HMR_CLIENT_PORT` (optional; used in Docker port mapping scenarios)
 
 ## Frontend Highlights
 

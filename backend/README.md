@@ -1,5 +1,12 @@
 ## Database Setup (New PC)
 
+Recommended: run root bootstrap first from repository root:
+
+- Windows PowerShell: `./scripts/bootstrap.ps1`
+- macOS/Linux: `./scripts/bootstrap.sh`
+
+This auto-creates missing env files, installs dependencies, and runs migrations.
+
 1. Install dependencies:
    - `npm install`
 2. Create an empty MySQL database (example):

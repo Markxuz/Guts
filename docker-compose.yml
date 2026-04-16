@@ -86,6 +86,8 @@ services:
         condition: service_healthy
     environment:
       - VITE_API_BASE_URL=/api
+      - VITE_API_PROXY_TARGET=http://backend:5000
+      - VITE_HMR_CLIENT_PORT=8080
     volumes:
       - ./frontend:/app             # <--- HOT RELOAD MAGIC para sa frontend
       - /app/node_modules
