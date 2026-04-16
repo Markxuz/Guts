@@ -11,7 +11,7 @@ export function EnrollmentTrendChart({ data }) {
     );
   }
 
-  const chartData = data.map((item, idx) => ({
+  const chartData = data.map((item) => ({
     month: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][item.month],
     TDC: item.tdc || 0,
     "PDC-B": item.pdcBeginner || 0,
@@ -47,7 +47,7 @@ export function EnrollmentAreaChart({ data }) {
     );
   }
 
-  const chartData = data.map((item, idx) => ({
+  const chartData = data.map((item) => ({
     month: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][item.month],
     TDC: item.tdc || 0,
     "PDC-B": item.pdcBeginner || 0,
@@ -126,7 +126,7 @@ export function CompletionGaugeChart({ completionRate }) {
 export function ComboEnrollmentChart({ monthlyData, completionRate }) {
   if (!monthlyData || monthlyData.length === 0) return null;
 
-  const chartData = monthlyData.map((item, idx) => ({
+  const chartData = monthlyData.map((item) => ({
     month: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][item.month],
     enrollments: (item.tdc || 0) + (item.pdcBeginner || 0) + (item.pdcExperience || 0),
     "Pass Rate": completionRate || 0,

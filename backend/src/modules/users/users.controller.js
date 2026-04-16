@@ -37,6 +37,28 @@ async function updateRole(req, res) {
   }
 }
 
+async function update(req, res) {
+  try {
+    const user = await service.updateUser(req.params.id, req.body, req.user.id);
+
+    const changed = [];
+    if (Object.prototype.hasOwnProperty.call(req.body, "name")) changed.push("name");
+    if (Object.prototype.hasOwnProperty.call(req.body, "email")) changed.push("email");
+    if (Object.prototype.hasOwnProperty.call(req.body, "role")) changed.push("role");
+    if (Object.prototype.hasOwnProperty.call(req.body, "newPassword") && req.body.newPassword) changed.push("password");
+    if (Object.prototype.hasOwnProperty.call(req.body, "mustChangePassword")) changed.push("must_change_password");
+
+    await recordActivity({
+      userId: req.user?.id,
+      action: `Updated user ${user.email} (${changed.join(", ") || "profile"})`,
+    });
+
+    return res.json(user);
+  } catch (error) {
+    return sendHttpError(res, error, 500, "Failed to update user");
+  }
+}
+
 async function remove(req, res) {
   try {
     const users = await service.listUsers();
@@ -55,4 +77,4 @@ async function remove(req, res) {
   }
 }
 
-module.exports = { list, create, updateRole, remove };
+module.exports = { list, create, updateRole, update, remove };

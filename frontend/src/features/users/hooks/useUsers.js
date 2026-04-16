@@ -20,6 +20,18 @@ export function useCreateUser({ onSuccess, onError } = {}) {
   });
 }
 
+export function useUpdateUser({ onSuccess, onError } = {}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) => usersService.update(id, data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      onSuccess?.(data);
+    },
+    onError,
+  });
+}
+
 export function useUpdateUserRole({ onSuccess, onError } = {}) {
   const queryClient = useQueryClient();
   return useMutation({

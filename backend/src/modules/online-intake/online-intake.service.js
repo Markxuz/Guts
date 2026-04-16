@@ -152,70 +152,66 @@ async function approveMatch(id, payload, user) {
 }
 
 async function approveCreate(id, payload, user) {
-  try {
-    const queueItem = await repository.findQueueById(id);
-    if (!queueItem) {
-      const error = new Error("Online intake queue item not found");
-      error.status = 404;
-      throw error;
-    }
-
-    const mappedPayload = payload.override_mapped_payload || queueItem.mapped_payload;
-    ensureMappedPayload(mappedPayload);
-
-    const enrollmentPayload = {
-      ...mappedPayload,
-      student: markSourceFields(mappedPayload.student || {}, queueItem.source, queueItem.external_ref),
-      enrollment: {
-        ...(mappedPayload.enrollment || {}),
-        enrollment_channel: queueItem.source,
-        external_application_ref: queueItem.external_ref,
-      },
-    };
-
-    let createdEnrollment;
-    try {
-      createdEnrollment = await enrollmentsService.addEnrollment(enrollmentPayload);
-    } catch (error) {
-      await repository.updateQueue(
-        queueItem,
-        {
-          import_status: "error",
-          reviewed_by_user_id: user?.id || null,
-          reviewed_at: new Date(),
-          error_message: error.message || "Failed to create enrollment from mapped payload",
-        }
-      );
-      throw error;
-    }
-
-    const reviewMeta = {
-      ...(queueItem.mapped_payload || {}),
-      review: {
-        action: "created_new",
-        enrollment_id: createdEnrollment?.id || null,
-        reviewer_note: payload.reviewer_note || null,
-      },
-    };
-
-    const updatedQueue = await repository.updateQueue(
-      queueItem,
-      {
-        import_status: "created_new",
-        mapped_payload: reviewMeta,
-        reviewed_by_user_id: user?.id || null,
-        reviewed_at: new Date(),
-        error_message: null,
-      }
-    );
-
-    return {
-      item: updatedQueue,
-      enrollmentId: createdEnrollment?.id || null,
-    };
-  } catch (error) {
+  const queueItem = await repository.findQueueById(id);
+  if (!queueItem) {
+    const error = new Error("Online intake queue item not found");
+    error.status = 404;
     throw error;
   }
+
+  const mappedPayload = payload.override_mapped_payload || queueItem.mapped_payload;
+  ensureMappedPayload(mappedPayload);
+
+  const enrollmentPayload = {
+    ...mappedPayload,
+    student: markSourceFields(mappedPayload.student || {}, queueItem.source, queueItem.external_ref),
+    enrollment: {
+      ...(mappedPayload.enrollment || {}),
+      enrollment_channel: queueItem.source,
+      external_application_ref: queueItem.external_ref,
+    },
+  };
+
+  let createdEnrollment;
+  try {
+    createdEnrollment = await enrollmentsService.addEnrollment(enrollmentPayload);
+  } catch (error) {
+    await repository.updateQueue(
+      queueItem,
+      {
+        import_status: "error",
+        reviewed_by_user_id: user?.id || null,
+        reviewed_at: new Date(),
+        error_message: error.message || "Failed to create enrollment from mapped payload",
+      }
+    );
+    throw error;
+  }
+
+  const reviewMeta = {
+    ...(queueItem.mapped_payload || {}),
+    review: {
+      action: "created_new",
+      enrollment_id: createdEnrollment?.id || null,
+      reviewer_note: payload.reviewer_note || null,
+    },
+  };
+
+  const updatedQueue = await repository.updateQueue(
+    queueItem,
+    {
+      import_status: "created_new",
+      mapped_payload: reviewMeta,
+      reviewed_by_user_id: user?.id || null,
+      reviewed_at: new Date(),
+      error_message: null,
+    }
+  );
+
+  return {
+    item: updatedQueue,
+    enrollmentId: createdEnrollment?.id || null,
+  };
 }
 
 module.exports = {

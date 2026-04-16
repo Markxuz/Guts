@@ -5,7 +5,6 @@ const {
   DLCode,
   Instructor,
   Vehicle,
-  Schedule,
   Certificate,
   MaintenanceLog,
   FuelLog,
@@ -23,6 +22,7 @@ const notificationRoutes = require("../modules/notifications/notifications.route
 const scheduleChangeRequestRoutes = require("../modules/schedule-change-requests/schedule-change-requests.routes");
 const usersRoutes = require("../modules/users/users.routes");
 const scheduleRoutes = require("../modules/schedules/schedules.routes");
+const backupsRoutes = require("../modules/system-backup/system-backup.routes");
 const { authenticateToken } = require("../shared/middleware/auth");
 const resourceContracts = require("./resourceContracts");
 
@@ -40,6 +40,7 @@ function createApiRouter() {
   router.use("/notifications", notificationRoutes);
   router.use("/schedule-change-requests", scheduleChangeRequestRoutes);
   router.use("/users", usersRoutes);
+  router.use("/backups", backupsRoutes);
   router.use(
     "/courses",
     authenticateToken,

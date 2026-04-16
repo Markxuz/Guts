@@ -66,4 +66,85 @@ async function deleteUser(id, requesterId) {
   }
 }
 
-module.exports = { listUsers, createUser, changeRole, deleteUser };
+async function updateUser(id, payload, requesterId) {
+  const userId = Number(id);
+  const target = await repository.findById(userId);
+  if (!target) {
+    const err = new Error("User not found");
+    err.status = 404;
+    throw err;
+  }
+
+  const fieldsToUpdate = {};
+
+  if (typeof payload.name === "string") {
+    const name = payload.name.trim();
+    if (!name) {
+      const err = new Error("Name cannot be empty");
+      err.status = 400;
+      throw err;
+    }
+    fieldsToUpdate.name = name;
+  }
+
+  if (typeof payload.email === "string") {
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      const err = new Error("Email cannot be empty");
+      err.status = 400;
+      throw err;
+    }
+
+    const existing = await repository.findByEmail(normalizedEmail);
+    if (existing && Number(existing.id) !== userId) {
+      const err = new Error("Email already in use");
+      err.status = 400;
+      throw err;
+    }
+
+    fieldsToUpdate.email = normalizedEmail;
+  }
+
+  if (typeof payload.role === "string") {
+    if (!VALID_ROLES.includes(payload.role)) {
+      const err = new Error(`role must be one of: ${VALID_ROLES.join(", ")}`);
+      err.status = 400;
+      throw err;
+    }
+
+    if (Number(requesterId) === userId && payload.role !== target.role) {
+      const err = new Error("Cannot change your own role");
+      err.status = 400;
+      throw err;
+    }
+
+    fieldsToUpdate.role = payload.role;
+  }
+
+  if (typeof payload.newPassword === "string" && payload.newPassword.length > 0) {
+    assertStrongPassword(payload.newPassword);
+
+    const isSamePassword = await bcrypt.compare(payload.newPassword, target.password_hash);
+    if (isSamePassword) {
+      const err = new Error("New password must be different from current password");
+      err.status = 400;
+      throw err;
+    }
+
+    fieldsToUpdate.password_hash = await bcrypt.hash(payload.newPassword, 10);
+    fieldsToUpdate.must_change_password =
+      typeof payload.mustChangePassword === "boolean" ? payload.mustChangePassword : true;
+  } else if (typeof payload.mustChangePassword === "boolean") {
+    fieldsToUpdate.must_change_password = payload.mustChangePassword;
+  }
+
+  if (Object.keys(fieldsToUpdate).length === 0) {
+    const err = new Error("No update fields provided");
+    err.status = 400;
+    throw err;
+  }
+
+  return repository.updateUser(userId, fieldsToUpdate);
+}
+
+module.exports = { listUsers, createUser, changeRole, updateUser, deleteUser };

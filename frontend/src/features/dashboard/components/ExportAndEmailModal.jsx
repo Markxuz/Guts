@@ -117,7 +117,7 @@ export default function ExportAndEmailModal({
     },
   ];
 
-  const downloadBlob = (blob, extension, mimeType) => {
+  const downloadBlob = (blob, extension) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

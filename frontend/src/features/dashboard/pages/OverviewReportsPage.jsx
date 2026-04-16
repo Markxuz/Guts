@@ -87,11 +87,45 @@ export default function OverviewReportsPage() {
   
   const monthRange = useMemo(() => currentMonthRange(), []);
   const { widgets, toggleWidget, resetToDefaults, isWidgetVisible } = useWidgetVisibility();
-  const { data: summary, isLoading, isError } = useReportOverview({
+  const { data: summary, isError } = useReportOverview({
     startDate: monthRange.startDate,
     endDate: monthRange.endDate,
     course: activeFilter,
   });
+
+  const stats = useMemo(
+    () =>
+      summary?.stats || {
+        totalStudents: 0,
+        currentlyEnrolled: 0,
+        completed: 0,
+        thisMonth: 0,
+        pdcBeginner: 0,
+        pdcExperience: 0,
+        tdc: 0,
+      },
+    [summary?.stats]
+  );
+
+  const maintenanceSummary = useMemo(
+    () =>
+      summary?.maintenanceSummary || {
+        totalRecords: 0,
+        totalCost: 0,
+        overdueCount: 0,
+      },
+    [summary?.maintenanceSummary]
+  );
+
+  const fuelSummary = useMemo(
+    () =>
+      summary?.fuelSummary || {
+        totalEntries: 0,
+        totalLiters: 0,
+        totalExpense: 0,
+      },
+    [summary?.fuelSummary]
+  );
 
   // Auto-refresh functionality
   useEffect(() => {
@@ -116,16 +150,6 @@ export default function OverviewReportsPage() {
     });
   };
 
-  const stats = summary?.stats || {
-    totalStudents: 0,
-    currentlyEnrolled: 0,
-    completed: 0,
-    thisMonth: 0,
-    pdcBeginner: 0,
-    pdcExperience: 0,
-    tdc: 0,
-  };
-
   const completionRate = useMemo(() => {
     if (stats.thisMonth === 0) return 0;
     return Math.round((stats.completed / stats.thisMonth) * 100);
@@ -140,18 +164,6 @@ export default function OverviewReportsPage() {
     if (stats.completed === 0) return 0;
     return Math.round((stats.completed / Math.max(stats.thisMonth, 1)) * 100);
   }, [stats]);
-
-  const maintenanceSummary = summary?.maintenanceSummary || {
-    totalRecords: 0,
-    totalCost: 0,
-    overdueCount: 0,
-  };
-
-  const fuelSummary = summary?.fuelSummary || {
-    totalEntries: 0,
-    totalLiters: 0,
-    totalExpense: 0,
-  };
 
   const usageByVehicle = summary?.usageByVehicle || [];
   const vehiclesInUse = usageByVehicle.length;

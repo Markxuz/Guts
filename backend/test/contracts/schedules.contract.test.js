@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { Course, Instructor, Vehicle, Schedule, Enrollment, Student, DLCode } = require("../../models");
 const { getTestClient, loginAsAdmin, loginAsStaff } = require("../helpers/appTestHarness");
-const { uniqueLabel, toIsoDate, addDaysIso, nextWeekdayIso } = require("../helpers/dateUtils");
+const { uniqueLabel, addDaysIso, nextWeekdayIso } = require("../helpers/dateUtils");
 
 test.describe("Schedules API contract", () => {
   let client;
