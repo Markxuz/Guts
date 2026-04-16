@@ -42,7 +42,19 @@ Example:
 From repository root:
 
 ```bash
-docker compose up -d --build
+./scripts/deploy-prod.sh
+```
+
+Windows PowerShell:
+
+```powershell
+.\scripts\deploy-prod.ps1
+```
+
+Manual equivalent command:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 If backend is unhealthy on first run, ensure in root `.env`:
@@ -53,8 +65,8 @@ If backend is unhealthy on first run, ensure in root `.env`:
 Then redeploy:
 
 ```bash
-docker compose down
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 After first successful startup and login provisioning:
@@ -64,13 +76,13 @@ After first successful startup and login provisioning:
 3. Redeploy:
 
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 Services:
 
 1. `db` (MySQL)
-2. `backend` (Node API)
+2. `backend` (Node API, runs migrations before app startup)
 3. `frontend` (Nginx serving built frontend and proxying `/api` to backend)
 
 ## 5) Health Checks
@@ -97,6 +109,34 @@ Start-Process "http://localhost:8080/api/health/ready"
 ```
 
 Both should return success payloads.
+
+Automated post-deploy verification:
+
+Windows:
+
+```powershell
+.\scripts\verify-prod.ps1
+```
+
+Linux/macOS:
+
+```bash
+./scripts/verify-prod.sh
+```
+
+Optional (includes manual backup trigger endpoint test):
+
+Windows:
+
+```powershell
+.\scripts\verify-prod.ps1 -RunManualBackup
+```
+
+Linux/macOS:
+
+```bash
+./scripts/verify-prod.sh --run-manual-backup
+```
 
 ## 6) Access from Client Devices
 
@@ -128,7 +168,12 @@ Backups are stored in `backend/backups` on host via bind mount.
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 The backend container runs migrations at startup (`npm run migrate && npm start`).
+
+## 10) Dev vs Production Compose
+
+- `docker-compose.yml` is development-oriented (bind mounts and hot reload).
+- `docker-compose.prod.yml` is the server profile for production/stable deployment.

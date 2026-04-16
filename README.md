@@ -2,6 +2,52 @@
 
 Use this guide when moving to a new laptop/desktop for demos and presentations.
 
+## Production Server (Docker + Tailscale)
+
+For a stable server install (no hot-reload bind mounts), use the production profile:
+
+Windows PowerShell:
+
+```powershell
+.\scripts\deploy-prod.ps1
+```
+
+macOS/Linux:
+
+```bash
+chmod +x ./scripts/deploy-prod.sh
+./scripts/deploy-prod.sh
+```
+
+This starts containers using `docker-compose.prod.yml`.
+
+Production env checklist:
+
+- `docs/production-env-checklist.md`
+- `.env.production.template`
+
+After first successful startup on a fresh database:
+
+1. Set `DB_BOOTSTRAP_SYNC=false` in root `.env`
+2. Set `SEED_DEFAULT_USERS=false` in root `.env`
+3. Re-run deploy command above
+
+Detailed guide: `backend/docs/docker-tailscale-deploy.md`
+
+Post-deploy verification:
+
+Windows PowerShell:
+
+```powershell
+.\scripts\verify-prod.ps1
+```
+
+Linux/macOS:
+
+```bash
+./scripts/verify-prod.sh
+```
+
 ## 1) Fast Setup (Windows)
 
 Run from repository root:
@@ -40,6 +86,8 @@ Run from repository root:
 ```
 
 Open: `http://localhost:8080`
+
+Note: this mode is for development convenience. For server deployment, use the Production Server section above.
 
 ## 3) macOS/Linux
 

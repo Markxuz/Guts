@@ -1,5 +1,3 @@
-# Development-only compose profile.
-# For server/production deployment, use docker-compose.prod.yml.
 services:
   db:
     image: mysql:8.0
@@ -33,7 +31,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       APP_VERSION: ${APP_VERSION:-1.0.0}
       PORT: 5000
       DB_HOST: db
@@ -68,11 +66,9 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_SECURE: ${SMTP_SECURE:-false}
+    command: sh -c "npm run migrate && npm start"
     volumes:
-      - ./backend:/app
-      - /app/node_modules
       - ./backend/backups:/app/backups
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173 --force"
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 20s
@@ -80,24 +76,23 @@ services:
       retries: 5
 
   frontend:
-    # Dev frontend uses Vite server + bind mount for hot reload.
-    image: node:20-alpine
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
     container_name: guts-frontend
-    working_dir: /app
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
-    environment:
-      - VITE_API_BASE_URL=/api
-      - VITE_API_PROXY_TARGET=http://backend:5000
-      - VITE_HMR_CLIENT_PORT=8080
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     ports:
-      - "${APP_PORT:-8080}:5173"
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+      - "${APP_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
 
 volumes:
   db_data:
