@@ -1,5 +1,10 @@
 import { FormField, SectionTitle, SelectField } from "../FormField";
 
+const yesNoOptions = [
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
+];
+
 const vehicleTypeOptions = [
   { value: "DL Codes A - Motorcycle (2 wheels)", label: "DL Codes A - Motorcycle (2 wheels)" },
   { value: "DL Codes A1 - Tricycle (3 wheels)", label: "DL Codes A1 - Tricycle (3 wheels)" },
@@ -57,6 +62,11 @@ const pdcClassificationOptions = [
   { value: "Experience", label: "Experience" },
 ];
 
+const tdcSourceOptions = [
+  { value: "guts", label: "GUTS Driving School" },
+  { value: "external", label: "External Driving School" },
+];
+
 function inferPdcCategory(value) {
   const normalized = String(value || "").toLowerCase();
 
@@ -72,6 +82,9 @@ function inferPdcCategory(value) {
 }
 
 export default function PdcFormSections({ form, onFieldChange }) {
+  const isExperienceCategory = String(form.enrollment.pdc_category || "").toLowerCase() === "experience";
+  const isDriver = form.enrollment.is_already_driver === true;
+
   const handlePdcSelectionChange = (field, value) => {
     const inferredCategory = inferPdcCategory(value);
     onFieldChange("extras", field, value);
@@ -137,6 +150,18 @@ export default function PdcFormSections({ form, onFieldChange }) {
 
       <div className="mt-2 grid gap-3 md:grid-cols-1">
         <SelectField
+          label="TDC SOURCE"
+          name="tdc_source"
+          value={form.enrollment.tdc_source || "guts"}
+          onChange={(event) => onFieldChange("enrollment", "tdc_source", event.target.value)}
+          placeholder="Select TDC source"
+          options={tdcSourceOptions}
+          required
+        />
+      </div>
+
+      <div className="mt-2 grid gap-3 md:grid-cols-1">
+        <SelectField
           label="MODE OF TRAINING"
           name="training_method"
           value={form.enrollment.training_method}
@@ -157,28 +182,55 @@ export default function PdcFormSections({ form, onFieldChange }) {
         IMPORTANT REMINDERS FOR PDC STUDENTS: PER DL CODES PO ANG ATING PDC. EVERY DL CODES MAGKAKAIBA ANG RATES AND SCHEDULE.
       </p>
 
-      <div className="mt-2 grid gap-3 md:grid-cols-2">
-        <SelectField
-          label="ANONG SASAKYAN ANG IMAMANEHO?"
-          name="target_vehicle"
-          value={form.enrollment.target_vehicle}
-          onChange={(event) => onFieldChange("enrollment", "target_vehicle", event.target.value)}
-          placeholder="Select vehicle"
-          options={vehicleTypeOptions}
-          inputClassName="text-slate-900"
-          required
-        />
-        <SelectField
-          label="ANONG KLASE NG TRANSMISSION?"
-          name="transmission_type"
-          value={form.enrollment.transmission_type}
-          onChange={(event) => onFieldChange("enrollment", "transmission_type", event.target.value)}
-          placeholder="Select transmission"
-          options={transmissionTypeOptions}
-          inputClassName="text-slate-900"
-          required
-        />
-      </div>
+      {isExperienceCategory ? (
+        <>
+          <div className="mt-2 grid gap-3 md:grid-cols-2">
+            <SelectField
+              label="MARUNONG KA NA BANG MAGMANEHO?"
+              name="is_already_driver"
+              value={String(form.enrollment.is_already_driver)}
+              onChange={(event) => onFieldChange("enrollment", "is_already_driver", event.target.value)}
+              placeholder="Select Marunong ka na bang magmaneho?"
+              options={yesNoOptions}
+              inputClassName="text-slate-900"
+              required
+            />
+          </div>
+
+          {isDriver ? (
+            <div className="mt-2 grid gap-3 md:grid-cols-2">
+              <SelectField
+                label="ANONG SASAKYAN ANG IMAMANEHO?"
+                name="target_vehicle"
+                value={form.enrollment.target_vehicle}
+                onChange={(event) => onFieldChange("enrollment", "target_vehicle", event.target.value)}
+                placeholder="Select vehicle"
+                options={vehicleTypeOptions}
+                inputClassName="text-slate-900"
+                required
+              />
+              <SelectField
+                label="ANONG KLASE NG TRANSMISSION?"
+                name="transmission_type"
+                value={form.enrollment.transmission_type}
+                onChange={(event) => onFieldChange("enrollment", "transmission_type", event.target.value)}
+                placeholder="Select transmission"
+                options={transmissionTypeOptions}
+                inputClassName="text-slate-900"
+                required
+              />
+            </div>
+          ) : (
+            <p className="mt-3 rounded-xl border border-[#D4AF37]/30 bg-[#fff8e7] px-4 py-3 text-sm text-slate-700">
+              PDC Experience requires a driver with selected vehicle and transmission details.
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="mt-3 rounded-xl border border-[#D4AF37]/30 bg-[#fff8e7] px-4 py-3 text-sm text-slate-700">
+          Vehicle and transmission details are required only for PDC classification: Experience.
+        </p>
+      )}
 
       <div className="mt-2 grid gap-3 md:grid-cols-2">
         <SelectField
@@ -199,6 +251,19 @@ export default function PdcFormSections({ form, onFieldChange }) {
           required
         />
       </div>
+
+      {form.extras.driving_school_tdc === "Other" ? (
+        <div className="mt-2 grid gap-3 md:grid-cols-1">
+          <FormField
+            label="Name of Driving School"
+            name="driving_school_tdc_other"
+            value={form.extras.driving_school_tdc_other || ""}
+            onChange={(event) => onFieldChange("extras", "driving_school_tdc_other", event.target.value)}
+            placeholder="Enter driving school name"
+            required
+          />
+        </div>
+      ) : null}
     </>
   );
 }

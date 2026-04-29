@@ -65,7 +65,15 @@ module.exports = (sequelize) => {
 			type: DataTypes.STRING,
 			allowNull: true,
 		},
+		tdc_source: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
 		promo_package_id: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+		},
+		promo_offer_id: {
 			type: DataTypes.INTEGER,
 			allowNull: true,
 		},
@@ -85,6 +93,26 @@ module.exports = (sequelize) => {
 			type: DataTypes.STRING,
 			allowNull: true,
 			defaultValue: "later",
+		},
+		fee_amount: {
+			type: DataTypes.DECIMAL(10, 2),
+			allowNull: true,
+		},
+		discount_amount: {
+			type: DataTypes.DECIMAL(10, 2),
+			allowNull: true,
+		},
+		payment_terms: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		payment_reference_number: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		payment_notes: {
+			type: DataTypes.TEXT,
+			allowNull: true,
 		},
 		enrollment_state: {
 			type: DataTypes.STRING,

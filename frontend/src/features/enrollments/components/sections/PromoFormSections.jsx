@@ -103,6 +103,7 @@ export default function PromoFormSections({
   loadingPromoPdcAvailability,
 }) {
   const isPromoDriver = form.enrollment.is_already_driver === true;
+  const isExperienceCategory = String(form.enrollment.pdc_category || "").toLowerCase() === "experience";
   const schedulePdcNow = form.promo_schedule_pdc.enabled === true;
 
   const handlePdcSelectionChange = (field, value) => {
@@ -120,46 +121,55 @@ export default function PromoFormSections({
         <h3 className="text-sm font-bold tracking-wide text-[#800000]">TDC</h3>
       </div>
 
-      <SectionTitle>DRIVING INFORMATION</SectionTitle>
-      <div className="grid gap-3 md:grid-cols-2">
-        <SelectField
-          label="MARUNONG KA NA BANG MAGMANEHO?"
-          name="is_already_driver"
-          value={String(form.enrollment.is_already_driver)}
-          onChange={(event) => onFieldChange("enrollment", "is_already_driver", event.target.value)}
-          placeholder="Select Marunong ka na bang magmaneho?"
-          options={yesNoOptions}
-          inputClassName="text-slate-900"
-        />
-      </div>
+      {isExperienceCategory ? (
+        <>
+          <SectionTitle>PDC EXPERIENCE DRIVING ASSESSMENT</SectionTitle>
+          <div className="grid gap-3 md:grid-cols-2">
+            <SelectField
+              label="MARUNONG KA NA BANG MAGMANEHO?"
+              name="is_already_driver"
+              value={String(form.enrollment.is_already_driver)}
+              onChange={(event) => onFieldChange("enrollment", "is_already_driver", event.target.value)}
+              placeholder="Select Marunong ka na bang magmaneho?"
+              options={yesNoOptions}
+              inputClassName="text-slate-900"
+              required
+            />
+          </div>
 
-      {!isPromoDriver ? (
-        <p className="mt-3 rounded-xl border border-[#D4AF37]/30 bg-[#fff8e7] px-4 py-3 text-sm text-slate-700">
-          Vehicle and transmission details are optional when the student is not yet driving.
-        </p>
+          {!isPromoDriver ? (
+            <p className="mt-3 rounded-xl border border-[#D4AF37]/30 bg-[#fff8e7] px-4 py-3 text-sm text-slate-700">
+              PDC Experience requires a driver with selected vehicle and transmission details.
+            </p>
+          ) : (
+            <div className="mt-2 grid gap-3 md:grid-cols-2">
+              <SelectField
+                label="ANONG SASAKYAN ANG INAANYO?"
+                name="target_vehicle"
+                value={form.enrollment.target_vehicle}
+                onChange={(event) => onFieldChange("enrollment", "target_vehicle", event.target.value)}
+                placeholder="Select target vehicle"
+                options={tdcVehicleOptions}
+                inputClassName="text-slate-900"
+                required
+              />
+              <SelectField
+                label="ANONG KLASE NG TRANSMISSION?"
+                name="transmission_type"
+                value={form.enrollment.transmission_type}
+                onChange={(event) => onFieldChange("enrollment", "transmission_type", event.target.value)}
+                placeholder="Select transmission type"
+                options={tdcTransmissionOptions}
+                inputClassName="text-slate-900"
+                required
+              />
+            </div>
+          )}
+        </>
       ) : (
-        <div className="mt-2 grid gap-3 md:grid-cols-2">
-          <SelectField
-            label="ANONG SASAKYAN ANG INAANYO?"
-            name="target_vehicle"
-            value={form.enrollment.target_vehicle}
-            onChange={(event) => onFieldChange("enrollment", "target_vehicle", event.target.value)}
-            placeholder="Select target vehicle"
-            options={tdcVehicleOptions}
-            inputClassName="text-slate-900"
-            required
-          />
-          <SelectField
-            label="ANONG KLASE NG TRANSMISSION?"
-            name="transmission_type"
-            value={form.enrollment.transmission_type}
-            onChange={(event) => onFieldChange("enrollment", "transmission_type", event.target.value)}
-            placeholder="Select transmission type"
-            options={tdcTransmissionOptions}
-            inputClassName="text-slate-900"
-            required
-          />
-        </div>
+        <p className="mt-3 rounded-xl border border-[#D4AF37]/30 bg-[#fff8e7] px-4 py-3 text-sm text-slate-700">
+          Driving assessment, vehicle, and transmission fields are required only for PDC category: Experience.
+        </p>
       )}
 
       <section className="mt-4 rounded-2xl border border-[#d9c9a0] bg-[#fff9ef] p-5">
@@ -354,6 +364,19 @@ export default function PromoFormSections({
           required
         />
       </div>
+
+      {form.extras.driving_school_tdc === "Other" ? (
+        <div className="mt-2 grid gap-3 md:grid-cols-1">
+          <FormField
+            label="Name of Driving School"
+            name="driving_school_tdc_other"
+            value={form.extras.driving_school_tdc_other || ""}
+            onChange={(event) => onFieldChange("extras", "driving_school_tdc_other", event.target.value)}
+            placeholder="Enter driving school name"
+            required
+          />
+        </div>
+      ) : null}
 
       <section className="mt-8 rounded-2xl border border-[#d9c9a0] bg-[#fff9ef] p-5">
         <div className="flex items-start justify-between gap-4">

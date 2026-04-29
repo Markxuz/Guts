@@ -2,6 +2,9 @@ import { ArrowUpDown, ChevronDown, ChevronUp, Clock, Eye, Pencil, Trash2 } from 
 import {
   buildAddress,
   getCourseCode,
+  getEnrollmentLifecycleStatus,
+  getEnrollmentPaymentSummary,
+  getPaymentCategoryLabel,
   getLatestEnrollment,
   getLatestScheduleForEnrollment,
   getStudentScheduleRemarks,
@@ -17,6 +20,7 @@ const twoLineClampStyle = {
 
 function getStatusTone(statusLabel) {
   const normalizedStatusLabel = String(statusLabel || "").toUpperCase();
+  if (normalizedStatusLabel.includes("CANCELLED")) return "slate";
   if (normalizedStatusLabel.includes("FAILED")) return "red";
   if (normalizedStatusLabel.includes("PASSED")) return "green";
   if (
@@ -29,6 +33,13 @@ function getStatusTone(statusLabel) {
   }
   if (normalizedStatusLabel.includes("NOT SET")) return "slate";
   return "maroon";
+}
+
+function getPaymentTone(paymentStatus) {
+  if (paymentStatus === "completed_payment") return "green";
+  if (paymentStatus === "partial_payment") return "amber";
+  if (paymentStatus === "with_balance") return "red";
+  return "slate";
 }
 
 function ClampedText({ value }) {
@@ -121,7 +132,7 @@ export default function StudentTable({
   return (
     <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
       <div className="thin-scrollbar overflow-auto max-h-[440px]">
-        <table className="min-w-[1700px] table-fixed text-sm">
+        <table className="min-w-[2100px] table-fixed text-sm">
           <thead className="sticky top-0 z-10 bg-[#800000] text-left text-white">
             <tr>
               <th className="w-12 rounded-tl-xl px-4 py-3 font-semibold">
@@ -137,6 +148,10 @@ export default function StudentTable({
               <SortableHeader label="Contact" column="contact" sortBy={sortBy} onToggleSort={onToggleSort} className="w-[210px] px-4 py-3" />
               <SortableHeader label="Course" column="course" sortBy={sortBy} onToggleSort={onToggleSort} className="w-[130px] px-4 py-3" />
               <SortableHeader label="Status" column="status" sortBy={sortBy} onToggleSort={onToggleSort} className="w-[200px] px-4 py-3" />
+              <th className="w-[180px] px-4 py-3 font-semibold">Promo Offer</th>
+              <th className="w-[160px] px-4 py-3 font-semibold">Payment Terms</th>
+              <th className="w-[170px] px-4 py-3 font-semibold">Payment Status</th>
+              <th className="w-[160px] px-4 py-3 font-semibold">Balance</th>
               <th className="w-[220px] px-4 py-3 font-semibold">Instructor Remarks</th>
               <th className="w-[220px] px-4 py-3 font-semibold">Student Remarks</th>
               <th className="w-[220px] px-4 py-3 font-semibold">Address</th>
@@ -146,7 +161,7 @@ export default function StudentTable({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={13} className="px-4 py-8 text-center text-slate-500">
                   Loading students...
                 </td>
               </tr>
@@ -154,7 +169,7 @@ export default function StudentTable({
 
             {!isLoading && isError ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-rose-700">
+                <td colSpan={13} className="px-4 py-8 text-center text-rose-700">
                   {error?.message || "Failed to load students"}
                 </td>
               </tr>
@@ -162,7 +177,7 @@ export default function StudentTable({
 
             {!isLoading && !isError && students.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={13} className="px-4 py-8 text-center text-slate-500">
                   No students found for the selected filters.
                 </td>
               </tr>
@@ -170,8 +185,10 @@ export default function StudentTable({
 
             {!isLoading && !isError
               ? students.map((student, index) => {
-                  const enrollmentStatus = getLatestEnrollment(student)?.status || "pending";
                   const latestEnrollment = getLatestEnrollment(student);
+                  const enrollmentStatus = getEnrollmentLifecycleStatus(latestEnrollment);
+                  const paymentSummary = getEnrollmentPaymentSummary(latestEnrollment);
+                  const paymentCategory = getPaymentCategoryLabel(latestEnrollment);
                   const latestSchedule = getLatestScheduleForEnrollment(latestEnrollment);
                   const course = getCourseCode(student);
                   const isPromo = course === "PROMO";
@@ -228,6 +245,22 @@ export default function StudentTable({
                             tone={statusTone}
                           />
                         )}
+                      </td>
+                      <td className="px-4 py-2.5 align-top text-slate-700">
+                        <ClampedText value={paymentCategory.promoOfferName} />
+                      </td>
+                      <td className="px-4 py-2.5 align-top text-slate-700">
+                        <ClampedText value={paymentCategory.paymentTerms} />
+                      </td>
+                      <td className="px-4 py-2.5 align-top">
+                        <Badge
+                          label={paymentSummary.paymentStatus === "completed_payment" ? "Completed" : paymentSummary.paymentStatus === "partial_payment" ? "Partial" : paymentSummary.paymentStatus === "with_balance" ? "With Balance" : "Not Set"}
+                          tone={getPaymentTone(paymentSummary.paymentStatus)}
+                        />
+                      </td>
+                      <td className="px-4 py-2.5 align-top text-slate-700">
+                        <p className="font-semibold text-slate-900">PHP {paymentSummary.remainingBalance.toFixed(2)}</p>
+                        <p className="text-xs text-slate-500">Paid: PHP {paymentSummary.totalPaid.toFixed(2)}</p>
                       </td>
                       <td className="px-4 py-2.5 align-top text-slate-700">
                         <ClampedText value={latestSchedule?.instructor_remarks} />

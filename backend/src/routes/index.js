@@ -1,5 +1,6 @@
 const express = require("express");
 const {
+  Enrollment,
   Course,
   Package: PackageModel,
   DLCode,
@@ -8,6 +9,8 @@ const {
   Certificate,
   MaintenanceLog,
   FuelLog,
+  PromoOffer,
+  Payment,
 } = require("../../models");
 const createCrudRouter = require("../../routes/createCrudRouter");
 const authRoutes = require("../modules/auth/auth.routes");
@@ -23,7 +26,7 @@ const scheduleChangeRequestRoutes = require("../modules/schedule-change-requests
 const usersRoutes = require("../modules/users/users.routes");
 const scheduleRoutes = require("../modules/schedules/schedules.routes");
 const backupsRoutes = require("../modules/system-backup/system-backup.routes");
-const { authenticateToken } = require("../shared/middleware/auth");
+const { authenticateToken, authorizeRoles } = require("../shared/middleware/auth");
 const resourceContracts = require("./resourceContracts");
 
 function createApiRouter() {
@@ -147,6 +150,38 @@ function createApiRouter() {
           model: Vehicle,
           as: "vehicle",
           attributes: ["id", "vehicle_name", "plate_number", "vehicle_type"],
+          required: false,
+        },
+      ],
+    })
+  );
+  router.use(
+    "/promo-offers",
+    authenticateToken,
+    authorizeRoles("admin"),
+    createCrudRouter(PromoOffer, {
+      createRequiredFields: ["name"],
+      createSchema: resourceContracts.promoOffers.createSchema,
+      updateSchema: resourceContracts.promoOffers.updateSchema,
+    })
+  );
+  router.use(
+    "/payments",
+    authenticateToken,
+    authorizeRoles("admin", "sub_admin"),
+    createCrudRouter(Payment, {
+      createRequiredFields: ["enrollment_id", "amount"],
+      createSchema: resourceContracts.payments.createSchema,
+      updateSchema: resourceContracts.payments.updateSchema,
+      listInclude: [
+        {
+          model: Enrollment,
+          required: false,
+        },
+      ],
+      detailInclude: [
+        {
+          model: Enrollment,
           required: false,
         },
       ],

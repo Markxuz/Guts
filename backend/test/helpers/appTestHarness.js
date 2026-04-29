@@ -6,6 +6,15 @@ const { sequelize } = require("../../models");
 let cached;
 let initializing;
 
+async function ensureTableColumn(tableName, columnName, columnDefinition) {
+  const queryInterface = sequelize.getQueryInterface();
+  const columns = await queryInterface.describeTable(tableName);
+
+  if (!Object.prototype.hasOwnProperty.call(columns, columnName)) {
+    await queryInterface.addColumn(tableName, columnName, columnDefinition);
+  }
+}
+
 async function getTestClient() {
   if (cached) {
     return cached;
@@ -14,6 +23,10 @@ async function getTestClient() {
   if (!initializing) {
     initializing = (async () => {
       await sequelize.authenticate();
+      await ensureTableColumn("Enrollments", "promo_offer_id", {
+        type: require("sequelize").DataTypes.INTEGER,
+        allowNull: true,
+      });
       await ensureDefaultUsers();
       cached = request(createApp());
       return cached;

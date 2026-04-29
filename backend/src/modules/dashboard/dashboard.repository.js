@@ -15,15 +15,18 @@ async function countStudents() {
 }
 
 async function findAllEnrollmentsWithCode(start, end) {
-  const where =
-    start && end
-      ? {
-          created_at: {
-            [Op.gte]: start,
-            [Op.lt]: end,
-          },
-        }
-      : undefined;
+  const where = {
+    student_id: {
+      [Op.ne]: null,
+    },
+  };
+
+  if (start && end) {
+    where.created_at = {
+      [Op.gte]: start,
+      [Op.lt]: end,
+    };
+  }
 
   return Enrollment.findAll({
     where,
@@ -49,6 +52,9 @@ async function findAllEnrollmentsWithCode(start, end) {
 async function findEnrollmentsByDateRange(start, end) {
   return Enrollment.findAll({
     where: {
+      student_id: {
+        [Op.ne]: null,
+      },
       created_at: {
         [Op.gte]: start,
         [Op.lt]: end,
@@ -75,6 +81,11 @@ async function findEnrollmentsByDateRange(start, end) {
 
 async function findOperationalEnrollments(limit = 500) {
   return Enrollment.findAll({
+    where: {
+      student_id: {
+        [Op.ne]: null,
+      },
+    },
     include: [
       {
         model: Student,

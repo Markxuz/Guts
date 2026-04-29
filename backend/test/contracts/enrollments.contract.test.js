@@ -255,6 +255,8 @@ test.describe("Enrollments API contract", () => {
         profile: {},
         extras: {
           region: "NCR",
+          driving_school_tdc: "GUTS Driving School",
+          year_completed_tdc: "2026",
         },
         enrollment: {
           client_type: "new",

@@ -28,6 +28,11 @@ module.exports = (sequelize) => {
 			allowNull: false,
 			defaultValue: false,
 		},
+		session_version: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+			defaultValue: 0,
+		},
 	});
 
 	return User;

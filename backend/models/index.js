@@ -20,6 +20,7 @@ const MaintenanceLog = require("./MaintenanceLog")(sequelize);
 const FuelLog = require("./FuelLog")(sequelize);
 const PromoPackage = require("./PromoPackage")(sequelize);
 const PromoEntitlement = require("./PromoEntitlement")(sequelize);
+const PromoOffer = require("./PromoOffer")(sequelize);
 const SessionAttendance = require("./SessionAttendance")(sequelize);
 const OnlineImportQueue = require("./OnlineImportQueue")(sequelize);
 const ReportSchedule = require("./ReportSchedule")(sequelize);
@@ -74,7 +75,7 @@ Enrollment.belongsTo(Package, { foreignKey: "package_id" });
 DLCode.hasMany(Enrollment, { foreignKey: "dl_code_id" });
 Enrollment.belongsTo(DLCode, { foreignKey: "dl_code_id" });
 
-Enrollment.hasOne(Payment, { foreignKey: "enrollment_id" });
+Enrollment.hasMany(Payment, { foreignKey: "enrollment_id", as: "payments" });
 Payment.belongsTo(Enrollment, { foreignKey: "enrollment_id" });
 
 Student.hasMany(PromoPackage, { foreignKey: "student_id", as: "promoPackages" });
@@ -88,6 +89,9 @@ PromoEntitlement.belongsTo(PromoPackage, { foreignKey: "promo_package_id", as: "
 
 PromoPackage.hasMany(Enrollment, { foreignKey: "promo_package_id", as: "enrollments" });
 Enrollment.belongsTo(PromoPackage, { foreignKey: "promo_package_id", as: "promoPackage" });
+
+PromoOffer.hasMany(Enrollment, { foreignKey: "promo_offer_id", as: "enrollments" });
+Enrollment.belongsTo(PromoOffer, { foreignKey: "promo_offer_id", as: "promoOffer" });
 
 Enrollment.hasMany(SessionAttendance, { foreignKey: "enrollment_id", as: "sessionAttendance" });
 SessionAttendance.belongsTo(Enrollment, { foreignKey: "enrollment_id", as: "enrollment" });
@@ -144,6 +148,7 @@ module.exports = {
   FuelLog,
   PromoPackage,
   PromoEntitlement,
+  PromoOffer,
   SessionAttendance,
   OnlineImportQueue,
   ReportSchedule,

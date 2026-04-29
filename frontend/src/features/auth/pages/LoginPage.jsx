@@ -19,15 +19,15 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-200 p-4">
-      <div className="w-full max-w-md rounded-xl border border-white/10 bg-[#14121a] p-6 shadow-xl">
+      <div className="w-full max-w-lg rounded-xl border border-white/10 bg-[#14121a] p-5 shadow-xl sm:max-w-md sm:p-6">
         <div className="mb-5 flex items-center gap-3">
           <img
             src="/Guts%20Icon.png"
             alt="Guardians Technical School"
-            className="h-25 w-25 rounded-xl object-contain"
+            className="h-24 w-24 shrink-0 rounded-xl object-contain sm:h-25 sm:w-25"
           />
           <div>
-            <h1 className="text-lg font-bold text-[#e8e5e0]">Guardians Technical School</h1>
+            <h1 className="text-base font-bold text-[#e8e5e0] sm:text-lg">Guardians Technical School</h1>
             <p className="text-xs text-[#c7a24a]">Admin / Staff Login</p>
           </div>
         </div>

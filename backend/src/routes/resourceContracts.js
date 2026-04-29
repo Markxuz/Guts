@@ -2,6 +2,24 @@ const Joi = require("joi");
 
 const optionalText = Joi.string().trim().allow("", null);
 
+function promoPriceRangeSchema(schema) {
+  return schema.custom((value, helpers) => {
+    if (
+      value.fixed_price !== null &&
+      value.fixed_price !== undefined &&
+      value.discounted_price !== null &&
+      value.discounted_price !== undefined &&
+      Number(value.discounted_price) > Number(value.fixed_price)
+    ) {
+      return helpers.error("any.custom", {
+        message: "discounted_price cannot be greater than fixed_price",
+      });
+    }
+
+    return value;
+  });
+}
+
 const courseCreateSchema = Joi.object({
   course_name: Joi.string().trim().required(),
   description: optionalText,
@@ -20,6 +38,42 @@ const packageCreateSchema = Joi.object({
 const packageUpdateSchema = Joi.object({
   package_name: Joi.string().trim(),
   price: Joi.number().min(0).allow(null),
+}).min(1);
+
+const promoOfferCreateSchema = promoPriceRangeSchema(Joi.object({
+  name: Joi.string().trim().required(),
+  description: optionalText,
+  status: Joi.string().valid("active", "inactive").default("active"),
+  fixed_price: Joi.number().min(0).allow(null),
+  discounted_price: Joi.number().min(0).allow(null),
+  notes: optionalText,
+}));
+
+const promoOfferUpdateSchema = promoPriceRangeSchema(Joi.object({
+  name: Joi.string().trim(),
+  description: optionalText,
+  status: Joi.string().valid("active", "inactive"),
+  fixed_price: Joi.number().min(0).allow(null),
+  discounted_price: Joi.number().min(0).allow(null),
+  notes: optionalText,
+}).min(1));
+
+const paymentCreateSchema = Joi.object({
+  enrollment_id: Joi.number().integer().positive().required(),
+  amount: Joi.number().positive().required(),
+  payment_method: Joi.string().valid("cash", "card", "bank_transfer", "ewallet").default("cash"),
+  payment_status: Joi.string().valid("pending", "paid", "failed", "refunded").default("pending"),
+  reference_number: optionalText,
+  account_number: optionalText,
+});
+
+const paymentUpdateSchema = Joi.object({
+  enrollment_id: Joi.number().integer().positive(),
+  amount: Joi.number().positive(),
+  payment_method: Joi.string().valid("cash", "card", "bank_transfer", "ewallet"),
+  payment_status: Joi.string().valid("pending", "paid", "failed", "refunded"),
+  reference_number: optionalText,
+  account_number: optionalText,
 }).min(1);
 
 const dlCodeCreateSchema = Joi.object({
@@ -111,7 +165,18 @@ const fuelCreateSchema = Joi.object({
   liters: Joi.number().positive().required(),
   amount_spent: Joi.number().positive().required(),
   odometer_reading: Joi.number().min(0).required(),
+  odometer_start: Joi.number().min(0).allow(null),
+  odometer_end: Joi.number().min(0).allow(null),
   logged_at: Joi.date().iso().allow(null, ""),
+}).custom((value, helpers) => {
+  if (value.odometer_start !== null && value.odometer_end !== null) {
+    if (Number(value.odometer_end) < Number(value.odometer_start)) {
+      return helpers.error("any.custom", {
+        message: "odometer_end must be greater than or equal to odometer_start",
+      });
+    }
+  }
+  return value;
 });
 
 const fuelUpdateSchema = Joi.object({
@@ -119,6 +184,8 @@ const fuelUpdateSchema = Joi.object({
   liters: Joi.number().positive(),
   amount_spent: Joi.number().positive(),
   odometer_reading: Joi.number().min(0),
+  odometer_start: Joi.number().min(0).allow(null),
+  odometer_end: Joi.number().min(0).allow(null),
   logged_at: Joi.date().iso().allow(null, ""),
 }).min(1);
 
@@ -142,6 +209,14 @@ module.exports = {
   packages: {
     createSchema: packageCreateSchema,
     updateSchema: packageUpdateSchema,
+  },
+  promoOffers: {
+    createSchema: promoOfferCreateSchema,
+    updateSchema: promoOfferUpdateSchema,
+  },
+  payments: {
+    createSchema: paymentCreateSchema,
+    updateSchema: paymentUpdateSchema,
   },
   dlCodes: {
     createSchema: dlCodeCreateSchema,

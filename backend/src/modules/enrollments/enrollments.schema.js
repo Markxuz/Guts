@@ -16,6 +16,7 @@ const educationalAttainmentSchema = Joi.string().valid(
 const tdcTrainingMethodSchema = optionalText;
 const pdcTrainingMethodSchema = optionalText;
 const scheduleSlotSchema = Joi.string().valid("morning", "afternoon");
+const financialAmountSchema = Joi.number().precision(2).min(0).allow(null);
 
 const schedulePayloadSchema = Joi.object({
   enabled: Joi.boolean().default(false),
@@ -68,7 +69,14 @@ const enrollmentCreateSchema = Joi.object({
   enrollment: Joi.object({
     schedule_id: Joi.number().integer().allow(null),
     package_id: Joi.number().integer().allow(null),
+    promo_offer_id: Joi.number().integer().allow(null),
     client_type: optionalText,
+    fee_amount: financialAmountSchema,
+    discount_amount: financialAmountSchema,
+    payment_terms: optionalText,
+    payment_reference_number: optionalText,
+    payment_notes: optionalText,
+    tdc_source: Joi.string().valid("guts", "external").allow("", null),
     enrollment_channel: Joi.string().valid("walk_in", "saferoads", "otdc", "partner").allow("", null),
     external_application_ref: optionalText,
     is_already_driver: Joi.boolean().allow(null),
@@ -93,11 +101,21 @@ const enrollmentCreateSchema = Joi.object({
   const normalize = (input) => String(input || "").trim().toLowerCase();
   const isMotorcycleTarget = (input) => {
     const normalized = normalize(input);
-    return normalized === "motorcycle";
+    return (
+      normalized === "motorcycle" ||
+      normalized === "motor" ||
+      normalized.includes("motorcycle") ||
+      normalized.includes("tricycle") ||
+      normalized.includes("dl codes a")
+    );
   };
 
   const hasPdcSelection = Boolean(value.enrollment?.pdc_category || value.enrollment?.pdc_type);
+  const pdcCategoryNormalized = normalize(value.enrollment?.pdc_category || value.enrollment?.pdc_type);
+  const isExperienceCategory = pdcCategoryNormalized === "experience";
   const scheduleEnabled = Boolean(value.schedule?.enabled);
+  const feeAmount = value.enrollment?.fee_amount;
+  const discountAmount = value.enrollment?.discount_amount;
 
   if (value.enrollment_type === "PDC" && !hasPdcSelection) {
     return helpers.error("any.custom", {
@@ -105,41 +123,41 @@ const enrollmentCreateSchema = Joi.object({
     });
   }
 
-  if (value.enrollment_type === "TDC" && value.enrollment?.is_already_driver) {
-    if (!value.enrollment?.target_vehicle) {
-      return helpers.error("any.custom", {
-        message: "target_vehicle is required for TDC students who already know how to drive",
-      });
-    }
-
-    if (!value.enrollment?.transmission_type) {
-      return helpers.error("any.custom", {
-        message: "transmission_type is required for TDC students who already know how to drive",
-      });
-    }
-
-    if (value.enrollment?.target_vehicle === "Motorcycle" && !value.enrollment?.motorcycle_type) {
-      return helpers.error("any.custom", {
-        message: "motorcycle_type is required when Motorcycle is selected",
-      });
-    }
-  }
-
-  if (value.enrollment_type === "PROMO" && value.enrollment?.is_already_driver && !value.enrollment?.target_vehicle) {
+  if (feeAmount !== null && discountAmount !== null && Number(discountAmount) > Number(feeAmount)) {
     return helpers.error("any.custom", {
-      message: "target_vehicle is required for PROMO enrollments",
+      message: "discount_amount cannot be greater than fee_amount",
     });
   }
 
-  if (value.enrollment_type === "PROMO" && value.enrollment?.is_already_driver && !value.enrollment?.transmission_type) {
+  if (discountAmount !== null && feeAmount === null) {
     return helpers.error("any.custom", {
-      message: "transmission_type is required for PROMO enrollments when already driving",
+      message: "fee_amount is required when discount_amount is provided",
+    });
+  }
+
+  const requiresExperienceDrivingDetails =
+    (value.enrollment_type === "PDC" || value.enrollment_type === "PROMO") && isExperienceCategory;
+
+  if (requiresExperienceDrivingDetails && value.enrollment?.is_already_driver !== true) {
+    return helpers.error("any.custom", {
+      message: "is_already_driver must be true for Experience enrollments",
+    });
+  }
+
+  if (requiresExperienceDrivingDetails && !value.enrollment?.target_vehicle) {
+    return helpers.error("any.custom", {
+      message: "target_vehicle is required for Experience enrollments",
+    });
+  }
+
+  if (requiresExperienceDrivingDetails && !value.enrollment?.transmission_type) {
+    return helpers.error("any.custom", {
+      message: "transmission_type is required for Experience enrollments",
     });
   }
 
   if (
-    value.enrollment_type === "PROMO" &&
-    value.enrollment?.is_already_driver &&
+    requiresExperienceDrivingDetails &&
     isMotorcycleTarget(value.enrollment?.target_vehicle) &&
     !value.enrollment?.motorcycle_type
   ) {
@@ -208,6 +226,7 @@ const enrollmentCreateSchema = Joi.object({
 const enrollmentUpdateSchema = Joi.object({
   schedule_id: Joi.number().integer(),
   package_id: Joi.number().integer(),
+  promo_offer_id: Joi.number().integer().allow(null),
   dl_code_id: Joi.number().integer(),
   client_type: optionalText,
   enrollment_channel: Joi.string().valid("walk_in", "saferoads", "otdc", "partner").allow("", null),
@@ -217,6 +236,12 @@ const enrollmentUpdateSchema = Joi.object({
   pdc_eligibility_date: Joi.date().iso().allow(null, ""),
   pdc_valid_until: Joi.date().iso().allow(null, ""),
   pdc_start_mode: Joi.string().valid("now", "later").allow("", null),
+  fee_amount: financialAmountSchema,
+  discount_amount: financialAmountSchema,
+  payment_terms: optionalText,
+  payment_reference_number: optionalText,
+  payment_notes: optionalText,
+  tdc_source: Joi.string().valid("guts", "external").allow("", null),
   enrollment_state: Joi.string()
     .valid(
       "draft",

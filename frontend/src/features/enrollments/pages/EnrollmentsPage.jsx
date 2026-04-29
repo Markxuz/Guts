@@ -4,7 +4,7 @@ import { ArrowLeft, GraduationCap, LoaderCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import EnrollmentTypeSwitcher from "../components/EnrollmentTypeSwitcher";
 import { getEnrollmentTypeLabel } from "../components/enrollmentTypeOptions";
-import { AddressSection, PersonalInfoSection } from "../components/sections/CommonSections";
+import { AddressSection, FinancialSection, PersonalInfoSection } from "../components/sections/CommonSections";
 import { useCreateEnrollment } from "../hooks/useCreateEnrollment";
 import { resourceServices } from "../../../services/resources";
 import { fetchDailyReports } from "../../dashboard/services/dashboardApi";
@@ -54,6 +54,13 @@ const INITIAL_FORM = {
     motorcycle_type: "",
     training_method: "On Site",
     pdc_category: "",
+    promo_offer_id: "",
+    fee_amount: "",
+    discount_amount: "",
+    payment_terms: "",
+    payment_reference_number: "",
+    payment_notes: "",
+    tdc_source: "guts",
   },
   extras: {
     region: "",
@@ -63,6 +70,7 @@ const INITIAL_FORM = {
     emergency_contact_number: "",
     lto_portal_account: "",
     driving_school_tdc: "",
+    driving_school_tdc_other: "",
     year_completed_tdc: "",
     tdc_training_method: "Onsite",
     pdc_training_method: "Onsite",
@@ -102,7 +110,15 @@ function toNullableNumber(value) {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+function isExperiencePdcCategory(value) {
+  return String(value || "").trim().toLowerCase() === "experience";
+}
+
 function buildEnrollmentPayload(type, form) {
+  const isExperienceFlow = isExperiencePdcCategory(form.enrollment.pdc_category);
+  const drivingSchoolTdc = form.extras.driving_school_tdc === "Other"
+    ? (form.extras.driving_school_tdc_other || "").trim()
+    : form.extras.driving_school_tdc;
   const promoPdcTrainingMethod = "Onsite";
   const promoTrainingMethod = [
     form.extras.tdc_training_method ? `TDC: ${form.extras.tdc_training_method}` : null,
@@ -148,7 +164,7 @@ function buildEnrollmentPayload(type, form) {
       emergency_contact_person: form.extras.emergency_contact_person,
       emergency_contact_number: form.extras.emergency_contact_number,
       lto_portal_account: form.extras.lto_portal_account,
-      driving_school_tdc: form.extras.driving_school_tdc,
+      driving_school_tdc: drivingSchoolTdc,
       year_completed_tdc: form.extras.year_completed_tdc,
       tdc_training_method: type === "PROMO" ? form.extras.tdc_training_method || "Onsite" : form.extras.tdc_training_method,
       pdc_training_method: type === "PROMO" ? promoPdcTrainingMethod : form.extras.pdc_training_method,
@@ -161,25 +177,31 @@ function buildEnrollmentPayload(type, form) {
             ? "promo"
             : form.enrollment.client_type || null,
       is_already_driver:
-        type === "TDC" || type === "PROMO"
-          ? form.enrollment.is_already_driver === true
+        type === "PDC" || type === "PROMO"
+          ? isExperienceFlow && form.enrollment.is_already_driver === true
           : false,
       target_vehicle:
-        type === "PROMO"
-          ? form.enrollment.target_vehicle || null
-          : type === "TDC" && form.enrollment.is_already_driver === true
+        (type === "PDC" || type === "PROMO") && isExperienceFlow && form.enrollment.is_already_driver === true
           ? form.enrollment.target_vehicle || null
           : null,
       transmission_type:
-        (type === "TDC" || type === "PROMO") && form.enrollment.is_already_driver === true
+        (type === "PDC" || type === "PROMO") && isExperienceFlow && form.enrollment.is_already_driver === true
           ? form.enrollment.transmission_type || null
           : null,
       motorcycle_type:
-        (type === "TDC" || type === "PROMO") &&
+        (type === "PDC" || type === "PROMO") &&
+        isExperienceFlow &&
         form.enrollment.is_already_driver === true &&
         isMotorcycleTargetVehicle(form.enrollment.target_vehicle)
           ? form.enrollment.motorcycle_type || null
           : null,
+      fee_amount: form.enrollment.fee_amount || null,
+      discount_amount: form.enrollment.discount_amount || null,
+      payment_terms: form.enrollment.payment_terms || null,
+      payment_reference_number: form.enrollment.payment_reference_number || null,
+      payment_notes: form.enrollment.payment_notes || null,
+      promo_offer_id: toNullableNumber(form.enrollment.promo_offer_id),
+      tdc_source: type === "PDC" || type === "PROMO" ? (form.enrollment.tdc_source || "guts") : null,
       training_method:
         type === "PDC"
           ? form.enrollment.training_method || null
@@ -229,7 +251,13 @@ function normalizeText(value) {
 
 function isMotorcycleTargetVehicle(value) {
   const normalized = normalizeText(value);
-  return normalized === "motorcycle";
+  return (
+    normalized === "motorcycle" ||
+    normalized === "motor" ||
+    normalized.includes("motorcycle") ||
+    normalized.includes("tricycle") ||
+    normalized.includes("dl codes a")
+  );
 }
 
 function inferEnrollmentCourseType(type, form) {
@@ -267,7 +295,13 @@ function buildInstructorOptionsForCourseType(rows, courseType) {
 
 function isMotorcycleVehicleType(vehicleType) {
   const normalized = normalizeText(vehicleType);
-  return normalized === "motorcycle" || normalized === "motor" || normalized === "tricycle";
+  return (
+    normalized === "motorcycle" ||
+    normalized === "motor" ||
+    normalized.includes("motorcycle") ||
+    normalized.includes("tricycle") ||
+    normalized.includes("dl codes a")
+  );
 }
 
 function isCarVehicleType(vehicleType) {
@@ -386,6 +420,18 @@ export default function EnrollmentsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: promoOffers } = useQuery({
+    queryKey: ["promo-offers"],
+    queryFn: async () => resourceServices.promoOffers.list(),
+    enabled: Boolean(selectedType),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const promoOfferRows = useMemo(
+    () => (Array.isArray(promoOffers) ? promoOffers : promoOffers?.data || []),
+    [promoOffers]
+  );
+
   const { data: scheduleAvailability, isLoading: loadingScheduleAvailability } = useQuery({
     queryKey: [
       "enrollment-schedule-availability",
@@ -471,6 +517,59 @@ export default function EnrollmentsPage() {
       label: `${item.vehicle_name || item.plate_number} (${item.vehicle_type || "Vehicle"} | ${item.transmission_type || "Transmission N/A"})`,
     }));
   }, [scheduleResources, form.enrollment.target_vehicle, form.enrollment.transmission_type]);
+
+  const promoOfferOptions = useMemo(
+    () => [
+      { value: "", label: "None" },
+      ...promoOfferRows
+        .filter((item) => String(item?.status || "").toLowerCase() === "active")
+        .map((item) => ({ value: String(item.id), label: item.name || `Promo #${item.id}` })),
+    ],
+    [promoOfferRows]
+  );
+
+  const selectedPromoOffer = useMemo(
+    () => promoOfferRows.find((item) => String(item.id) === String(form.enrollment.promo_offer_id)) || null,
+    [promoOfferRows, form.enrollment.promo_offer_id]
+  );
+
+  const promoAmountSnapshot = useMemo(() => {
+    const fixedPrice = Number(selectedPromoOffer?.fixed_price);
+    const discountedPrice = Number(selectedPromoOffer?.discounted_price);
+
+    if (!selectedPromoOffer || Number.isNaN(discountedPrice)) {
+      return null;
+    }
+
+    return {
+      fee_amount: discountedPrice.toFixed(2),
+      discount_amount: Math.max(fixedPrice - discountedPrice, 0).toFixed(2),
+    };
+  }, [selectedPromoOffer]);
+
+  useEffect(() => {
+    if (!promoAmountSnapshot) {
+      return;
+    }
+
+    setForm((current) => {
+      const nextFeeAmount = promoAmountSnapshot.fee_amount;
+      const nextDiscountAmount = promoAmountSnapshot.discount_amount;
+
+      if (current.enrollment.fee_amount === nextFeeAmount && current.enrollment.discount_amount === nextDiscountAmount) {
+        return current;
+      }
+
+      return {
+        ...current,
+        enrollment: {
+          ...current.enrollment,
+          fee_amount: nextFeeAmount,
+          discount_amount: nextDiscountAmount,
+        },
+      };
+    });
+  }, [promoAmountSnapshot]);
 
   const selectedScheduleVehicle = useMemo(
     () => (scheduleResources?.vehicles || []).find((item) => String(item.id) === String(form.schedule.vehicle_id)) || null,
@@ -997,20 +1096,20 @@ export default function EnrollmentsPage() {
           >
             <ArrowLeft size={16} />
           </button>
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#D4AF37]/20 text-[#800000]">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#D4AF37]/20 text-[#800000]">
             <GraduationCap size={16} />
           </span>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-slate-900">New Enrollment</h1>
-            <p className="text-xs text-slate-500">Guardians Technical School</p>
+            <p className="text-xs text-slate-500 truncate">Guardians Technical School</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-xl bg-white shadow-md">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
-            <div>
+          <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:gap-4 sm:px-5 sm:py-4">
+            <div className="min-w-0">
               <h2 className="text-base font-semibold text-slate-900">{getEnrollmentTypeLabel(selectedType)}</h2>
-              <p className="mt-1 text-xs text-slate-500">Fill out the student details and submit the enrollment record.</p>
+              <p className="mt-1 text-xs text-slate-500">Fill out student details and submit the enrollment record.</p>
             </div>
 
             <EnrollmentTypeSwitcher
@@ -1021,12 +1120,18 @@ export default function EnrollmentsPage() {
             />
           </div>
 
-          <div className="thin-scrollbar max-h-[80vh] overflow-y-auto px-5 py-4">
+          <div className="thin-scrollbar max-h-[80vh] overflow-y-auto px-4 py-4 sm:px-5">
             <PersonalInfoSection type={selectedType} form={form} onFieldChange={handleFieldChange} />
             <AddressSection type={selectedType} form={form} onFieldChange={handleFieldChange} />
+            <FinancialSection
+              type={selectedType}
+              form={form}
+              onFieldChange={handleFieldChange}
+              promoOfferOptions={promoOfferOptions}
+            />
             {selectedType === "TDC" ? (
               <Suspense fallback={<p className="mt-4 text-sm text-slate-500">Loading TDC form...</p>}>
-                <TdcFormSections form={form} onFieldChange={handleFieldChange} />
+                <TdcFormSections />
               </Suspense>
             ) : null}
             {selectedType === "PDC" ? (

@@ -18,6 +18,8 @@ export const resourceServices = {
   fuelLogs: createCrudService("/fuel-logs"),
   schedules: createCrudService("/schedules"),
   packages: createCrudService("/packages"),
+  promoOffers: createCrudService("/promo-offers"),
+  payments: createCrudService("/payments"),
   dlCodes: createCrudService("/dl-codes"),
   enrollments: createCrudService("/enrollments"),
 };

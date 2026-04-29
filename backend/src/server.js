@@ -7,7 +7,7 @@ const { startReportScheduler } = require("./modules/reports/reportScheduler");
 const logger = require("./shared/logging/logger");
 
 const PORT = process.env.PORT || 5000;
-const SHOULD_SYNC_SCHEMA = process.env.DB_SYNC === "true";
+const SHOULD_SYNC_SCHEMA = process.env.DB_SYNC === "true" || process.env.DB_BOOTSTRAP_SYNC === "true";
 
 async function startServer() {
   try {

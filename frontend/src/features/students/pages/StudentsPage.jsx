@@ -21,6 +21,7 @@ function StudentsPage() {
   const {
     search,
     courseFilter,
+    paymentFilter,
     sortBy,
     selectedStudent,
     editingStudent,
@@ -52,6 +53,7 @@ function StudentsPage() {
     removeToast,
     setSearch,
     setCourseFilter,
+    setPaymentFilter,
     toggleSelectStudent,
     toggleSelectAllVisible,
     openBulkStatusModal,
@@ -127,6 +129,35 @@ function StudentsPage() {
                 onClick={() => setCourseFilter("passed")}
               >
                 Completed / Passed
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 md:ml-2">
+              <button
+                type="button"
+                className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                  paymentFilter === "all" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+                onClick={() => setPaymentFilter("all")}
+              >
+                All Payments
+              </button>
+              <button
+                type="button"
+                className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                  paymentFilter === "with_balance" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+                onClick={() => setPaymentFilter("with_balance")}
+              >
+                With Balance
+              </button>
+              <button
+                type="button"
+                className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                  paymentFilter === "completed_payment" ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+                onClick={() => setPaymentFilter("completed_payment")}
+              >
+                Completed Payments
               </button>
             </div>
             <button

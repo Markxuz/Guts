@@ -381,6 +381,51 @@ export default function EditStudentModal({ student, form, onChange, onClose, onS
             />
           </div>
 
+          <h4 className={`${sectionHeadingClass} mt-5`}>LTMS Information</h4>
+          <div className="grid gap-3 md:grid-cols-3">
+            <input
+              value={form.profile.student_permit_number}
+              onChange={(event) => handleFieldChange("profile", "student_permit_number", event.target.value)}
+              placeholder="Student Permit Number"
+              className={inputClass}
+            />
+            <input
+              value={form.profile.student_permit_date}
+              onChange={(event) => handleFieldChange("profile", "student_permit_date", event.target.value)}
+              type="date"
+              placeholder="Student Permit Date"
+              className={inputClass}
+            />
+            <select
+              value={form.profile.student_permit_status || ""}
+              onChange={(event) => handleFieldChange("profile", "student_permit_status", event.target.value)}
+              className={inputClass}
+            >
+              <option value="">Permit Status</option>
+              <option value="valid">Valid</option>
+              <option value="expired">Expired</option>
+              <option value="revoked">Revoked</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+
+          <h4 className={`${sectionHeadingClass} mt-5`}>Medical Certificate</h4>
+          <div className="grid gap-3 md:grid-cols-2">
+            <input
+              value={form.profile.medical_certificate_provider}
+              onChange={(event) => handleFieldChange("profile", "medical_certificate_provider", event.target.value)}
+              placeholder="Clinic Name"
+              className={inputClass}
+            />
+            <input
+              value={form.profile.medical_certificate_date}
+              onChange={(event) => handleFieldChange("profile", "medical_certificate_date", event.target.value)}
+              type="date"
+              placeholder="Medical Certificate Date"
+              className={inputClass}
+            />
+          </div>
+
           <div className="mt-6 flex items-center justify-end gap-2 border-t border-slate-200 pt-4">
             <button
               type="button"

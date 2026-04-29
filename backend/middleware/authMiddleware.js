@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const { User } = require("../models");
 
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
@@ -10,7 +11,14 @@ function authenticateToken(req, res, next) {
 
   try {
     const secret = process.env.JWT_SECRET || "dev-secret-change-me";
-    req.user = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, secret);
+    const currentUser = await User.findByPk(decoded.id);
+
+    if (!currentUser || Number(currentUser.session_version || 0) !== Number(decoded.session_version || 0)) {
+      return res.status(401).json({ message: "Session expired" });
+    }
+
+    req.user = decoded;
     return next();
   } catch {
     return res.status(401).json({ message: "Invalid token" });

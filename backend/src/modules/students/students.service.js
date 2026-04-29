@@ -1,5 +1,6 @@
 const repository = require("./students.repository");
 const { sequelize } = require("../../../models");
+const schedulesService = require("../schedules/schedules.service");
 
 function normalizeText(value) {
   if (value === undefined) return undefined;
@@ -44,6 +45,11 @@ function buildProfileUpdatePayload(payload = {}) {
     "lto_portal_account",
     "driving_school_tdc",
     "year_completed_tdc",
+    "student_permit_number",
+    "student_permit_date",
+    "student_permit_status",
+    "medical_certificate_provider",
+    "medical_certificate_date",
   ];
 
   return fields.reduce((result, field) => {
@@ -143,6 +149,13 @@ async function removeStudent(id) {
       throw error;
     }
 
+    const enrollments = await repository.findEnrollmentsByStudentId(id, transaction);
+    const scheduleIds = [...new Set(enrollments.map((enrollment) => Number(enrollment.schedule_id)).filter((scheduleId) => Number.isInteger(scheduleId) && scheduleId > 0))];
+
+    for (const scheduleId of scheduleIds) {
+      await schedulesService.cancelSchedule(scheduleId, "both", { transaction });
+    }
+
     const profile = await repository.findStudentProfileByStudentId(id, transaction);
     await repository.detachEnrollmentsFromStudent(id, transaction);
 
@@ -169,7 +182,15 @@ async function updateEnrollmentStatus(studentId, payload) {
       throw error;
     }
 
-    await repository.updateEnrollmentStatus(studentId, payload, transaction);
+    const updatedEnrollment = await repository.updateEnrollmentStatus(studentId, payload, transaction);
+
+    if (
+      String(payload?.enrollmentStatus || "").toLowerCase() === "cancelled"
+      && Number(updatedEnrollment?.schedule_id) > 0
+    ) {
+      await schedulesService.cancelSchedule(Number(updatedEnrollment.schedule_id), "both", { transaction });
+    }
+
     await transaction.commit();
     return getStudent(studentId);
   } catch (error) {

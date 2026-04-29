@@ -41,6 +41,7 @@ export function mapOutcomeToEnrollmentStatus(outcome) {
   const normalized = String(outcome || "").trim().toUpperCase();
 
   if (!normalized) return "pending";
+  if (normalized === "CANCELLED") return "cancelled";
   if (normalized === "PASSED" || normalized === "FAILED") return "completed";
   if (normalized === "RETAKE") return "pending";
   if (normalized.includes("RESCHED")) return "confirmed";
@@ -127,9 +128,14 @@ export function parseScoreValue(scoreValue) {
   };
 }
 
-export function getDisplayStatusLabel(courseCode, scoreValue) {
+export function getDisplayStatusLabel(courseCode, scoreValue, enrollmentStatus = "") {
   const parsed = parseScoreValue(scoreValue);
   const normalizedCourse = String(courseCode || "").toUpperCase();
+  const normalizedStatus = String(enrollmentStatus || "").toLowerCase();
+
+  if (normalizedStatus === "cancelled") {
+    return "CANCELLED";
+  }
 
   if (normalizedCourse === "PROMO") {
     const tdc = parsed.promoTdcOutcome || "NOT SET";

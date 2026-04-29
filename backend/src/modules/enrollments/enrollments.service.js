@@ -26,6 +26,42 @@ function normalizeText(value) {
   return trimmed ? trimmed : null;
 }
 
+function normalizeAmount(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function toCurrencyNumber(value) {
+  const numeric = normalizeAmount(value);
+  return numeric === null ? 0 : numeric;
+}
+
+function attachPaymentSummary(enrollment) {
+  if (!enrollment) {
+    return enrollment;
+  }
+
+  const plain = enrollment.toJSON ? enrollment.toJSON() : enrollment;
+  const payments = Array.isArray(plain.payments) ? plain.payments : [];
+  const totalPaid = payments.reduce((sum, payment) => sum + toCurrencyNumber(payment.amount), 0);
+  const totalDue = Math.max(toCurrencyNumber(plain.fee_amount), 0);
+  const remainingBalance = Math.max(totalDue - totalPaid, 0);
+
+  return {
+    ...plain,
+    payment_summary: {
+      total_due: Number(totalDue.toFixed(2)),
+      total_paid: Number(totalPaid.toFixed(2)),
+      remaining_balance: Number(remainingBalance.toFixed(2)),
+      is_paid: remainingBalance <= 0,
+    },
+  };
+}
+
 function normalizePdcType(rawType, rawCategory) {
   const normalizedType = normalizeText(rawType);
   if (normalizedType) {
@@ -81,11 +117,13 @@ function normalizeEnrollmentPayload(enrollment = {}, extras = {}, studentId, dlC
   const normalizedPdcType = normalizePdcType(enrollment.pdc_type, enrollment.pdc_category);
   const channel = normalizeText(enrollment.enrollment_channel) || "walk_in";
   const startMode = normalizeText(enrollment.pdc_start_mode) || "later";
+  const tdcSource = normalizeText(enrollment.tdc_source);
 
   return {
     student_id: studentId,
     schedule_id: enrollment.schedule_id ?? null,
     package_id: enrollment.package_id ?? null,
+    promo_offer_id: enrollment.promo_offer_id ?? null,
     dl_code_id: dlCodeId,
     client_type: normalizeText(enrollment.client_type),
     is_already_driver: Boolean(enrollment.is_already_driver),
@@ -94,6 +132,12 @@ function normalizeEnrollmentPayload(enrollment = {}, extras = {}, studentId, dlC
     motorcycle_type: normalizeText(enrollment.motorcycle_type),
     training_method: normalizeText(enrollment.training_method),
     pdc_type: normalizedPdcType,
+    fee_amount: normalizeAmount(enrollment.fee_amount),
+    discount_amount: normalizeAmount(enrollment.discount_amount),
+    payment_terms: normalizeText(enrollment.payment_terms),
+    payment_reference_number: normalizeText(enrollment.payment_reference_number),
+    payment_notes: normalizeText(enrollment.payment_notes),
+    tdc_source: normalizedPdcType ? (tdcSource || "guts") : null,
     enrolling_for: normalizeText(extras.enrolling_for),
     score: normalizeText(extras.score),
     enrollment_channel: channel,
@@ -281,7 +325,8 @@ async function resolveDlCode(enrollmentType, transaction) {
 }
 
 async function listEnrollments() {
-  return repository.findAllEnrollments();
+  const rows = await repository.findAllEnrollments();
+  return rows.map((row) => attachPaymentSummary(row));
 }
 
 async function getEnrollment(id) {
@@ -291,7 +336,7 @@ async function getEnrollment(id) {
     error.status = 404;
     throw error;
   }
-  return enrollment;
+  return attachPaymentSummary(enrollment);
 }
 
 async function addEnrollment(payload) {

@@ -3,7 +3,7 @@ import { useToast } from "../../../shared/utils/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useStudentsList } from "./useStudentsList";
 import { deleteStudent, updateEnrollmentStatus, updateStudent } from "../services/studentsApi";
-import { getCourseCode, getLatestEnrollment, mapStudentToEditForm } from "../utils/studentsPageUtils";
+import { getCourseCode, getEnrollmentLifecycleStatus, getEnrollmentPaymentSummary, getLatestEnrollment, mapStudentToEditForm } from "../utils/studentsPageUtils";
 import {
   formatPromoScoreValue,
   formatScoreValue,
@@ -16,6 +16,7 @@ const STATUS_RANK = {
   pending: 1,
   confirmed: 2,
   completed: 3,
+  cancelled: 4,
 };
 
 function normalizeSearchText(value) {
@@ -156,6 +157,7 @@ export function useStudentsPageLogic(options = {}) {
 
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name_asc");
   const [page, setPage] = useState(1);
@@ -283,20 +285,24 @@ export function useStudentsPageLogic(options = {}) {
     const filtered = students.filter((student) => matchesCourseFilter(student, courseFilter));
 
     const currentlyEnrolled = filtered.filter((student) => {
-      const status = String(getLatestEnrollment(student)?.status || "").toLowerCase();
+      const status = getEnrollmentLifecycleStatus(getLatestEnrollment(student));
       return status === "pending" || status === "confirmed";
     }).length;
 
     const tdc = filtered.filter((student) => getCourseMembership(student).tdc).length;
     const pdcBeginner = filtered.filter((student) => getCourseMembership(student).pdcBeginner).length;
     const pdcExperience = filtered.filter((student) => getCourseMembership(student).pdcExperience).length;
+    const paymentPending = filtered.filter((student) => getEnrollmentPaymentSummary(getLatestEnrollment(student)).paymentStatus !== "completed_payment").length;
+    const paymentCompleted = filtered.filter((student) => getEnrollmentPaymentSummary(getLatestEnrollment(student)).paymentStatus === "completed_payment").length;
 
     return {
       total: filtered.length,
       currentlyEnrolled,
       tdc,
       pdc: pdcBeginner + pdcExperience,
-      completed: filtered.filter((student) => getLatestEnrollment(student)?.status === "completed").length,
+      completed: filtered.filter((student) => getEnrollmentLifecycleStatus(getLatestEnrollment(student)) === "completed").length,
+      paymentPending,
+      paymentCompleted,
       thisMonth: filtered.filter((student) => {
         const enrollment = getLatestEnrollment(student);
         const createdAt = enrollment?.createdAt || enrollment?.created_at;
@@ -315,11 +321,16 @@ export function useStudentsPageLogic(options = {}) {
       const matchesSearch = matchesStudentSearch(student, search);
 
       const matchesCourse = matchesCourseFilter(student, courseFilter);
-      const enrollmentStatus = String(getLatestEnrollment(student)?.status || "pending").toLowerCase();
+      const enrollmentStatus = getEnrollmentLifecycleStatus(getLatestEnrollment(student));
       const matchesStatus = statusFilter === "all" || enrollmentStatus === statusFilter;
+      const paymentStatus = getEnrollmentPaymentSummary(getLatestEnrollment(student)).paymentStatus;
+      const matchesPayment =
+        paymentFilter === "all"
+        || (paymentFilter === "with_balance" && paymentStatus !== "completed_payment" && paymentStatus !== "not_set")
+        || (paymentFilter === "completed_payment" && paymentStatus === "completed_payment");
       const matchesFocusedStudent = !focusedStudentId || Number(student.id) === focusedStudentId;
 
-      return matchesSearch && matchesCourse && matchesStatus && matchesFocusedStudent;
+      return matchesSearch && matchesCourse && matchesStatus && matchesPayment && matchesFocusedStudent;
     });
 
     const sorted = [...filtered].sort((a, b) => {
@@ -329,8 +340,8 @@ export function useStudentsPageLogic(options = {}) {
       const contactB = `${String(b.email || "").toLowerCase()} ${String(b.phone || "").toLowerCase()}`.trim();
       const courseA = String(getCourseCode(a) || "").toLowerCase();
       const courseB = String(getCourseCode(b) || "").toLowerCase();
-      const statusA = String(getLatestEnrollment(a)?.status || "").toLowerCase();
-      const statusB = String(getLatestEnrollment(b)?.status || "").toLowerCase();
+      const statusA = getEnrollmentLifecycleStatus(getLatestEnrollment(a));
+      const statusB = getEnrollmentLifecycleStatus(getLatestEnrollment(b));
 
       if (sortBy === "name_asc") {
         return nameA.localeCompare(nameB);
@@ -388,7 +399,7 @@ export function useStudentsPageLogic(options = {}) {
     });
 
     return sorted;
-  }, [students, search, courseFilter, statusFilter, sortBy, focusedStudentId]);
+  }, [students, search, courseFilter, paymentFilter, statusFilter, sortBy, focusedStudentId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -590,7 +601,7 @@ export function useStudentsPageLogic(options = {}) {
     const courseCode = getCourseCode(student);
     const parsedScore = parseScoreValue(latestEnrollment?.score);
     setStatusForm({
-      enrollmentStatus: latestEnrollment?.status || "",
+      enrollmentStatus: getEnrollmentLifecycleStatus(latestEnrollment),
       courseOutcome:
         courseCode === "PROMO"
           ? parsedScore.promoCategory === "PDC"
@@ -627,14 +638,19 @@ export function useStudentsPageLogic(options = {}) {
       }
     }
 
-    if (!statusForm.courseOutcome) {
+    const isCancellingEnrollment = String(statusForm.enrollmentStatus || "").toLowerCase() === "cancelled";
+
+    if (!isCancellingEnrollment && !statusForm.courseOutcome) {
       addToast("Please choose a course outcome.", "error");
       return;
     }
 
-    const mappedEnrollmentStatus = mapOutcomeToEnrollmentStatus(statusForm.courseOutcome);
-    const scoreValue =
-      courseCode === "PROMO"
+    const mappedEnrollmentStatus = isCancellingEnrollment
+      ? "cancelled"
+      : mapOutcomeToEnrollmentStatus(statusForm.courseOutcome);
+    const scoreValue = isCancellingEnrollment
+      ? "CANCELLED"
+      : courseCode === "PROMO"
         ? formatPromoScoreValue(statusForm.promoTdcOutcome, statusForm.promoPdcOutcome)
         : formatScoreValue(courseCode, statusForm.courseOutcome, statusForm.promoCategory);
 
@@ -651,7 +667,7 @@ export function useStudentsPageLogic(options = {}) {
     if (!student?.id) return;
 
     const latestEnrollment = getLatestEnrollment(student);
-    const currentStatus = String(latestEnrollment?.status || "").toLowerCase();
+    const currentStatus = getEnrollmentLifecycleStatus(latestEnrollment);
     if (currentStatus !== "pending") return;
 
     const fullName = [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`;
@@ -694,6 +710,7 @@ export function useStudentsPageLogic(options = {}) {
   return {
     search,
     courseFilter,
+    paymentFilter,
     statusFilter,
     sortBy,
     selectedStudent,
@@ -730,6 +747,11 @@ export function useStudentsPageLogic(options = {}) {
     },
     setCourseFilter: (value) => {
       setCourseFilter(value);
+      setPage(1);
+      setSelectedStudentIds([]);
+    },
+    setPaymentFilter: (value) => {
+      setPaymentFilter(value);
       setPage(1);
       setSelectedStudentIds([]);
     },

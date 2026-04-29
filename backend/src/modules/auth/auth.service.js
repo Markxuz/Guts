@@ -11,9 +11,19 @@ function normalizeEmail(email) {
 
 function buildToken(user) {
   const secret = process.env.JWT_SECRET || "dev-secret-change-me";
-  return jwt.sign({ id: user.id, role: user.role, email: user.email, name: user.name }, secret, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "8h",
-  });
+  return jwt.sign(
+    {
+      id: user.id,
+      role: user.role,
+      email: user.email,
+      name: user.name,
+      session_version: user.session_version ?? 0,
+    },
+    secret,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || "8h",
+    }
+  );
 }
 
 function toSafeUser(user) {
@@ -96,8 +106,10 @@ async function login({ email, password }) {
     throw error;
   }
 
-  const token = buildToken(user);
-  return { token, user: toSafeUser(user) };
+  const nextVersion = Number(user.session_version || 0) + 1;
+  const updatedUser = await repository.updateSessionVersion(user.id, nextVersion);
+  const token = buildToken(updatedUser || { ...user, session_version: nextVersion });
+  return { token, user: toSafeUser(updatedUser || { ...user, session_version: nextVersion }) };
 }
 
 async function changePassword({ email, currentPassword, newPassword }) {

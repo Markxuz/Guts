@@ -93,6 +93,26 @@ module.exports = (sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      student_permit_number: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      student_permit_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+      },
+      student_permit_status: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      medical_certificate_provider: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      medical_certificate_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+      },
     },
     {
       tableName: "student_profiles",

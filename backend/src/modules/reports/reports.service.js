@@ -518,3 +518,4 @@ module.exports = {
   sendTestEmailReport,
   sendEmailReport,
 };
+

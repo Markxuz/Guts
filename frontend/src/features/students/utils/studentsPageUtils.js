@@ -10,6 +10,53 @@ export function getLatestEnrollment(student) {
   return student?.Enrollments?.[0] || null;
 }
 
+export function getEnrollmentLifecycleStatus(enrollment) {
+  const normalizedState = String(enrollment?.enrollment_state || "").toLowerCase();
+  if (normalizedState === "cancelled") {
+    return "cancelled";
+  }
+
+  const normalizedStatus = String(enrollment?.status || "").toLowerCase();
+  return normalizedStatus || "pending";
+}
+
+function toNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+export function getEnrollmentPaymentSummary(enrollment) {
+  const payments = Array.isArray(enrollment?.payments) ? enrollment.payments : [];
+  const totalDue = toNumber(enrollment?.fee_amount);
+  const totalPaid = payments.reduce((sum, payment) => sum + toNumber(payment?.amount), 0);
+  const remainingBalance = Math.max(totalDue - totalPaid, 0);
+
+  let paymentStatus = "not_set";
+  if (totalDue > 0 || totalPaid > 0) {
+    if (remainingBalance <= 0) {
+      paymentStatus = "completed_payment";
+    } else if (totalPaid > 0) {
+      paymentStatus = "partial_payment";
+    } else {
+      paymentStatus = "with_balance";
+    }
+  }
+
+  return {
+    totalDue: Number(totalDue.toFixed(2)),
+    totalPaid: Number(totalPaid.toFixed(2)),
+    remainingBalance: Number(remainingBalance.toFixed(2)),
+    paymentStatus,
+  };
+}
+
+export function getPaymentCategoryLabel(enrollment) {
+  return {
+    promoOfferName: enrollment?.promoOffer?.name || enrollment?.promo_offer_name || "None",
+    paymentTerms: enrollment?.payment_terms || "Full Payment",
+  };
+}
+
 export function getLatestScheduleForEnrollment(enrollment) {
   if (!enrollment) return null;
   if (enrollment.Schedule) return enrollment.Schedule;
@@ -79,6 +126,11 @@ export function mapStudentToEditForm(student) {
       emergency_contact_person: profile.emergency_contact_person || "",
       emergency_contact_number: profile.emergency_contact_number || "",
       lto_portal_account: profile.lto_portal_account || "",
+      student_permit_number: profile.student_permit_number || "",
+      student_permit_date: profile.student_permit_date || "",
+      student_permit_status: profile.student_permit_status || "",
+      medical_certificate_provider: profile.medical_certificate_provider || "",
+      medical_certificate_date: profile.medical_certificate_date || "",
     },
   };
 }

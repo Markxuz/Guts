@@ -56,6 +56,13 @@ const enrollingForOptions = [
   },
 ];
 
+const paymentTermsOptions = [
+  { value: "full", label: "Full Payment" },
+  { value: "installment", label: "Installment" },
+  { value: "downpayment", label: "Downpayment" },
+  { value: "custom", label: "Custom" },
+];
+
 function normalizeValue(value) {
   return String(value || "").trim();
 }
@@ -532,6 +539,76 @@ export function AddressSection({ type, form, onFieldChange }) {
           required
         />
       </div>
+    </>
+  );
+}
+
+export function FinancialSection({ type, form, onFieldChange, promoOfferOptions = [] }) {
+  const promoOfferSelected = Boolean(form.enrollment.promo_offer_id);
+
+  return (
+    <>
+      {type === "PDC" || type === "TDC" || type === "PROMO" ? <SectionTitle>FINANCIAL DETAILS</SectionTitle> : null}
+      {type === "PDC" || type === "TDC" || type === "PROMO" ? (
+        <>
+          <div className="grid gap-3 md:grid-cols-2">
+            <SelectField
+              label="PROMO OFFER"
+              name="promo_offer_id"
+              value={form.enrollment.promo_offer_id}
+              onChange={(event) => onFieldChange("enrollment", "promo_offer_id", event.target.value)}
+              placeholder="Select promo offer"
+              options={promoOfferOptions}
+            />
+            <FormField
+              label="FEE AMOUNT"
+              name="fee_amount"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={form.enrollment.fee_amount}
+              onChange={(event) => onFieldChange("enrollment", "fee_amount", event.target.value)}
+              placeholder="0.00"
+              readOnly={promoOfferSelected}
+            />
+          </div>
+
+          {promoOfferSelected ? (
+            <p className="mt-2 rounded-xl border border-[#D4AF37]/30 bg-[#fff8e7] px-4 py-3 text-xs text-slate-700">
+              Promo offer selected. Fee amount is auto-filled from the promo pricing.
+            </p>
+          ) : null}
+
+          <div className="mt-2 grid gap-3 md:grid-cols-2">
+            <SelectField
+              label="PAYMENT TERMS"
+              name="payment_terms"
+              value={form.enrollment.payment_terms}
+              onChange={(event) => onFieldChange("enrollment", "payment_terms", event.target.value)}
+              placeholder="Select payment terms"
+              options={paymentTermsOptions}
+            />
+            <FormField
+              label="PAYMENT REFERENCE NUMBER"
+              name="payment_reference_number"
+              value={form.enrollment.payment_reference_number}
+              onChange={(event) => onFieldChange("enrollment", "payment_reference_number", event.target.value)}
+              placeholder="Reference / OR number"
+            />
+          </div>
+
+          <div className="mt-2 grid gap-3 md:grid-cols-1">
+            <FormField
+              label="PAYMENT NOTES"
+              name="payment_notes"
+              value={form.enrollment.payment_notes}
+              onChange={(event) => onFieldChange("enrollment", "payment_notes", event.target.value)}
+              placeholder="Additional financial notes"
+            />
+          </div>
+        </>
+      ) : null}
     </>
   );
 }

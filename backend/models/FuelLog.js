@@ -18,6 +18,22 @@ module.exports = (sequelize) => {
 			type: DataTypes.DECIMAL(12, 2),
 			allowNull: false,
 		},
+		odometer_start: {
+			type: DataTypes.DECIMAL(12, 2),
+			allowNull: true,
+		},
+		odometer_end: {
+			type: DataTypes.DECIMAL(12, 2),
+			allowNull: true,
+		},
+		distance_travelled: {
+			type: DataTypes.DECIMAL(12, 2),
+			allowNull: true,
+		},
+		fuel_consumed_liters: {
+			type: DataTypes.DECIMAL(10, 2),
+			allowNull: true,
+		},
 		logged_at: {
 			type: DataTypes.DATEONLY,
 			allowNull: true,

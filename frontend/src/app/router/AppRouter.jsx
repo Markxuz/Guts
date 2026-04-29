@@ -11,8 +11,10 @@ const SchedulePdcLaterPage = lazy(routeLoaders.schedulePdcLaterPage);
 const ReportsPage = lazy(routeLoaders.reportsPage);
 const OverviewReportsPage = lazy(routeLoaders.overviewReportsPage);
 const InstructorsPage = lazy(routeLoaders.instructorsPage);
+const PromoOffersPage = lazy(routeLoaders.promoOffersPage);
 const ManageUsersPage = lazy(routeLoaders.manageUsersPage);
 const StudentsPage = lazy(routeLoaders.studentsPage);
+const PaymentLedgerPage = lazy(routeLoaders.paymentLedgerPage);
 const VehiclesPage = lazy(routeLoaders.vehiclesPage);
 const AppLayout = lazy(routeLoaders.appLayout);
 
@@ -48,6 +50,14 @@ export default function AppRouter() {
           <Route path="/enrollments/schedule-pdc-later" element={<SchedulePdcLaterPage />} />
           <Route path="/students" element={<StudentsPage />} />
           <Route
+            path="/payments"
+            element={
+              <RoleRoute allowedRoles={["admin", "sub_admin"]}>
+                <PaymentLedgerPage />
+              </RoleRoute>
+            }
+          />
+          <Route
             path="/reports"
             element={
               <RoleRoute allowedRoles={["admin", "sub_admin"]}>
@@ -76,6 +86,14 @@ export default function AppRouter() {
             element={
               <RoleRoute allowedRoles={["admin", "sub_admin"]}>
                 <InstructorsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/settings/promo-offers"
+            element={
+              <RoleRoute allowedRoles={["admin"]}>
+                <PromoOffersPage />
               </RoleRoute>
             }
           />

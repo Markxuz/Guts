@@ -28,6 +28,7 @@ export default function StatusUpdateModal({ student, form, onChange, onClose, on
     onChange((current) => {
       const next = {
         ...current,
+        enrollmentStatus: "",
         courseOutcome: outcome,
       };
       if (courseCode === "PROMO") {
@@ -39,6 +40,14 @@ export default function StatusUpdateModal({ student, form, onChange, onClose, on
       }
       return next;
     });
+  };
+
+  const handleMarkCancelled = () => {
+    onChange((current) => ({
+      ...current,
+      enrollmentStatus: "cancelled",
+      courseOutcome: "CANCELLED",
+    }));
   };
 
   return (
@@ -115,15 +124,31 @@ export default function StatusUpdateModal({ student, form, onChange, onClose, on
                 <p>PDC: {promoPdcOutcome || "-"}</p>
               </div>
             ) : null}
+
+            {String(form.enrollmentStatus || "").toLowerCase() === "cancelled" ? (
+              <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                This enrollment will be marked as cancelled and linked schedules will be released.
+              </p>
+            ) : null}
           </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Cancel
-            </button>
+          <div className="flex justify-between gap-2">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleMarkCancelled}
+                disabled={isPending}
+                className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Mark Cancelled
+              </button>
+            </div>
             <button
               type="submit"
               disabled={isPending}

@@ -3,6 +3,7 @@ const {
   Student,
   StudentProfile,
   DLCode,
+  Payment,
   PromoPackage,
   PromoEntitlement,
   SessionAttendance,
@@ -32,6 +33,11 @@ const enrollmentIncludes = [
   {
     model: SessionAttendance,
     as: "sessionAttendance",
+    required: false,
+  },
+  {
+    model: Payment,
+    as: "payments",
     required: false,
   },
 ];

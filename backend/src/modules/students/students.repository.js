@@ -1,4 +1,4 @@
-const { Student, StudentProfile, Enrollment, DLCode, Schedule, sequelize } = require("../../../models");
+const { Student, StudentProfile, Enrollment, DLCode, PromoOffer, Payment, Schedule, sequelize } = require("../../../models");
 
 let cachedStudentProfileAttributes = null;
 
@@ -28,6 +28,11 @@ async function getSafeStudentProfileAttributes() {
     "emergency_contact_person",
     "emergency_contact_number",
     "lto_portal_account",
+    "student_permit_number",
+    "student_permit_date",
+    "student_permit_status",
+    "medical_certificate_provider",
+    "medical_certificate_date",
   ];
 
   try {
@@ -56,6 +61,18 @@ const latestEnrollmentInclude = {
       attributes: ["id", "code", "description"],
     },
     {
+      model: PromoOffer,
+      as: "promoOffer",
+      attributes: ["id", "name", "fixed_price", "discounted_price"],
+      required: false,
+    },
+    {
+      model: Payment,
+      as: "payments",
+      attributes: ["id", "amount", "payment_method", "payment_status", "reference_number", "account_number", "created_at"],
+      required: false,
+    },
+    {
       model: Schedule,
       attributes: ["id", "remarks", "student_remarks", "instructor_remarks"],
       required: false,
@@ -80,6 +97,18 @@ const fullEnrollmentInclude = {
     {
       model: DLCode,
       attributes: ["id", "code", "description"],
+    },
+    {
+      model: PromoOffer,
+      as: "promoOffer",
+      attributes: ["id", "name", "fixed_price", "discounted_price"],
+      required: false,
+    },
+    {
+      model: Payment,
+      as: "payments",
+      attributes: ["id", "amount", "payment_method", "payment_status", "reference_number", "account_number", "created_at"],
+      required: false,
     },
     {
       model: Schedule,
@@ -150,6 +179,15 @@ async function updateStudentProfile(profile, payload, transaction) {
   return profile.update(payload, { transaction });
 }
 
+async function findEnrollmentsByStudentId(studentId, transaction) {
+  return Enrollment.findAll({
+    where: { student_id: studentId },
+    attributes: ["id", "schedule_id"],
+    transaction,
+    order: [["id", "DESC"]],
+  });
+}
+
 async function detachEnrollmentsFromStudent(studentId, transaction) {
   return Enrollment.update(
     { student_id: null },
@@ -187,7 +225,12 @@ async function updateEnrollmentStatus(studentId, payload, transaction) {
   if (enrollmentStatus || score !== undefined) {
     const nextPayload = {};
     if (enrollmentStatus) {
-      nextPayload.status = enrollmentStatus;
+      if (enrollmentStatus === "cancelled") {
+        nextPayload.enrollment_state = "cancelled";
+      } else {
+        nextPayload.status = enrollmentStatus;
+        nextPayload.enrollment_state = enrollmentStatus === "completed" ? "completed" : "active";
+      }
     }
     if (score !== undefined) {
       nextPayload.score = score || null;
@@ -207,6 +250,7 @@ module.exports = {
   updateStudent,
   createStudentProfile,
   updateStudentProfile,
+  findEnrollmentsByStudentId,
   detachEnrollmentsFromStudent,
   deleteStudentProfile,
   deleteStudent,

@@ -1,0 +1,427 @@
+﻿
+> backend@1.0.0 test
+> node --test --test-concurrency=1 test/contracts/*.test.js test/contracts/enrollments.contract.test.js
+
+TAP version 13
+# [dotenv@17.3.1] injecting env (9) from .env -- tip: ≡ƒñû agentic secret storage: https://dotenvx.com/as2
+# [security] Using fallback seed passwords. Override SEED_* values in .env before sharing outside local setup.
+# {"timestamp":"2026-04-28T06:33:18.355Z","level":"warn","message":"http_error","service":"guts-backend","environment":"development","requestId":"f9cd120f-4a4f-461f-9689-c09b9f14c1d9","method":"POST","path":"/api/auth/login","statusCode":401,"userId":null,"role":null,"error":{"name":"Error","message":"Invalid credentials","stack":"Error: Invalid credentials\\n    at Object.login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.service.js:88:19)\\n    at async login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.controller.js:7:21)"}}
+# {"timestamp":"2026-04-28T06:33:18.364Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"f9cd120f-4a4f-461f-9689-c09b9f14c1d9","method":"POST","path":"/api/auth/login","statusCode":401,"durationMs":191.91,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:33:18.547Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"8b4adb52-aeed-4ab3-88aa-55c4e4a05a44","method":"POST","path":"/api/auth/login","statusCode":200,"durationMs":160.94,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:33:18.741Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"3b4ddee1-9cde-4220-87e7-c1734088e1a4","method":"POST","path":"/api/users","statusCode":201,"durationMs":181.41,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:18.798Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"8fd9c7ca-9c5b-4316-9d77-e0ff0de5cc79","method":"PATCH","path":"/api/users/16","statusCode":200,"durationMs":49.54,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# Subtest: Admin tools API contract
+    # Subtest: PATCH /api/users/:id updates editable user fields
+    ok 1 - PATCH /api/users/:id updates editable user fields
+      ---
+      duration_ms: 260.7395
+      ...
+# {"timestamp":"2026-04-28T06:33:18.826Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"0ad91423-7ed7-4fb3-ac36-d91ec466a359","method":"GET","path":"/api/backups/status","statusCode":200,"durationMs":7.31,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: GET /api/backups/status returns backup metadata
+    ok 2 - GET /api/backups/status returns backup metadata
+      ---
+      duration_ms: 17.0291
+      ...
+# {"timestamp":"2026-04-28T06:33:19.937Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"f9b26964-a398-4438-8dbb-56f76223c895","method":"POST","path":"/api/backups/run","statusCode":201,"durationMs":1100.43,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: POST /api/backups/run executes manual backup
+    ok 3 - POST /api/backups/run executes manual backup
+      ---
+      duration_ms: 1110.9134
+      ...
+    1..3
+ok 1 - Admin tools API contract
+  ---
+  duration_ms: 1941.2088
+  type: 'suite'
+  ...
+# [dotenv@17.3.1] injecting env (9) from .env -- tip: ΓÜÖ∩╕Å  suppress all logs with { quiet: true }
+# [security] Using fallback seed passwords. Override SEED_* values in .env before sharing outside local setup.
+# {"timestamp":"2026-04-28T06:33:32.461Z","level":"warn","message":"http_error","service":"guts-backend","environment":"development","requestId":"96cf1287-c5ed-46d9-9bdf-6a1a8b3f4246","method":"POST","path":"/api/auth/login","statusCode":401,"userId":null,"role":null,"error":{"name":"Error","message":"Invalid credentials","stack":"Error: Invalid credentials\\n    at Object.login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.service.js:88:19)\\n    at async login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.controller.js:7:21)"}}
+# {"timestamp":"2026-04-28T06:33:32.474Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"96cf1287-c5ed-46d9-9bdf-6a1a8b3f4246","method":"POST","path":"/api/auth/login","statusCode":401,"durationMs":187.55,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:33:32.662Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"8f0e1188-c361-4497-aa8f-a2dceaebdb29","method":"POST","path":"/api/auth/login","statusCode":200,"durationMs":163.45,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:33:32.788Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"a03b7771-ab03-4fc7-afeb-31d5ab853897","method":"POST","path":"/api/enrollments","statusCode":201,"durationMs":114.13,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# Subtest: Enrollments API contract
+    # Subtest: POST /api/enrollments creates a valid enrollment resource
+    ok 1 - POST /api/enrollments creates a valid enrollment resource
+      ---
+      duration_ms: 153.0115
+      ...
+# {"timestamp":"2026-04-28T06:33:32.833Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"9179b7ae-593d-4acf-8198-67a6274862f2","method":"POST","path":"/api/enrollments","statusCode":400,"durationMs":7.24,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: POST /api/enrollments rejects invalid enum payload with validation details
+    ok 2 - POST /api/enrollments rejects invalid enum payload with validation details
+      ---
+      duration_ms: 18.7225
+      ...
+# {"timestamp":"2026-04-28T06:33:32.848Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"62b0b176-cded-4ee5-b719-b868a4c58616","method":"POST","path":"/api/enrollments","statusCode":401,"durationMs":2.41,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+    # Subtest: POST /api/enrollments rejects unauthenticated requests
+    ok 3 - POST /api/enrollments rejects unauthenticated requests
+      ---
+      duration_ms: 13.824
+      ...
+# {"timestamp":"2026-04-28T06:33:32.913Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"3dee5357-8f32-4a94-8e47-b1acf0e28182","method":"POST","path":"/api/enrollments","statusCode":201,"durationMs":52.97,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:32.935Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"92a7796a-f2f7-465b-b7ee-d6659ff27593","method":"GET","path":"/api/enrollments/342","statusCode":200,"durationMs":14.17,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: GET /api/enrollments/:id returns the enrollment resource shape
+    ok 4 - GET /api/enrollments/:id returns the enrollment resource shape
+      ---
+      duration_ms: 105.2185
+      ...
+# {"timestamp":"2026-04-28T06:33:33.299Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"40e86200-b5c4-4af9-8b72-c3affbd23f1f","method":"GET","path":"/api/schedules/day?date=2026-06-15&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":316.5,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.315Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"08168e01-dfc3-460b-a9df-3d5386903d64","method":"GET","path":"/api/schedules/day?date=2026-06-16&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":317.84,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.467Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"9641fe7c-18fa-436a-93c2-7c013421ce8a","method":"GET","path":"/api/schedules/day?date=2026-06-22&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":134.14,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.478Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"12b51b55-5e7e-4b5d-bae6-e0f860369a92","method":"GET","path":"/api/schedules/day?date=2026-06-23&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":110.24,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.629Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d2122c2c-cb82-4609-8e30-e679d4725555","method":"GET","path":"/api/schedules/day?date=2026-06-29&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":132.81,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.641Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"a0e6c287-8c1f-4f6a-9d3a-b6eaac9937a5","method":"GET","path":"/api/schedules/day?date=2026-06-30&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":114.23,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.728Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"12f52690-1937-473f-adac-4342d5b98628","method":"GET","path":"/api/schedules/day?date=2026-07-06&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":71.28,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.746Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"6777643d-08b4-4246-a27e-8c83e9468461","method":"GET","path":"/api/schedules/day?date=2026-07-07&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":67.44,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.848Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"761eeb98-7d0c-4a7f-8381-1fe07802c7fc","method":"GET","path":"/api/schedules/day?date=2026-07-13&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":88.56,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.855Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"62dbdadb-33c0-4510-b2f2-a70fa8737db3","method":"GET","path":"/api/schedules/day?date=2026-07-14&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":71.38,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.968Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"678aa820-e1c4-4aad-aa67-db627f87131b","method":"GET","path":"/api/schedules/day?date=2026-07-20&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":99.95,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:33.975Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"36efcd38-50cd-4507-8f3d-9cc7c360cf25","method":"GET","path":"/api/schedules/day?date=2026-07-21&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":83.75,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.065Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"244e6e1f-3c19-4038-ab46-c7fea50f8cda","method":"GET","path":"/api/schedules/day?date=2026-07-27&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":80.77,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.072Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"babe3ff8-e960-4e41-bf48-05e55f56ff8e","method":"GET","path":"/api/schedules/day?date=2026-07-28&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":70.59,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.183Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"5e1406da-9428-449e-b95d-3e2620b7d33d","method":"GET","path":"/api/schedules/day?date=2026-08-03&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":100.61,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.191Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"0dfa73e1-4bd5-450c-9a64-6168f20ac25a","method":"GET","path":"/api/schedules/day?date=2026-08-04&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":80.33,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.300Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"adc6aa95-bea3-4082-859d-5289479760a1","method":"GET","path":"/api/schedules/day?date=2026-08-10&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":100.68,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.307Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"7dd295f4-ec5b-4b22-ba64-c2ffc8a33662","method":"GET","path":"/api/schedules/day?date=2026-08-11&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":81.66,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.409Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"c2fb03ff-29f7-47c8-97c8-ac131f608698","method":"GET","path":"/api/schedules/day?date=2026-08-17&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":94.07,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.414Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"b4bb7910-68bb-4326-9877-ee2dab3eecae","method":"GET","path":"/api/schedules/day?date=2026-08-18&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":74.78,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.510Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"8902e796-9f4f-4032-b311-bc1b54991e7d","method":"GET","path":"/api/schedules/day?date=2026-08-24&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":84.35,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.519Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"a5025ab5-61db-40ab-8b65-07469f2f4175","method":"GET","path":"/api/schedules/day?date=2026-08-25&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":76.14,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.622Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"05cec327-8b34-42b5-8aec-c266d8203380","method":"GET","path":"/api/schedules/day?date=2026-08-31&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":85.01,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.628Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"98b9f364-9115-4ed6-8b8d-3884226f8d38","method":"GET","path":"/api/schedules/day?date=2026-09-01&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":67.75,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.706Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"52759b88-854a-495a-a1a1-192e4afc9f0d","method":"GET","path":"/api/schedules/day?date=2026-09-07&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":64.22,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.711Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"a2cab62b-05f8-4e42-8d3b-cf23a07730a5","method":"GET","path":"/api/schedules/day?date=2026-09-08&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":53.13,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.837Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"b92d64d7-8e85-43bc-b155-b673374fe063","method":"GET","path":"/api/schedules/day?date=2026-09-14&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":109.95,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.843Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d6b02b7d-910e-49ae-8072-4287533ef3b1","method":"GET","path":"/api/schedules/day?date=2026-09-15&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":77.37,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.936Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"f98789cf-77e3-4ebd-b11c-450bf4831eca","method":"GET","path":"/api/schedules/day?date=2026-09-21&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":75.77,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:34.942Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"e0ea28d1-22ae-4bb0-be61-481a47b89ce5","method":"GET","path":"/api/schedules/day?date=2026-09-22&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":68.28,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:35.043Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"6010b5ad-8394-4b80-b14d-1e0e9de85baf","method":"GET","path":"/api/schedules/day?date=2026-09-28&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":86.69,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:35.050Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"deb1820c-161e-453a-a133-f2400ee045ba","method":"GET","path":"/api/schedules/day?date=2026-09-29&course_type=pdc_beginner&instructor_id=742&vehicle_id=641","statusCode":200,"durationMs":68.4,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:35.185Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"e64cc0c1-3180-45a5-87b8-f3b218655c9b","method":"POST","path":"/api/enrollments","statusCode":201,"durationMs":124.83,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: POST /api/enrollments can create beginner schedule entries in the same transaction
+    ok 5 - POST /api/enrollments can create beginner schedule entries in the same transaction
+      ---
+      duration_ms: 2278.864
+      ...
+    1..5
+ok 2 - Enrollments API contract
+  ---
+  duration_ms: 3123.6453
+  type: 'suite'
+  ...
+# [dotenv@17.3.1] injecting env (9) from .env -- tip: ΓÜÖ∩╕Å  load multiple .env files with { path: ['.env.local', '.env'] }
+# [security] Using fallback seed passwords. Override SEED_* values in .env before sharing outside local setup.
+# {"timestamp":"2026-04-28T06:33:47.251Z","level":"warn","message":"http_error","service":"guts-backend","environment":"development","requestId":"dc5db05a-02cb-496d-851c-7525dd5ef7ed","method":"POST","path":"/api/auth/login","statusCode":401,"userId":null,"role":null,"error":{"name":"Error","message":"Invalid credentials","stack":"Error: Invalid credentials\\n    at Object.login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.service.js:88:19)\\n    at async login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.controller.js:7:21)"}}
+# {"timestamp":"2026-04-28T06:33:47.259Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"dc5db05a-02cb-496d-851c-7525dd5ef7ed","method":"POST","path":"/api/auth/login","statusCode":401,"durationMs":132.18,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:33:47.393Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"aca568b7-7b51-4323-b311-2063cab8e8c5","method":"POST","path":"/api/auth/login","statusCode":200,"durationMs":122.03,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:33:47.489Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"e1b59094-46f2-47c8-ace2-d378655fbf2d","method":"POST","path":"/api/enrollments","statusCode":201,"durationMs":81.7,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:47.505Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"ea504dc8-aa9d-41fa-a317-a7faf7ff9187","method":"POST","path":"/api/enrollments","statusCode":400,"durationMs":7.28,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# Subtest: Reports API contract
+    # Subtest: GET /api/reports/daily filters rows by course=tdc
+    not ok 1 - GET /api/reports/daily filters rows by course=tdc
+      ---
+      duration_ms: 136.3704
+      location: 'C:\\Users\\G\\Guts\\backend\\test\\contracts\\reports.contract.test.js:161:3'
+      failureType: 'testCodeFailure'
+      error: |-
+        {"message":"Validation error","details":["\"value\" failed custom validation because "]}
+        
+        400 !== 201
+        
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: 201
+      actual: 400
+      operator: 'strictEqual'
+      stack: |-
+        createPdcEnrollment (C:\Users\G\Guts\backend\test\contracts\reports.contract.test.js:156:12)
+        process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        async TestContext.<anonymous> (C:\Users\G\Guts\backend\test\contracts\reports.contract.test.js:163:5)
+        async Test.run (node:internal/test_runner/test:980:9)
+        async Promise.all (index 0)
+        async Suite.run (node:internal/test_runner/test:1358:7)
+        async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+      ...
+# {"timestamp":"2026-04-28T06:33:47.591Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"72788c58-0ff8-40b4-9c41-c13a661bec1f","method":"POST","path":"/api/enrollments","statusCode":201,"durationMs":49,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:33:47.601Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"9e3a1e79-52d8-4ca6-8298-e69b695a98e5","method":"POST","path":"/api/enrollments","statusCode":400,"durationMs":4.11,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: GET /api/reports/daily filters rows by course=pdc
+    not ok 2 - GET /api/reports/daily filters rows by course=pdc
+      ---
+      duration_ms: 89.4686
+      location: 'C:\\Users\\G\\Guts\\backend\\test\\contracts\\reports.contract.test.js:177:3'
+      failureType: 'testCodeFailure'
+      error: |-
+        {"message":"Validation error","details":["\"value\" failed custom validation because "]}
+        
+        400 !== 201
+        
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: 201
+      actual: 400
+      operator: 'strictEqual'
+      stack: |-
+        createPdcEnrollment (C:\Users\G\Guts\backend\test\contracts\reports.contract.test.js:156:12)
+        process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        async TestContext.<anonymous> (C:\Users\G\Guts\backend\test\contracts\reports.contract.test.js:179:5)
+        async Test.run (node:internal/test_runner/test:980:9)
+        async Suite.processPendingSubtests (node:internal/test_runner/test:677:7)
+      ...
+# {"timestamp":"2026-04-28T06:33:47.809Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"f1ad2ff2-9c57-4fa6-ad51-9098949267f2","method":"GET","path":"/api/reports/daily?date=2026-04-28&course=tdc","statusCode":200,"durationMs":147.19,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: GET /api/reports/daily keeps TDC schedule rows when course=tdc
+    ok 3 - GET /api/reports/daily keeps TDC schedule rows when course=tdc
+      ---
+      duration_ms: 226.3036
+      ...
+# {"timestamp":"2026-04-28T06:33:47.949Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"1d4e9b95-8434-4790-b674-40839b77dd1d","method":"GET","path":"/api/reports/daily?date=2026-04-28&course=pdc","statusCode":200,"durationMs":56.58,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: GET /api/reports/daily keeps PDC schedule rows when course=pdc
+    ok 4 - GET /api/reports/daily keeps PDC schedule rows when course=pdc
+      ---
+      duration_ms: 125.311
+      ...
+# {"timestamp":"2026-04-28T06:33:47.997Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"0c0bbcce-a8dd-415f-b8ed-39731c73d3b6","method":"POST","path":"/api/reports/schedule-email","statusCode":201,"durationMs":15.55,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: POST /api/reports/schedule-email creates an email schedule
+    ok 5 - POST /api/reports/schedule-email creates an email schedule
+      ---
+      duration_ms: 37.0368
+      ...
+# {"timestamp":"2026-04-28T06:33:48.493Z","level":"warn","message":"report_email_preview_sent","service":"guts-backend","environment":"development","requestedByUserId":5,"recipients":["worst.gen00@gmail.com","joefreysacay28@gmail.com"],"fileFormat":"pdf","course":"overall"}
+# {"timestamp":"2026-04-28T06:33:48.496Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d4975b1d-9681-4987-b2b3-e6550078943e","method":"POST","path":"/api/reports/test-email","statusCode":200,"durationMs":477.5,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: POST /api/reports/test-email sends a report preview to the requested recipients
+    ok 6 - POST /api/reports/test-email sends a report preview to the requested recipients
+      ---
+      duration_ms: 487.938
+      ...
+# {"timestamp":"2026-04-28T06:33:48.573Z","level":"warn","message":"report_email_preview_sent","service":"guts-backend","environment":"development","requestedByUserId":5,"recipients":["owner@example.com"],"fileFormat":"pdf","course":"overall"}
+# {"timestamp":"2026-04-28T06:33:48.574Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d8b8f224-c09a-40cf-9241-f259990789c7","method":"POST","path":"/api/reports/send-email","statusCode":200,"durationMs":63.13,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: POST /api/reports/send-email sends a real report email payload to recipients
+    ok 7 - POST /api/reports/send-email sends a real report email payload to recipients
+      ---
+      duration_ms: 75.1337
+      ...
+    1..7
+not ok 3 - Reports API contract
+  ---
+  duration_ms: 1594.1408
+  type: 'suite'
+  location: 'C:\\Users\\G\\Guts\\backend\\test\\contracts\\reports.contract.test.js:14:6'
+  failureType: 'subtestsFailed'
+  error: '2 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.3.1] injecting env (9) from .env -- tip: ≡ƒ¢á∩╕Å  run anywhere with `dotenvx run -- yourcommand`
+# [security] Using fallback seed passwords. Override SEED_* values in .env before sharing outside local setup.
+# {"timestamp":"2026-04-28T06:34:01.462Z","level":"warn","message":"http_error","service":"guts-backend","environment":"development","requestId":"1b6bf89c-cec2-4b3e-8a06-424ee28fcc28","method":"POST","path":"/api/auth/login","statusCode":401,"userId":null,"role":null,"error":{"name":"Error","message":"Invalid credentials","stack":"Error: Invalid credentials\\n    at Object.login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.service.js:88:19)\\n    at async login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.controller.js:7:21)"}}
+# {"timestamp":"2026-04-28T06:34:01.467Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"1b6bf89c-cec2-4b3e-8a06-424ee28fcc28","method":"POST","path":"/api/auth/login","statusCode":401,"durationMs":140.19,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:34:01.600Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"994413d5-b6bd-4f79-9466-3992398200b8","method":"POST","path":"/api/auth/login","statusCode":200,"durationMs":118.69,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:34:01.708Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"8a754a39-e9bd-4399-a8c4-eb1b63e516b0","method":"POST","path":"/api/auth/login","statusCode":200,"durationMs":100.43,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:34:02.118Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"a40e8661-fbfc-420b-b668-f6f1f678ae6d","method":"GET","path":"/api/schedules/day?date=2026-06-15&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":371.83,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.138Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"e8ade3dc-50fa-48c6-9bfb-d21a6c86f198","method":"GET","path":"/api/schedules/day?date=2026-06-16&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":368.92,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.276Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"91bc4880-23c7-48ce-8c46-a76d21efb25c","method":"GET","path":"/api/schedules/day?date=2026-06-22&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":124.18,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.282Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"f47b3da5-8f4e-4134-9a7e-38e72ba56d7d","method":"GET","path":"/api/schedules/day?date=2026-06-23&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":109.52,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.411Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"1bf13a9a-9fdb-4c12-a767-a4368e175203","method":"GET","path":"/api/schedules/day?date=2026-06-29&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":115.25,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.426Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d6df3dbd-7e22-41ce-b8dc-c77dc16ccf4c","method":"GET","path":"/api/schedules/day?date=2026-06-30&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":113.79,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.542Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"bb6d71ad-104a-462d-87ba-aebc759a8064","method":"GET","path":"/api/schedules/day?date=2026-07-06&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":97.53,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.547Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"62d58ee8-964d-4938-9ba7-de8f459bef52","method":"GET","path":"/api/schedules/day?date=2026-07-07&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":67.04,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.647Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"99aab35e-8dd2-4cee-95f1-ca44d379f475","method":"GET","path":"/api/schedules/day?date=2026-07-13&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":90.13,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.651Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"b7640145-9385-4a92-b920-26f6c5ae55bd","method":"GET","path":"/api/schedules/day?date=2026-07-14&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":79.34,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.743Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"0613ffd6-a0c8-4eeb-957c-5f6015533788","method":"GET","path":"/api/schedules/day?date=2026-07-20&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":81.58,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.750Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"259b78ee-1de0-489b-ac69-5b1633420dca","method":"GET","path":"/api/schedules/day?date=2026-07-21&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":73.32,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.844Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"e2bdb6a9-aa5a-483f-8f83-1bdf5fc79306","method":"GET","path":"/api/schedules/day?date=2026-07-27&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":79.26,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.848Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"1d2889d1-eac6-4463-a675-2904dfabe5a7","method":"GET","path":"/api/schedules/day?date=2026-07-28&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":57.29,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.968Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"64d60526-dba4-4c40-8201-fdb23511dd75","method":"GET","path":"/api/schedules/day?date=2026-08-03&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":109.85,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:02.976Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"11b58ca9-b0c3-4c18-a6e4-3105c8fa0a22","method":"GET","path":"/api/schedules/day?date=2026-08-04&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":91.86,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.059Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"132acdb7-de68-4bb2-8815-d817fc9ccece","method":"GET","path":"/api/schedules/day?date=2026-08-10&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":69.42,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.083Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"a755a1a3-0748-4786-b62e-63c6ea4f85bb","method":"GET","path":"/api/schedules/day?date=2026-08-11&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":79.95,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.156Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"e2c095f5-6f17-4613-9cbd-8347a5cf334b","method":"GET","path":"/api/schedules/day?date=2026-08-17&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":63.98,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.161Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"eaa70f7a-c74b-4bd0-a993-a5f069df5b23","method":"GET","path":"/api/schedules/day?date=2026-08-18&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":51.53,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.223Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"dcc0f7d2-12ad-45a9-b588-affebc44228a","method":"GET","path":"/api/schedules/day?date=2026-08-24&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":54.27,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.238Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"bdfdc876-d1df-4ad5-8105-715aa94be4d8","method":"GET","path":"/api/schedules/day?date=2026-08-25&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":56.09,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.307Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"64f1fa41-284d-429c-a782-c5e84cab8f5e","method":"GET","path":"/api/schedules/day?date=2026-08-31&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":59.81,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.312Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"f0f02eec-7ed0-47b2-bdb8-4ed51c5d0892","method":"GET","path":"/api/schedules/day?date=2026-09-01&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":49.59,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.384Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"1894c1d6-acbb-42d3-8349-ae5a53ce328b","method":"GET","path":"/api/schedules/day?date=2026-09-07&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":63.84,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.390Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"be126e8e-9a8b-415e-9f4d-d734f839e906","method":"GET","path":"/api/schedules/day?date=2026-09-08&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":51.64,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.477Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"7c13e124-00e6-415d-9547-e21f7e32b92d","method":"GET","path":"/api/schedules/day?date=2026-09-14&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":79.26,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.484Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"2b35b527-41a7-4ace-98b9-df7cbe15cf5e","method":"GET","path":"/api/schedules/day?date=2026-09-15&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":69,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.579Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"ac680997-1a1b-4fd6-b6a4-38fac0724260","method":"GET","path":"/api/schedules/day?date=2026-09-21&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":76.65,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.587Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"a87d8053-d422-4280-b996-49153e89ae09","method":"GET","path":"/api/schedules/day?date=2026-09-22&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":59.13,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.678Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"4e3b0114-59bc-4f83-907f-2f9f7d37d928","method":"GET","path":"/api/schedules/day?date=2026-09-28&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":80.74,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.686Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"25fa3df8-30ea-4f67-a81f-8092fd525956","method":"GET","path":"/api/schedules/day?date=2026-09-29&course_type=pdc_beginner&instructor_id=745&vehicle_id=644","statusCode":200,"durationMs":75.18,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:03.789Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"105c9a87-18c2-4b60-a438-8534595bafba","method":"POST","path":"/api/schedules","statusCode":201,"durationMs":93.43,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# Subtest: Schedules API contract
+    # Subtest: POST /api/schedules returns wrapped success payload with mapped item
+    ok 1 - POST /api/schedules returns wrapped success payload with mapped item
+      ---
+      duration_ms: 2115.308
+      ...
+# {"timestamp":"2026-04-28T06:34:03.942Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d64a2185-dfa4-4223-b7a5-44e15f38e232","method":"POST","path":"/api/schedules","statusCode":201,"durationMs":87.48,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: POST /api/schedules accepts course_type and returns canonical course label
+    ok 2 - POST /api/schedules accepts course_type and returns canonical course label
+      ---
+      duration_ms: 141.9683
+      ...
+# {"timestamp":"2026-04-28T06:34:04.132Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"f5b8f287-2137-4248-bc05-74de575d8bf4","method":"GET","path":"/api/schedules/day?date=2026-06-15&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":126.67,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.144Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"854e07b8-2896-4191-9da1-e8d7f257965b","method":"GET","path":"/api/schedules/day?date=2026-06-16&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":125.42,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.247Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"95b4383d-1ff7-475d-ac47-d018c0e66df9","method":"GET","path":"/api/schedules/day?date=2026-06-22&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":91.87,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.254Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"fdd291b2-386d-4b67-851a-7718fd20ba90","method":"GET","path":"/api/schedules/day?date=2026-06-23&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":86.76,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.346Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"bf0b6041-b458-4ccf-a355-64aa6cf46022","method":"GET","path":"/api/schedules/day?date=2026-06-29&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":79.82,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.354Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"58d6551f-9ac2-4d05-9b8f-cd34319a32e6","method":"GET","path":"/api/schedules/day?date=2026-06-30&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":73.87,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.466Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"0c4c640b-4ca2-4014-948a-361e323ac5c1","method":"GET","path":"/api/schedules/day?date=2026-07-06&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":97.72,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.475Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"8ac74328-cd5e-45b8-b9b1-4272c5dcb713","method":"GET","path":"/api/schedules/day?date=2026-07-07&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":84.47,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.587Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"6bf29581-b39d-4477-b95f-0f7a3fb5dff2","method":"GET","path":"/api/schedules/day?date=2026-07-13&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":94.79,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.592Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"90e3cf51-c8d5-4796-8004-fd2e02b8c5b6","method":"GET","path":"/api/schedules/day?date=2026-07-14&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":79.65,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.682Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"58662d57-3ce8-44b4-ab03-73f60398963e","method":"GET","path":"/api/schedules/day?date=2026-07-20&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":74.5,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.688Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"e68acba8-8faa-4db2-8a74-13984564f577","method":"GET","path":"/api/schedules/day?date=2026-07-21&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":55.09,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.763Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"21c09583-0360-4277-acd0-f64b21bb7487","method":"GET","path":"/api/schedules/day?date=2026-07-27&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":68.22,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.773Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"0d44c146-8ee9-499c-844a-bc8415db6ddf","method":"GET","path":"/api/schedules/day?date=2026-07-28&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":57.3,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.866Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"07c79855-4944-4d92-9138-b48475207873","method":"GET","path":"/api/schedules/day?date=2026-08-03&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":83.94,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.873Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"65b6f850-751e-48aa-8583-a55bc175f0bd","method":"GET","path":"/api/schedules/day?date=2026-08-04&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":70.14,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.947Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"7ffde9a1-5812-4a82-b260-98cc4b6f3afc","method":"GET","path":"/api/schedules/day?date=2026-08-10&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":58.52,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:04.953Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d8030d83-64dc-4580-8214-fa28a0cc0eb9","method":"GET","path":"/api/schedules/day?date=2026-08-11&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":43.1,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.010Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"3d834396-5a94-441e-9e12-70f992130197","method":"GET","path":"/api/schedules/day?date=2026-08-17&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":50.13,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.014Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d446c29a-e00c-4c41-b8f4-1ff791eee093","method":"GET","path":"/api/schedules/day?date=2026-08-18&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":41.03,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.071Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"a9fcdaaf-f0c6-44a1-b7e2-b59c7c33856b","method":"GET","path":"/api/schedules/day?date=2026-08-24&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":48.75,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.075Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"52fe4317-51a9-453a-ba6f-49c8294f528b","method":"GET","path":"/api/schedules/day?date=2026-08-25&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":41.88,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.153Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"18c898a3-a7e7-4e28-ad2f-82019dc41021","method":"GET","path":"/api/schedules/day?date=2026-08-31&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":71.96,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.158Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d7a9dccd-4b0e-4fb3-a73c-f3c48a88373a","method":"GET","path":"/api/schedules/day?date=2026-09-01&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":65.85,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.236Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d8079114-207a-44f4-87c3-58b25ff963b0","method":"GET","path":"/api/schedules/day?date=2026-09-07&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":64.36,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.239Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"520bf097-7c95-4ccb-bf55-fdf78f90a065","method":"GET","path":"/api/schedules/day?date=2026-09-08&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":46.24,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.329Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"12fddf44-8c59-4f88-b978-ecb34f01e954","method":"GET","path":"/api/schedules/day?date=2026-09-14&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":75.73,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.335Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"fa2cb80a-ce76-478b-a8aa-da50421e96e6","method":"GET","path":"/api/schedules/day?date=2026-09-15&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":55.82,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.403Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"028b219e-4448-4b35-bb42-0a3beb262d61","method":"GET","path":"/api/schedules/day?date=2026-09-21&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":59.7,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.414Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"5301bac1-7651-4a94-8eed-a4bbff8df55d","method":"GET","path":"/api/schedules/day?date=2026-09-22&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":57.04,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.493Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"4516f1d4-f5fd-4087-ba78-cdb85bb08950","method":"GET","path":"/api/schedules/day?date=2026-09-28&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":70.39,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.498Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"9b942dd6-d537-4073-aa38-b0e8882a1d60","method":"GET","path":"/api/schedules/day?date=2026-09-29&course_type=pdc_beginner&instructor_id=747&vehicle_id=646","statusCode":200,"durationMs":61.46,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.578Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"7943c654-e588-46d4-b5c2-851426a907eb","method":"POST","path":"/api/schedules","statusCode":201,"durationMs":70.55,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: POST /api/schedules links selected enrollment and student with inferred course type
+    ok 3 - POST /api/schedules links selected enrollment and student with inferred course type
+      ---
+      duration_ms: 1660.6543
+      ...
+# {"timestamp":"2026-04-28T06:34:05.737Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"653ac420-4dc1-454f-a563-80f4a1e30595","method":"POST","path":"/api/schedules","statusCode":201,"durationMs":88.22,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:05.791Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"dca0a353-e6ef-40c1-9bbc-fc9513a616c3","method":"GET","path":"/api/schedules/day?date=2026-06-02","statusCode":200,"durationMs":50.27,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: GET /api/schedules/day returns wrapped day payload
+    ok 4 - GET /api/schedules/day returns wrapped day payload
+      ---
+      duration_ms: 195.1013
+      ...
+# {"timestamp":"2026-04-28T06:34:05.845Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"7f103f42-5101-479e-ad34-8e1b57252ea6","method":"GET","path":"/api/schedules/month-status?year=2026&month=3","statusCode":200,"durationMs":16.31,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: GET /api/schedules/month-status returns wrapped month payload
+    ok 5 - GET /api/schedules/month-status returns wrapped month payload
+      ---
+      duration_ms: 21.8749
+      ...
+# {"timestamp":"2026-04-28T06:34:05.876Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"91bc8553-d2f3-4898-a5b6-79b87ae8038a","method":"POST","path":"/api/schedules","statusCode":400,"durationMs":5.43,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: POST /api/schedules rejects invalid slot with validation error details
+    ok 6 - POST /api/schedules rejects invalid slot with validation error details
+      ---
+      duration_ms: 48.532
+      ...
+# {"timestamp":"2026-04-28T06:34:06.019Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"534fd76e-0de2-47ff-8e91-c5d376f4ba7d","method":"POST","path":"/api/schedules","statusCode":201,"durationMs":103.94,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:06.025Z","level":"warn","message":"http_error","service":"guts-backend","environment":"development","requestId":"25e06d8b-fd60-4b84-ac06-9f351a9fc0a1","method":"DELETE","path":"/api/schedules/1411?scope=single","statusCode":403,"userId":2,"role":"staff","error":{"name":"Error","message":"Unauthorized: Admin approval required for schedule modifications.","stack":"Error: Unauthorized: Admin approval required for schedule modifications.\\n    at ensureAdminScheduleModification (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\schedules\\\\schedules.controller.js:11:17)\\n    at cancelSchedule (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\schedules\\\\schedules.controller.js:79:5)\\n    at Layer.handleRequest (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\node_modules\\\\router\\\\lib\\\\layer.js:152:17)\\n    at next (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\node_modules\\\\router\\\\lib\\\\route.js:157:13)\\n    at C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\shared\\\\middleware\\\\validateRequest.js:17:12\\n    at Layer.handleRequest (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\node_modules\\\\router\\\\lib\\\\layer.js:152:17)\\n    at next (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\node_modules\\\\router\\\\lib\\\\route.js:157:13)\\n    at C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\shared\\\\middleware\\\\validateRequest.js:17:12\\n    at Layer.handleRequest (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\node_modules\\\\router\\\\lib\\\\layer.js:152:17)\\n    at next (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\node_modules\\\\router\\\\lib\\\\route.js:157:13)"}}
+# {"timestamp":"2026-04-28T06:34:06.026Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"25e06d8b-fd60-4b84-ac06-9f351a9fc0a1","method":"DELETE","path":"/api/schedules/1411?scope=single","statusCode":403,"durationMs":2.94,"ip":"::ffff:127.0.0.1","userId":2,"role":"staff"}
+    # Subtest: DELETE /api/schedules/:id rejects non-admin direct modifications
+    ok 7 - DELETE /api/schedules/:id rejects non-admin direct modifications
+      ---
+      duration_ms: 155.9613
+      ...
+# {"timestamp":"2026-04-28T06:34:06.144Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"441dec11-9ff9-47c8-94fd-10ea50a2903b","method":"POST","path":"/api/schedules","statusCode":201,"durationMs":74.89,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:06.187Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"125b0b15-8919-41e4-9fee-b0ba3f1e98b3","method":"POST","path":"/api/schedule-change-requests","statusCode":201,"durationMs":38.45,"ip":"::ffff:127.0.0.1","userId":2,"role":"staff"}
+# {"timestamp":"2026-04-28T06:34:06.205Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"762ca415-ec01-4bc0-91bd-33d433db1eb2","method":"GET","path":"/api/schedule-change-requests/pending","statusCode":200,"durationMs":12.42,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:06.290Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"7a759033-7359-4413-bd25-9257ab1962d7","method":"POST","path":"/api/schedule-change-requests/40/approve","statusCode":200,"durationMs":80.6,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:06.338Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"6f84cd03-e96a-4a0e-b02e-6c8ff4bf0cd6","method":"GET","path":"/api/schedules/day?date=2026-07-01&course_type=tdc","statusCode":200,"durationMs":42.11,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: staff can request a schedule change and admin can approve it
+    ok 8 - staff can request a schedule change and admin can approve it
+      ---
+      duration_ms: 312.1488
+      ...
+    1..8
+ok 4 - Schedules API contract
+  ---
+  duration_ms: 5158.1994
+  type: 'suite'
+  ...
+# [dotenv@17.3.1] injecting env (9) from .env -- tip: ΓÜÖ∩╕Å  write to custom object with { processEnv: myObject }
+# [security] Using fallback seed passwords. Override SEED_* values in .env before sharing outside local setup.
+# {"timestamp":"2026-04-28T06:34:18.348Z","level":"warn","message":"http_error","service":"guts-backend","environment":"development","requestId":"251ce5fd-61f3-4005-b9f8-d81eee9f64a2","method":"POST","path":"/api/auth/login","statusCode":401,"userId":null,"role":null,"error":{"name":"Error","message":"Invalid credentials","stack":"Error: Invalid credentials\\n    at Object.login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.service.js:88:19)\\n    at async login (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\auth\\\\auth.controller.js:7:21)"}}
+# {"timestamp":"2026-04-28T06:34:18.358Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"251ce5fd-61f3-4005-b9f8-d81eee9f64a2","method":"POST","path":"/api/auth/login","statusCode":401,"durationMs":153.55,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:34:18.515Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"622c1f6f-f880-4159-9417-4d56969f9e69","method":"POST","path":"/api/auth/login","statusCode":200,"durationMs":133.62,"ip":"::ffff:127.0.0.1","userId":null,"role":null}
+# {"timestamp":"2026-04-28T06:34:18.749Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"039c5a0d-06cf-4b66-9cec-019832a6d82b","method":"POST","path":"/api/schedules","statusCode":201,"durationMs":214.88,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:18.844Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"401de1e4-3373-469c-9e01-23e633c558c9","method":"GET","path":"/api/schedules/day?date=2026-06-08&course_type=tdc&instructor_id=752","statusCode":200,"durationMs":83.95,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# Subtest: Scheduling live verification matrix
+    # Subtest: Scenario 1: TDC booking works without vehicle
+    ok 1 - Scenario 1: TDC booking works without vehicle
+      ---
+      duration_ms: 346.3912
+      ...
+# {"timestamp":"2026-04-28T06:34:18.939Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"c30bf051-5661-4805-89ae-81d36c9d86a5","method":"GET","path":"/api/schedules/day?date=2026-06-15&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":54.44,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.030Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"2303e118-4b5b-4551-bf60-37a021563b00","method":"GET","path":"/api/schedules/day?date=2026-06-16&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":84.52,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.070Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"6635ab63-52b7-4491-9c44-878f8a03a2b1","method":"GET","path":"/api/schedules/day?date=2026-06-22&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":33.16,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.125Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"4d209fd5-0680-454a-8934-22d4a8d1fe63","method":"GET","path":"/api/schedules/day?date=2026-06-23&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":49.92,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.189Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"40dae4bd-f988-45d8-8011-c242c470646d","method":"GET","path":"/api/schedules/day?date=2026-06-29&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":54.19,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.258Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"fd04792c-b042-44bc-b180-4d08aca0fc6b","method":"GET","path":"/api/schedules/day?date=2026-06-30&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":61.63,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.339Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"fcaa23ca-970b-4057-81e6-d7247c15dd59","method":"GET","path":"/api/schedules/day?date=2026-07-06&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":69.95,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.379Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"0eef93f4-159c-4f58-9ff1-c72284ce7734","method":"GET","path":"/api/schedules/day?date=2026-07-07&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":35.24,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.413Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"be56927b-d486-4f28-b532-d22e4f80f322","method":"GET","path":"/api/schedules/day?date=2026-07-13&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":27.68,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.459Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"f18e07e9-43e6-4e8b-8f2b-408059990a87","method":"GET","path":"/api/schedules/day?date=2026-07-14&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":40.9,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.502Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"e8ef6a6d-f22b-4b5b-a56e-12deb560c7fc","method":"GET","path":"/api/schedules/day?date=2026-07-20&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":36.47,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.548Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"735e7080-d6fa-44b4-979d-32c644d8ac03","method":"GET","path":"/api/schedules/day?date=2026-07-21&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":40.44,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.595Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"23597abd-a045-46ba-8dca-92eb1e34a1ac","method":"GET","path":"/api/schedules/day?date=2026-07-27&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":39.95,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.659Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"c38692ec-5e70-47d2-8e6e-1d6de4e4bda5","method":"GET","path":"/api/schedules/day?date=2026-07-28&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":54.78,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.688Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"331ab7a4-52dd-432d-af14-e3d06b77b8d7","method":"GET","path":"/api/schedules/day?date=2026-08-03&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":24.69,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.723Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"efd7f349-2f22-4c77-ab3c-b74c7b78d71e","method":"GET","path":"/api/schedules/day?date=2026-08-04&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":30.3,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.753Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"11f67ff6-18f1-45c5-acca-0da6096a9833","method":"GET","path":"/api/schedules/day?date=2026-08-10&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":25.59,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.787Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"0c1f95a7-e5c3-4be7-8979-30ef2b0b5f05","method":"GET","path":"/api/schedules/day?date=2026-08-11&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":29.6,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.815Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"9ee08ca5-4d8d-4be0-9247-5a76945750b7","method":"GET","path":"/api/schedules/day?date=2026-08-17&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":24.02,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.853Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"7596fbb7-2d03-4692-ab8a-e0af0be7985b","method":"GET","path":"/api/schedules/day?date=2026-08-18&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":32.91,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.898Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"cd24a500-2a85-4496-a6d8-0da299f3023b","method":"GET","path":"/api/schedules/day?date=2026-08-24&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":39.24,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.949Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"ac3dfd3e-3f75-4cca-ab20-d2b69dfb8469","method":"GET","path":"/api/schedules/day?date=2026-08-25&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":44.82,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:19.992Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d84d09d2-b95f-4348-b75a-c0fba6e8b84d","method":"GET","path":"/api/schedules/day?date=2026-08-31&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":36.5,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.027Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"2b21a07b-b6c3-4b95-9afb-d3e1531fc616","method":"GET","path":"/api/schedules/day?date=2026-09-01&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":30.02,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.059Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"ed7e13b8-1134-4dc4-a394-9ce2328708ab","method":"GET","path":"/api/schedules/day?date=2026-09-07&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":26.88,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.090Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d237b24e-1b9a-44fd-a3f2-af3d8aa48d19","method":"GET","path":"/api/schedules/day?date=2026-09-08&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":26.91,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.136Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"8bdbc3a5-e972-40eb-9f28-4809e0619b9c","method":"GET","path":"/api/schedules/day?date=2026-09-14&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":41.65,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.178Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"6cc34e29-7ce7-4015-a773-a864eb94c6b2","method":"GET","path":"/api/schedules/day?date=2026-09-15&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":37,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.222Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"34981dfd-841f-4f91-b0dc-6e6c107badb2","method":"GET","path":"/api/schedules/day?date=2026-09-21&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":38.82,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.272Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"4909f8a8-2be1-4e80-b5b7-4fda93a42886","method":"GET","path":"/api/schedules/day?date=2026-09-22&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":45.17,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.314Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"45ff3424-2c51-437c-bb61-0fb218b3f305","method":"GET","path":"/api/schedules/day?date=2026-09-28&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":36.67,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.358Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"a19dc79d-4d0b-49e8-8ece-16fc309a0611","method":"GET","path":"/api/schedules/day?date=2026-09-29&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":36.94,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.398Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"7d2a3d4f-87f8-4be2-9e45-30d02f4a2448","method":"GET","path":"/api/schedules/day?date=2026-10-05&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":34.72,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.435Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"d14fef90-1951-4fb5-96ae-c9fc6a15a86d","method":"GET","path":"/api/schedules/day?date=2026-10-06&course_type=pdc_beginner&instructor_id=753&vehicle_id=651","statusCode":200,"durationMs":29.75,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.524Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"4c9f0748-94b4-468e-a826-0b34b17bdda5","method":"POST","path":"/api/schedules","statusCode":201,"durationMs":83.98,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: Scenario 2A: PDC Beginner creates two consecutive-day rows
+    ok 2 - Scenario 2A: PDC Beginner creates two consecutive-day rows
+      ---
+      duration_ms: 1681.5541
+      ...
+# {"timestamp":"2026-04-28T06:34:20.579Z","level":"warn","message":"http_error","service":"guts-backend","environment":"development","requestId":"8e653bd8-a748-48a9-bcff-e118de7d88f3","method":"POST","path":"/api/schedules","statusCode":400,"userId":5,"role":"admin","error":{"name":"Error","message":"Second beginner session (2026-06-12) falls on a non-operational day (PDC is strictly allowed Monday to Thursday only). Pick another starting date.","stack":"Error: Second beginner session (2026-06-12) falls on a non-operational day (PDC is strictly allowed Monday to Thursday only). Pick another starting date.\\n    at Object.addSchedule (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\schedules\\\\schedules.service.js:816:23)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\\n    at async createSchedule (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\schedules\\\\schedules.controller.js:53:21)"}}
+# {"timestamp":"2026-04-28T06:34:20.580Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"8e653bd8-a748-48a9-bcff-e118de7d88f3","method":"POST","path":"/api/schedules","statusCode":400,"durationMs":14.68,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: Scenario 2B: Thursday beginner booking is blocked (Option A)
+    ok 3 - Scenario 2B: Thursday beginner booking is blocked (Option A)
+      ---
+      duration_ms: 48.7863
+      ...
+# {"timestamp":"2026-04-28T06:34:20.692Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"3c1927ab-ad08-4818-8924-7f619827d7a7","method":"POST","path":"/api/schedules","statusCode":201,"durationMs":79.79,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.728Z","level":"warn","message":"http_error","service":"guts-backend","environment":"development","requestId":"28042a81-d42d-4727-b668-696d57a82b57","method":"POST","path":"/api/schedules","statusCode":400,"userId":5,"role":"admin","error":{"name":"Error","message":"Selected vehicle is already assigned to this slot","stack":"Error: Selected vehicle is already assigned to this slot\\n    at Object.addSchedule (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\schedules\\\\schedules.service.js:874:23)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\\n    at async createSchedule (C:\\\\Users\\\\G\\\\Guts\\\\backend\\\\src\\\\modules\\\\schedules\\\\schedules.controller.js:53:21)"}}
+# {"timestamp":"2026-04-28T06:34:20.729Z","level":"warn","message":"request_completed","service":"guts-backend","environment":"development","requestId":"28042a81-d42d-4727-b668-696d57a82b57","method":"POST","path":"/api/schedules","statusCode":400,"durationMs":26.59,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+# {"timestamp":"2026-04-28T06:34:20.787Z","level":"info","message":"request_completed","service":"guts-backend","environment":"development","requestId":"ad939f3f-671f-4896-ae43-c8b2bd6282d0","method":"GET","path":"/api/schedules/day?date=2026-06-16&course_type=pdc_beginner&instructor_id=756&vehicle_id=653","statusCode":200,"durationMs":53.08,"ip":"::ffff:127.0.0.1","userId":5,"role":"admin"}
+    # Subtest: Scenario 3: Experienced whole-day lock blocks same-resource booking
+    ok 4 - Scenario 3: Experienced whole-day lock blocks same-resource booking
+      ---
+      duration_ms: 210.844
+      ...
+    1..4
+ok 5 - Scheduling live verification matrix
+  ---
+  duration_ms: 2732.6468
+  type: 'suite'
+  ...
+1..5
+# tests 27
+# suites 5
+# pass 25
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 75961.6022
