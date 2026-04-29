@@ -24,6 +24,7 @@ function buildNavItems(role) {
   const all = [
     { label: "Dashboard", to: "/", icon: LayoutDashboard, roles: ["admin", "sub_admin", "staff"] },
     { label: "Enrollments", to: "/enrollments", icon: UserRound, roles: ["admin", "sub_admin", "staff"] },
+    { label: "Pending Approvals", to: "/enrollments/pending", icon: Clock, roles: ["admin", "sub_admin"] },
     { label: "Schedule PDC Later", to: "/enrollments/schedule-pdc-later", icon: Clock, roles: ["admin", "sub_admin", "staff"] },
     { label: "Students", to: "/students", icon: Users, roles: ["admin", "sub_admin", "staff"] },
     { label: "Payment Ledger", to: "/payments", icon: FileText, roles: ["admin", "sub_admin"] },

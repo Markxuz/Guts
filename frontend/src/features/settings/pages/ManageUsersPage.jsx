@@ -44,6 +44,8 @@ export default function ManageUsersPage() {
   const [toastMsg, setToastMsg] = useState("");
   const [isBackupRunning, setIsBackupRunning] = useState(false);
   const [backupStatus, setBackupStatus] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   function toast(msg) {
     setToastMsg(msg);
@@ -65,7 +67,7 @@ export default function ManageUsersPage() {
 
   const createUser = useCreateUser({
     onSuccess: () => { setShowModal(false); setForm(EMPTY_FORM); toast("User created successfully."); },
-    onError: (e) => setFormError(e.message),
+    onError: (e) => setFormError(e?.details ? e.details.join(" ") : e.message),
   });
 
   const updateUser = useUpdateUser({
@@ -76,8 +78,9 @@ export default function ManageUsersPage() {
       toast("User updated successfully.");
     },
     onError: (e) => {
-      setEditError(e.message || "Failed to update user.");
-      toast(`Error: ${e.message}`);
+      const msg = e?.details ? e.details.join(" ") : (e.message || "Failed to update user.");
+      setEditError(msg);
+      toast(`Error: ${msg}`);
     },
   });
 
@@ -267,17 +270,27 @@ export default function ManageUsersPage() {
               {[
                 { label: "Full Name", field: "name", type: "text", placeholder: "e.g. Juan dela Cruz" },
                 { label: "Email Address", field: "email", type: "email", placeholder: "email@example.com" },
-                { label: "Password", field: "password", type: "password", placeholder: "Min. 6 characters" },
+                { label: "Password", field: "password", type: "password", placeholder: "Min. 10 chars; upper, lower, number, special" },
               ].map(({ label, field, type, placeholder }) => (
-                <div key={field}>
+                <div key={field} className="relative">
                   <label className="mb-1 block text-xs font-semibold text-slate-600">{label}</label>
                   <input
-                    type={type}
+                    type={field === "password" && showPassword ? "text" : type}
                     placeholder={placeholder}
                     value={form[field]}
                     onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
                     className={inputClass}
                   />
+                  {field === "password" && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((s) => !s)}
+                      className="absolute right-3 top-9 text-slate-500"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-5 0-9.27-3-11-8 1.02-2.7 2.79-4.86 4.95-6.18"/><path d="M1 1l22 22"/></svg> : <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>}
+                    </button>
+                  )}
                 </div>
               ))}
               <div>
@@ -363,15 +376,23 @@ export default function ManageUsersPage() {
                 </select>
               </div>
 
-              <div>
+              <div className="relative">
                 <label className="mb-1 block text-xs font-semibold text-slate-600">New Password (optional)</label>
                 <input
-                  type="password"
+                  type={showEditPassword ? "text" : "password"}
                   value={editForm.newPassword}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, newPassword: e.target.value }))}
                   placeholder="Leave blank to keep current password"
                   className={inputClass}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowEditPassword((s) => !s)}
+                  className="absolute right-3 top-9 text-slate-500"
+                  aria-label={showEditPassword ? "Hide password" : "Show password"}
+                >
+                  {showEditPassword ? <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-5 0-9.27-3-11-8 1.02-2.7 2.79-4.86 4.95-6.18"/><path d="M1 1l22 22"/></svg> : <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>}
+                </button>
               </div>
 
               <label className="flex items-center gap-2 text-sm text-slate-700">

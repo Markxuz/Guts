@@ -8,6 +8,7 @@ const LoginPage = lazy(routeLoaders.loginPage);
 const DashboardPage = lazy(routeLoaders.dashboardPage);
 const EnrollmentsPage = lazy(routeLoaders.enrollmentsPage);
 const SchedulePdcLaterPage = lazy(routeLoaders.schedulePdcLaterPage);
+const PendingEnrollmentsPage = lazy(routeLoaders.pendingEnrollmentsPage);
 const ReportsPage = lazy(routeLoaders.reportsPage);
 const OverviewReportsPage = lazy(routeLoaders.overviewReportsPage);
 const InstructorsPage = lazy(routeLoaders.instructorsPage);
@@ -47,6 +48,7 @@ export default function AppRouter() {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/enrollments" element={<EnrollmentsPage />} />
+          <Route path="/enrollments/pending" element={<PendingEnrollmentsPage />} />
           <Route path="/enrollments/schedule-pdc-later" element={<SchedulePdcLaterPage />} />
           <Route path="/students" element={<StudentsPage />} />
           <Route

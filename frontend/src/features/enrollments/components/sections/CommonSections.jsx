@@ -86,7 +86,7 @@ function getNationalitySelection(profile) {
   };
 }
 
-export function PersonalInfoSection({ type, form, onFieldChange }) {
+export function PersonalInfoSection({ type, form, onFieldChange, promoOfferOptions = [] }) {
   useEffect(() => {
     const birthdate = form.profile.birthdate;
     const age = calculateAge(birthdate);
@@ -120,6 +120,19 @@ export function PersonalInfoSection({ type, form, onFieldChange }) {
             placeholder="Select Client Type"
             options={clientTypeOptions}
             required
+          />
+        </div>
+      ) : null}
+
+      {type === "PDC" || type === "TDC" || type === "PROMO" ? (
+        <div className="mt-2 grid gap-3 md:grid-cols-2">
+          <SelectField
+            label="PROMO OFFER"
+            name="promo_offer_id"
+            value={form.enrollment.promo_offer_id}
+            onChange={(event) => onFieldChange("enrollment", "promo_offer_id", event.target.value)}
+            placeholder="Select promo offer"
+            options={promoOfferOptions}
           />
         </div>
       ) : null}

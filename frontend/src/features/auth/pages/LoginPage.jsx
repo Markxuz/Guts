@@ -8,6 +8,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
 
   const loginMutation = useMutation({
     mutationFn: login,
@@ -52,13 +53,18 @@ export default function LoginPage() {
 
           <label className="block">
             <span className="mb-1 block text-xs font-semibold text-[#c4c8cd]">Password</span>
-            <input
-              value={form.password}
-              onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-              className="h-10 w-full rounded-lg border border-white/10 bg-[#1c1a23] px-3 text-sm text-[#e8e5e0] outline-none focus:border-[#c7a24a]"
-              type="password"
-              required
-            />
+            <div className="relative">
+              <input
+                value={form.password}
+                onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+                className="h-10 w-full rounded-lg border border-white/10 bg-[#1c1a23] px-3 text-sm text-[#e8e5e0] outline-none focus:border-[#c7a24a]"
+                type={showPassword ? "text" : "password"}
+                required
+              />
+              <button type="button" onClick={() => setShowPassword((s) => !s)} className="absolute right-3 top-2 text-slate-400">
+                {showPassword ? <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-5 0-9.27-3-11-8 1.02-2.7 2.79-4.86 4.95-6.18"/><path d="M1 1l22 22"/></svg> : <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>}
+              </button>
+            </div>
           </label>
 
           {loginMutation.isError ? (

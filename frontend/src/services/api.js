@@ -37,7 +37,11 @@ async function request(path, options = {}) {
     }
 
     const message = payload?.message || `Request failed: ${response.status}`;
-    throw new Error(message);
+    const err = new Error(message);
+    if (Array.isArray(payload?.details) && payload.details.length > 0) {
+      err.details = payload.details;
+    }
+    throw err;
   }
 
   return payload;

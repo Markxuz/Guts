@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { resourceServices } from "../../../services/resources";
 
+import { useAuth } from "../../auth/hooks/useAuth";
+
 async function fetchSchedulePdcLaterEnrollments() {
   const enrollments = await resourceServices.enrollments.list();
 
@@ -21,9 +23,20 @@ async function fetchSchedulePdcLaterEnrollments() {
 }
 
 export function useSchedulePdcLaterEnrollments() {
+  const { auth } = useAuth();
+  const role = auth?.user?.role;
+
   return useQuery({
     queryKey: ["enrollments", "schedule-pdc-later"],
-    queryFn: fetchSchedulePdcLaterEnrollments,
+    queryFn: async () => {
+      const list = await fetchSchedulePdcLaterEnrollments();
+      // If user is staff, only show enrollments that have been confirmed by admin/sub_admin.
+      if (role === "staff") {
+        return list.filter((e) => String(e?.status || "") === "confirmed");
+      }
+      return list;
+    },
     staleTime: 30000,
   });
 }
+

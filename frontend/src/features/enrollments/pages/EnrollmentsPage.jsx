@@ -4,7 +4,7 @@ import { ArrowLeft, GraduationCap, LoaderCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import EnrollmentTypeSwitcher from "../components/EnrollmentTypeSwitcher";
 import { getEnrollmentTypeLabel } from "../components/enrollmentTypeOptions";
-import { AddressSection, FinancialSection, PersonalInfoSection } from "../components/sections/CommonSections";
+import { AddressSection, PersonalInfoSection } from "../components/sections/CommonSections";
 import { useCreateEnrollment } from "../hooks/useCreateEnrollment";
 import { resourceServices } from "../../../services/resources";
 import { fetchDailyReports } from "../../dashboard/services/dashboardApi";
@@ -55,11 +55,6 @@ const INITIAL_FORM = {
     training_method: "On Site",
     pdc_category: "",
     promo_offer_id: "",
-    fee_amount: "",
-    discount_amount: "",
-    payment_terms: "",
-    payment_reference_number: "",
-    payment_notes: "",
     tdc_source: "guts",
   },
   extras: {
@@ -1121,14 +1116,8 @@ export default function EnrollmentsPage() {
           </div>
 
           <div className="thin-scrollbar max-h-[80vh] overflow-y-auto px-4 py-4 sm:px-5">
-            <PersonalInfoSection type={selectedType} form={form} onFieldChange={handleFieldChange} />
+            <PersonalInfoSection type={selectedType} form={form} onFieldChange={handleFieldChange} promoOfferOptions={promoOfferOptions} />
             <AddressSection type={selectedType} form={form} onFieldChange={handleFieldChange} />
-            <FinancialSection
-              type={selectedType}
-              form={form}
-              onFieldChange={handleFieldChange}
-              promoOfferOptions={promoOfferOptions}
-            />
             {selectedType === "TDC" ? (
               <Suspense fallback={<p className="mt-4 text-sm text-slate-500">Loading TDC form...</p>}>
                 <TdcFormSections />
