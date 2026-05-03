@@ -218,6 +218,13 @@ function toPositiveIntegerOrNull(value) {
   return numeric;
 }
 
+function normalizeText(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const trimmed = String(value).trim();
+  return trimmed || null;
+}
+
 function beginnerAutomationTag(groupId) {
   return `${BEGINNER_AUTOMATION_TAG_PREFIX}${groupId}]`;
 }
@@ -573,6 +580,34 @@ function mapSchedule(row) {
   };
 }
 
+function linkedEnrollmentForRow(row) {
+  return row?.selectedEnrollment || row?.Enrollment || row?.Enrollments?.[0] || null;
+}
+
+function hasLinkedStudentForRow(row) {
+  const enrollment = linkedEnrollmentForRow(row);
+  return Boolean(row?.scheduledStudent || enrollment?.Student);
+}
+
+function includeScheduleRow(row) {
+  if (!row) {
+    return false;
+  }
+
+  // Keep open/manual schedule rows that are not linked to an enrollment/student.
+  if (!row.student_id && !row.enrollment_id) {
+    return true;
+  }
+
+  // Keep rows linked by enrollment only (student assignment may happen later).
+  if (!row.student_id) {
+    return true;
+  }
+
+  // Hide orphaned rows that still reference a student id but no longer resolve a student relation.
+  return hasLinkedStudentForRow(row);
+}
+
 async function getSlotAvailability(date, slot, courseType = "overall", resourceFilter = {}) {
   const slotConfig = SLOT_MAP[slot];
   const normalizedType = normalizeCourseType(courseType || "overall");
@@ -585,21 +620,7 @@ async function getSlotAvailability(date, slot, courseType = "overall", resourceF
     repository.countVehicles(),
   ]);
 
-  // Filter out invalid schedules (deleted students or unpaid enrollments)
-  const filterValidSchedules = (rows) => {
-    return rows.filter((row) => {
-      // Skip if student was deleted or no enrollment
-      if (!row.student_id || !row.Enrollment || !row.Enrollment.Student) {
-        return false;
-      }
-      // Skip if enrollment is not confirmed or completed
-      const enrollmentStatus = String(row.Enrollment?.status || "").toLowerCase();
-      if (enrollmentStatus !== "confirmed" && enrollmentStatus !== "completed") {
-        return false;
-      }
-      return true;
-    });
-  };
+  const filterValidSchedules = (rows) => rows.filter(includeScheduleRow);
 
   const validSchedules = filterValidSchedules(schedules);
   const validDaySchedules = filterValidSchedules(daySchedules);
@@ -660,22 +681,7 @@ async function listSchedulesByDate(date, courseType = "overall", resourceFilter 
 
   const normalizedType = normalizeCourseType(courseType || "overall");
   const dayRows = await repository.findSchedulesByDate(date);
-  
-  // Filter out schedules for deleted students or unpaid enrollments
-  const validRows = dayRows.filter((row) => {
-    // Skip if student was deleted (no student_id or student doesn't exist)
-    if (!row.student_id || !row.Enrollment || !row.Enrollment.Student) {
-      return false;
-    }
-
-    // Skip if enrollment is not confirmed or completed (exclude pending/unpaid)
-    const enrollmentStatus = String(row.Enrollment?.status || "").toLowerCase();
-    if (enrollmentStatus !== "confirmed" && enrollmentStatus !== "completed") {
-      return false;
-    }
-
-    return true;
-  });
+  const validRows = dayRows.filter(includeScheduleRow);
   
   const scopedRows = normalizedType === "overall"
     ? validRows
@@ -700,13 +706,7 @@ async function listSchedulesByDate(date, courseType = "overall", resourceFilter 
 
 async function listSchedulesByRange(startDate, endDate) {
   const rows = await repository.findSchedulesByDateRange(startDate, endDate);
-  // Filter out schedules for deleted students or unpaid/pending enrollments
-  const valid = (rows || []).filter((row) => {
-    if (!row || !row.student_id || !row.Enrollment || !row.Enrollment.Student) return false;
-    const enrollmentStatus = String(row.Enrollment?.status || "").toLowerCase();
-    if (enrollmentStatus !== "confirmed" && enrollmentStatus !== "completed") return false;
-    return true;
-  });
+  const valid = (rows || []).filter(includeScheduleRow);
 
   return valid.map(mapSchedule);
 }
@@ -733,14 +733,7 @@ async function listMonthStatus(year, month) {
   const grouped = new Map();
 
   rows.forEach((row) => {
-    // Skip schedules for deleted students (no student_id or student doesn't exist)
-    if (!row.student_id || !row.Enrollment || !row.Enrollment.Student) {
-      return;
-    }
-
-    // Skip schedules for unpaid/pending enrollments - only count confirmed or completed
-    const enrollmentStatus = String(row.Enrollment?.status || "").toLowerCase();
-    if (enrollmentStatus !== "confirmed" && enrollmentStatus !== "completed") {
+    if (!includeScheduleRow(row)) {
       return;
     }
 
