@@ -88,6 +88,9 @@ function buildMonthlySeries(rows) {
   }));
 
   rows.forEach((row) => {
+    // Only count paid enrollments (confirmed or completed)
+    if (row.status !== "confirmed" && row.status !== "completed") return;
+
     const date = getCreatedDate(row);
     if (Number.isNaN(date.valueOf())) return;
 
@@ -127,21 +130,30 @@ async function getSummary(courseFilter = "overall") {
           return membership.has(normalizedFilter);
         });
 
+  // Only count "confirmed" and "completed" as currently enrolled (exclude unpaid "pending" with qrCodeId)
   const currentlyEnrolled = filteredEnrollments.filter(
-    (item) => item.status === "pending" || item.status === "confirmed"
+    (item) => item.status === "confirmed" || item.status === "completed"
   ).length;
   const completed = filteredEnrollments.filter((item) => item.status === "completed").length;
 
   const thisMonth = filteredEnrollments.filter((item) => {
     const date = getCreatedDate(item);
-    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    // Only count "confirmed" and "completed" for monthly stats
+    const isPaidEnrollment = item.status === "confirmed" || item.status === "completed";
+    return isPaidEnrollment && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   }).length;
 
-  const pdcBeginner = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_beginner").length;
-  const pdcExperience = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_experience").length;
-  const tdc = filteredEnrollments.filter((item) => classifyCourseType(item) === "tdc").length;
+  const pdcBeginner = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_beginner" && (item.status === "confirmed" || item.status === "completed")).length;
+  const pdcExperience = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_experience" && (item.status === "confirmed" || item.status === "completed")).length;
+  const tdc = filteredEnrollments.filter((item) => classifyCourseType(item) === "tdc" && (item.status === "confirmed" || item.status === "completed")).length;
 
-  const totalStudentsForFilter = new Set(filteredEnrollments.map((item) => item.student_id).filter(Boolean)).size;
+  // Only count students with paid (confirmed/completed) enrollments
+  const totalStudentsForFilter = new Set(
+    filteredEnrollments
+      .filter((item) => item.status === "confirmed" || item.status === "completed")
+      .map((item) => item.student_id)
+      .filter(Boolean)
+  ).size;
 
   return {
     stats: {

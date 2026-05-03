@@ -77,6 +77,10 @@ module.exports = (sequelize) => {
 			type: DataTypes.INTEGER,
 			allowNull: true,
 		},
+		qrCodeId: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+		},
 		tdc_completion_deadline: {
 			type: DataTypes.DATEONLY,
 			allowNull: true,

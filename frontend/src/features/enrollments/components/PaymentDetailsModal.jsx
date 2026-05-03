@@ -11,6 +11,14 @@ const paymentTermsOptions = [
 
 export default function PaymentDetailsModal({
   enrollment,
+  student,
+  studentProfile,
+  studentName: studentNameProp,
+  studentEmail,
+  studentPhone,
+  enrollmentLabel,
+  courseLabel,
+  promoOfferLabel,
   promoOfferOptions = [],
   onSubmit,
   onCancel,
@@ -49,11 +57,36 @@ export default function PaymentDetailsModal({
     onSubmit(form);
   }
 
-  const studentName = enrollment
-    ? `${enrollment.student?.first_name || ""} ${enrollment.student?.last_name || ""}`.trim()
-    : "Student";
+  const derivedStudent = student || enrollment?.student || enrollment?.Student || null;
+  const derivedProfile = studentProfile || enrollment?.studentProfile || enrollment?.StudentProfile || null;
 
-  const enrollmentType = enrollment?.enrollment_type || "Unknown";
+  const studentName =
+    studentNameProp || (derivedStudent ? `${derivedStudent.first_name || ""} ${derivedStudent.last_name || ""}`.trim() : "Student");
+
+  const courseLabelValue =
+    courseLabel || enrollment?.DLCode?.code || enrollment?.DLCode?.description || enrollment?.enrolling_for || "N/A";
+
+  const enrollmentTypeValue =
+    enrollment?.enrollment_type || enrollment?.enrolling_for || enrollment?.DLCode?.code || enrollment?.DLCode?.description || courseLabelValue || "N/A";
+
+  const studentEmailValue = studentEmail || derivedProfile?.gmail_account || derivedStudent?.email || "N/A";
+  const studentPhoneValue = studentPhone || derivedStudent?.phone || "N/A";
+  const enrollmentIdLabel = enrollmentLabel || (enrollment?.id ? `Enrollment #${enrollment.id}` : "Enrollment");
+  const promoOfferText =
+    promoOfferLabel || enrollment?.promoOffer?.name || enrollment?.PromoOffer?.name || enrollment?.promo_offer_name || enrollment?.promo_offer_id || "None";
+  const birthdateValue = derivedProfile?.birthdate || "N/A";
+  const addressValue = [
+    derivedProfile?.house_number,
+    derivedProfile?.street,
+    derivedProfile?.barangay,
+    derivedProfile?.city,
+    derivedProfile?.province,
+  ].filter(Boolean).join(", ") || "N/A";
+  const emergencyContactValue = [
+    derivedProfile?.emergency_contact_person,
+    derivedProfile?.emergency_contact_number,
+  ].filter(Boolean).join(" - ") || "N/A";
+  const studentIdValue = derivedStudent?.id || enrollment?.student_id || "N/A";
 
   return (
     <div
@@ -79,19 +112,53 @@ export default function PaymentDetailsModal({
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
             <p className="font-semibold text-slate-900">Enrollment Details</p>
             <p className="mt-1 text-xs">
-              Type: <span className="font-semibold">{enrollmentType}</span>
+              Type: <span className="font-semibold">{enrollmentTypeValue}</span>
+            </p>
+            <p className="mt-1 text-xs">
+              Student: <span className="font-semibold">{studentName}</span>
+            </p>
+            <p className="mt-1 text-xs">
+              Student ID: <span className="font-semibold">{studentIdValue}</span>
+            </p>
+            <p className="mt-1 text-xs">
+              ACTIVE GMAIL/YMAIL ACCOUNT *: <span className="font-semibold break-all">{studentEmailValue}</span>
+            </p>
+            <p className="mt-1 text-xs">
+              Contact: <span className="font-semibold">{studentPhoneValue}</span>
+            </p>
+            <p className="mt-1 text-xs">
+              Birthdate: <span className="font-semibold">{birthdateValue}</span>
+            </p>
+            <p className="mt-1 text-xs">
+              Address: <span className="font-semibold">{addressValue}</span>
+            </p>
+            <p className="mt-1 text-xs">
+              Emergency Contact: <span className="font-semibold">{emergencyContactValue}</span>
+            </p>
+            <p className="mt-1 text-xs">
+              {enrollmentIdLabel} | Course: <span className="font-semibold">{courseLabelValue}</span>
+            </p>
+            <p className="mt-1 text-xs">
+              Promo Offer: <span className="font-semibold">{promoOfferText}</span>
             </p>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <SelectField
-              label="PROMO OFFER"
-              name="promo_offer_id"
-              value={form.promo_offer_id}
-              onChange={(event) => handleFieldChange("promo_offer_id", event.target.value)}
-              placeholder="Select promo offer"
-              options={promoOfferOptions}
-            />
+            {promoOfferOptions.length > 0 ? (
+              <SelectField
+                label="PROMO OFFER"
+                name="promo_offer_id"
+                value={form.promo_offer_id}
+                onChange={(event) => handleFieldChange("promo_offer_id", event.target.value)}
+                placeholder="Select promo offer"
+                options={promoOfferOptions}
+              />
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                <p className="text-[10px] font-bold tracking-wide text-slate-500">PROMO OFFER</p>
+                <p className="mt-1">{promoOfferText}</p>
+              </div>
+            )}
             <FormField
               label="FEE AMOUNT"
               name="fee_amount"
@@ -117,11 +184,11 @@ export default function PaymentDetailsModal({
               required
             />
             <FormField
-              label="PAYMENT REFERENCE NUMBER"
+              label="RECEIPT / OR NUMBER"
               name="payment_reference_number"
               value={form.payment_reference_number}
               onChange={(event) => handleFieldChange("payment_reference_number", event.target.value)}
-              placeholder="Reference / OR number"
+              placeholder="Manual receipt number"
             />
           </div>
 

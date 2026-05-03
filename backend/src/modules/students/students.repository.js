@@ -130,7 +130,7 @@ const fullEnrollmentInclude = {
 async function findAllStudents() {
   const profileAttributes = await getSafeStudentProfileAttributes();
 
-  return Student.findAll({
+  const students = await Student.findAll({
     include: [
       {
         model: StudentProfile,
@@ -139,6 +139,24 @@ async function findAllStudents() {
       latestEnrollmentInclude,
     ],
     order: [["id", "DESC"]],
+  });
+
+  // Filter out students who only have unpaid QR enrollments (pending with qrCodeId)
+  // Only include students who have at least one "confirmed" or "completed" enrollment
+  return students.filter((student) => {
+    const enrollments = student.Enrollments || [];
+    
+    // If no enrollments, don't show in list
+    if (enrollments.length === 0) {
+      return false;
+    }
+
+    // Check if student has at least one paid (confirmed or completed) enrollment
+    const hasPaidEnrollment = enrollments.some(
+      (enrollment) => enrollment.status === "confirmed" || enrollment.status === "completed"
+    );
+
+    return hasPaidEnrollment;
   });
 }
 

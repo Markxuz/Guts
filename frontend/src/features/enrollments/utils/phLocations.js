@@ -4,6 +4,7 @@ import {
   getCitiesAndMunsByProvince,
   getBarangaysByCityOrMun,
 } from "latest-ph-address-thanks-to-anehan";
+import zipcodes from "zipcodes-ph";
 
 function normalizeText(value) {
   return String(value || "").trim();
@@ -17,6 +18,20 @@ function normalizeMatch(value) {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function toLocationVariants(value) {
+  const normalized = normalizeMatch(value);
+  if (!normalized) {
+    return [];
+  }
+
+  const variants = new Set([normalized]);
+  variants.add(normalized.replace(/\bcity\b/g, "").trim().replace(/\s+/g, " "));
+  variants.add(normalized.replace(/\bmunicipality\b/g, "").trim().replace(/\s+/g, " "));
+  variants.add(normalized.replace(/\bcity\b|\bmunicipality\b/g, "").trim().replace(/\s+/g, " "));
+
+  return Array.from(variants).filter(Boolean);
 }
 
 function formatCityLabel(name) {
@@ -163,4 +178,43 @@ export function findBarangayCodeByName(cityCode, barangayName) {
   const barangays = getBarangayOptions(cityCode);
   const match = barangays.find((item) => normalizeMatch(item.label) === normalized);
   return match?.value || "";
+}
+
+// ITO YUNG PANGUNAHING BINAGO NATIN PARA GUMANA ANG AUTO-FILL
+export function getZipCodeByAddressCodes(regionCode, provinceCode, cityCode) {
+  if (!regionCode || !provinceCode || !cityCode) {
+    return "";
+  }
+
+  const cityLabel = getCityLabel(regionCode, provinceCode, cityCode);
+  
+  if (!cityLabel) {
+    return "";
+  }
+
+  // Step 1: Subukan agad ang diretsong city label gamit ang built-in reverse function
+  let zip = zipcodes.reverse(cityLabel);
+  if (zip) {
+    return String(zip);
+  }
+
+  // Step 2: Kung hindi nahanap, gagamit tayo ng variants para sumakto sa database nila
+  const cityVariants = toLocationVariants(cityLabel);
+  
+  // Custom rules para sa mga lugar sa Cavite tulad ng nasa screenshot mo
+  if (cityLabel === "General Mariano Alvarez") {
+    cityVariants.push("Gen. Mariano Alvarez");
+    cityVariants.push("GMA");
+  } else if (cityLabel === "General Trias") {
+    cityVariants.push("Gen. Trias");
+  }
+
+  for (const variant of cityVariants) {
+    zip = zipcodes.reverse(variant);
+    if (zip) {
+      return String(zip);
+    }
+  }
+
+  return "";
 }

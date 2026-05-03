@@ -9,7 +9,6 @@ import ToastStack from "../../../shared/utils/ToastStack";
 export default function PendingEnrollmentsPage() {
   const [toastMsg, setToastMsg] = useState("");
   const [selectedForPayment, setSelectedForPayment] = useState(null);
-  const [promoOfferOptions, setPromoOfferOptions] = useState([]);
 
   function toast(msg) {
     setToastMsg(msg);
@@ -20,7 +19,7 @@ export default function PendingEnrollmentsPage() {
     queryKey: ["enrollments", "pending"],
     queryFn: async () => {
       const all = await resourceServices.enrollments.list();
-      return (all || []).filter((e) => String(e?.status || "") === "pending");
+      return (all || []).filter((e) => String(e?.status || "") === "pending" && (e?.student || e?.Student));
     },
     staleTime: 5000,
   });
@@ -37,12 +36,12 @@ export default function PendingEnrollmentsPage() {
     },
   });
 
-  useMemo(() => {
-    const options = (promoOffers || []).map((po) => ({
+  // TAMA NA PARAAN: Ibabalik lang ng useMemo ang options, walang setState na mangyayari
+  const promoOfferOptions = useMemo(() => {
+    return (promoOffers || []).map((po) => ({
       value: po.id,
       label: `${po.name} - ₱${po.fixed_price || 0}`,
     }));
-    setPromoOfferOptions(options);
   }, [promoOffers]);
 
   const rejectMutation = useMutation({
@@ -170,6 +169,14 @@ export default function PendingEnrollmentsPage() {
       {selectedForPayment && (
         <PaymentDetailsModal
           enrollment={selectedForPayment}
+          student={selectedForPayment.student || selectedForPayment.Student}
+          studentProfile={(selectedForPayment.student || selectedForPayment.Student)?.StudentProfile}
+          studentName={`${(selectedForPayment.student || selectedForPayment.Student)?.first_name || ""} ${(selectedForPayment.student || selectedForPayment.Student)?.last_name || ""}`.trim()}
+          studentEmail={(selectedForPayment.student || selectedForPayment.Student)?.StudentProfile?.gmail_account || (selectedForPayment.student || selectedForPayment.Student)?.email}
+          studentPhone={(selectedForPayment.student || selectedForPayment.Student)?.phone}
+          enrollmentLabel={`Enrollment #${selectedForPayment.id}`}
+          courseLabel={selectedForPayment.DLCode?.code || selectedForPayment.enrolling_for || "N/A"}
+          promoOfferLabel={selectedForPayment.promoOffer?.name || selectedForPayment.PromoOffer?.name || selectedForPayment.promo_offer_id || "None"}
           promoOfferOptions={promoOfferOptions}
           onSubmit={handlePaymentSubmit}
           onCancel={() => setSelectedForPayment(null)}

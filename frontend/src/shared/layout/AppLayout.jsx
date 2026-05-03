@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Clock, FileText, LayoutDashboard, LogOut, Menu, MoonStar, Settings, SunMedium, UserRound, Users, Users2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Clock, FileText, LayoutDashboard, LogOut, Menu, MoonStar, QrCode, Settings, ShieldCheck, SunMedium, UserRound, Users, Users2, X } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/hooks/useAuth";
 import { prefetchRoute, prefetchRoutesWhenIdle } from "../../app/router/routeLoaders";
@@ -21,15 +21,39 @@ const RELEASE_LABEL = import.meta.env.VITE_RELEASE_LABEL || "April 2026 updates"
 const THEME_KEY = "guts_theme";
 
 function buildNavItems(role) {
-  const all = [
-    { label: "Dashboard", to: "/", icon: LayoutDashboard, roles: ["admin", "sub_admin", "staff"] },
-    { label: "Enrollments", to: "/enrollments", icon: UserRound, roles: ["admin", "sub_admin", "staff"] },
-    { label: "Pending Approvals", to: "/enrollments/pending", icon: Clock, roles: ["admin", "sub_admin"] },
-    { label: "Schedule PDC Later", to: "/enrollments/schedule-pdc-later", icon: Clock, roles: ["admin", "sub_admin", "staff"] },
-    { label: "Students", to: "/students", icon: Users, roles: ["admin", "sub_admin", "staff"] },
-    { label: "Payment Ledger", to: "/payments", icon: FileText, roles: ["admin", "sub_admin"] },
+  if (role === "staff") {
+    return [
+      { label: "Dashboard", to: "/", icon: LayoutDashboard },
+      { label: "Enrollments", to: "/enrollments", icon: UserRound },
+      { label: "Pending Approvals", to: "/enrollments/pending", icon: Clock },
+      { label: "Pending QR Enrollments", to: "/enrollments/qr-pending", icon: ShieldCheck },
+      { label: "Schedule PDC Later", to: "/enrollments/schedule-pdc-later", icon: Clock },
+      { label: "Students", to: "/students", icon: Users },
+    ];
+  }
+
+  if (role === "sub_admin") {
+    return [
+      { label: "Dashboard", to: "/", icon: LayoutDashboard },
+      { label: "Enrollments", to: "/enrollments", icon: UserRound },
+      { label: "Pending Approvals", to: "/enrollments/pending", icon: Clock },
+      { label: "Pending QR Enrollments", to: "/enrollments/qr-pending", icon: ShieldCheck },
+      { label: "Schedule PDC Later", to: "/enrollments/schedule-pdc-later", icon: Clock },
+      { label: "Students", to: "/students", icon: Users },
+      { label: "Payment Ledger", to: "/payments", icon: FileText },
+    ];
+  }
+
+  return [
+    { label: "Dashboard", to: "/", icon: LayoutDashboard },
+    { label: "Enrollments", to: "/enrollments", icon: UserRound },
+    { label: "Pending Approvals", to: "/enrollments/pending", icon: Clock },
+    { label: "Schedule PDC Later", to: "/enrollments/schedule-pdc-later", icon: Clock },
+    { label: "QR Enrollment Forms", to: "/admin/qrcodes", icon: QrCode },
+    { label: "Pending QR Enrollments", to: "/enrollments/qr-pending", icon: ShieldCheck },
+    { label: "Students", to: "/students", icon: Users },
+    { label: "Payment Ledger", to: "/payments", icon: FileText },
   ];
-  return all.filter((item) => item.roles.includes(role));
 }
 
 export default function AppLayout() {
@@ -56,7 +80,7 @@ export default function AppLayout() {
   const isDarkMode = theme === "dark";
 
   const navItems = buildNavItems(role || "staff");
-  const showReports = role === "admin" || role === "sub_admin";
+  const showReports = role === "admin";
   const showSettings = role === "admin" || role === "sub_admin";
   const reportsItems = useMemo(
     () => [
@@ -164,11 +188,12 @@ export default function AppLayout() {
   useEffect(() => {
     const commonRoutes = ["/", "/enrollments", "/students"];
     const privilegedRoutes = role === "admin" || role === "sub_admin"
-      ? ["/payments", "/reports", "/reports/overview", "/settings/instructors", "/settings/promo-offers", "/settings/vehicles"]
+      ? ["/payments", "/settings/instructors", "/settings/promo-offers", "/settings/vehicles"]
       : [];
+    const reportRoutes = role === "admin" ? ["/reports", "/reports/overview"] : [];
     const adminOnly = role === "admin" ? ["/settings/users"] : [];
 
-    prefetchRoutesWhenIdle([...commonRoutes, ...privilegedRoutes, ...adminOnly]);
+    prefetchRoutesWhenIdle([...commonRoutes, ...privilegedRoutes, ...reportRoutes, ...adminOnly]);
   }, [role]);
 
   function handleSettingsToggle(event) {
@@ -196,7 +221,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div className={`flex min-h-screen ${isDarkMode ? "bg-[#0a0a0c] text-[#d8dde6]" : "bg-slate-100 text-slate-700"}`}>
+    <div className={`flex min-h-screen ${isDarkMode ? "bg-[radial-gradient(circle_at_15%_-10%,rgba(126,34,71,0.34),transparent_40%),radial-gradient(circle_at_90%_0%,rgba(30,64,175,0.22),transparent_36%),linear-gradient(180deg,#0d1019_0%,#111827_42%,#0b1220_100%)] text-[#dbe5f6]" : "bg-slate-100 text-slate-700"}`}>
       <div className={`fixed inset-0 z-50 bg-black/55 transition-opacity duration-300 md:hidden ${isMobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} aria-hidden="true" onClick={() => setIsMobileNavOpen(false)} />
 
       <aside className={`fixed left-0 top-0 z-40 hidden h-screen flex-col overflow-visible border-r border-white/10 bg-[#14121a] transition-all duration-300 print:hidden md:flex ${isCollapsed ? "w-20" : "w-64"}`}>
@@ -242,7 +267,7 @@ export default function AppLayout() {
           ) : null}
         </div>
 
-        <nav className="flex-1 py-4">
+        <nav className="flex-1 overflow-y-auto py-4">
           {navItems.map((item) => {
             const isActive = pathname === item.to;
             const Icon = item.icon;
@@ -461,7 +486,7 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      <div className={`flex min-h-screen min-w-0 flex-1 flex-col transition-all duration-300 print:ml-0 print:bg-white ${isCollapsed ? "md:ml-20" : "md:ml-64"} ${isDarkMode ? "bg-[#0f0e13] text-[#d8dde6]" : "bg-slate-200 text-slate-800"}`}>
+      <div className={`flex min-h-screen min-w-0 flex-1 flex-col transition-all duration-300 print:ml-0 print:bg-white ${isCollapsed ? "md:ml-20" : "md:ml-64"} ${isDarkMode ? "bg-transparent text-[#dbe5f6]" : "bg-slate-200 text-slate-800"}`}>
         <header className={`sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4f1ec]" : "border-slate-200 bg-white/95 text-slate-900"}`}>
           <button
             type="button"
@@ -618,7 +643,7 @@ export default function AppLayout() {
           </div>
         </main>
 
-        <footer className="border-t border-slate-300/70 bg-slate-100/90 px-6 py-2 text-xs text-slate-600 print:hidden md:block">
+        <footer className={`border-t px-6 py-2 text-xs print:hidden md:block ${isDarkMode ? "border-white/10 bg-[#0e1321]/90 text-[#b8c5dc]" : "border-slate-300/70 bg-slate-100/90 text-slate-600"}`}>
           <div className="mx-auto flex w-full max-w-full flex-wrap items-center justify-between gap-2">
             <p>Guardians Technical School System</p>
             <p>Version {APP_VERSION} | {RELEASE_LABEL}</p>

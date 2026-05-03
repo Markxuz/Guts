@@ -442,8 +442,8 @@ function capacityByCategory(courseType, instructorCount, vehicleCount) {
   }
 
   if (normalizedType === "pdc_beginner") {
-    // 2 dedicated Beginner instructors; each manages their own vehicle per session
-    return Math.max(0, Math.min(2, instructorCount));
+    // PDC beginner is strictly 1 student per slot
+    return instructorCount > 0 ? 1 : 0;
   }
 
   if (normalizedType === "tdc") {
@@ -585,11 +585,30 @@ async function getSlotAvailability(date, slot, courseType = "overall", resourceF
     repository.countVehicles(),
   ]);
 
+  // Filter out invalid schedules (deleted students or unpaid enrollments)
+  const filterValidSchedules = (rows) => {
+    return rows.filter((row) => {
+      // Skip if student was deleted or no enrollment
+      if (!row.student_id || !row.Enrollment || !row.Enrollment.Student) {
+        return false;
+      }
+      // Skip if enrollment is not confirmed or completed
+      const enrollmentStatus = String(row.Enrollment?.status || "").toLowerCase();
+      if (enrollmentStatus !== "confirmed" && enrollmentStatus !== "completed") {
+        return false;
+      }
+      return true;
+    });
+  };
+
+  const validSchedules = filterValidSchedules(schedules);
+  const validDaySchedules = filterValidSchedules(daySchedules);
+
   if (normalizedType === "pdc_experience") {
-    const experienceRows = daySchedules.filter((row) => matchesCourseType(row, "pdc_experience"));
+    const experienceRows = validDaySchedules.filter((row) => matchesCourseType(row, "pdc_experience"));
     const capacity = capacityByCategory("pdc_experience", qualifiedInstructorCount, vehicleCount);
     const booked = experienceRows.length > 0 ? 1 : 0;
-    const resourceBlocked = daySchedules.some((row) => rowMatchesResourceFilter(row, resourceFilter));
+    const resourceBlocked = validDaySchedules.some((row) => rowMatchesResourceFilter(row, resourceFilter));
     const full = capacity <= 0 || booked >= 1 || resourceBlocked;
 
     return {
@@ -605,14 +624,14 @@ async function getSlotAvailability(date, slot, courseType = "overall", resourceF
   }
 
   const scopedSchedules = normalizedType === "overall"
-    ? schedules
-    : schedules.filter((row) => matchesCourseType(row, normalizedType));
+    ? validSchedules
+    : validSchedules.filter((row) => matchesCourseType(row, normalizedType));
 
   const capacity = normalizedType === "overall"
     ? capacityFromResources(totalInstructorCount, vehicleCount)
     : capacityByCategory(normalizedType, qualifiedInstructorCount, vehicleCount);
   const booked = scopedSchedules.length;
-  const resourceBlocked = schedules.some((row) => rowMatchesResourceFilter(row, resourceFilter));
+  const resourceBlocked = validSchedules.some((row) => rowMatchesResourceFilter(row, resourceFilter));
   const full = capacity <= 0 || booked >= capacity || resourceBlocked;
 
   return {
@@ -641,9 +660,26 @@ async function listSchedulesByDate(date, courseType = "overall", resourceFilter 
 
   const normalizedType = normalizeCourseType(courseType || "overall");
   const dayRows = await repository.findSchedulesByDate(date);
+  
+  // Filter out schedules for deleted students or unpaid enrollments
+  const validRows = dayRows.filter((row) => {
+    // Skip if student was deleted (no student_id or student doesn't exist)
+    if (!row.student_id || !row.Enrollment || !row.Enrollment.Student) {
+      return false;
+    }
+
+    // Skip if enrollment is not confirmed or completed (exclude pending/unpaid)
+    const enrollmentStatus = String(row.Enrollment?.status || "").toLowerCase();
+    if (enrollmentStatus !== "confirmed" && enrollmentStatus !== "completed") {
+      return false;
+    }
+
+    return true;
+  });
+  
   const scopedRows = normalizedType === "overall"
-    ? dayRows
-    : dayRows.filter((row) => matchesCourseType(row, normalizedType));
+    ? validRows
+    : validRows.filter((row) => matchesCourseType(row, normalizedType));
   const dayRestriction = normalizedType && normalizedType !== "overall"
     ? validateCourseOperationalDay(date, normalizedType)
     : null;
@@ -664,7 +700,15 @@ async function listSchedulesByDate(date, courseType = "overall", resourceFilter 
 
 async function listSchedulesByRange(startDate, endDate) {
   const rows = await repository.findSchedulesByDateRange(startDate, endDate);
-  return rows.map(mapSchedule);
+  // Filter out schedules for deleted students or unpaid/pending enrollments
+  const valid = (rows || []).filter((row) => {
+    if (!row || !row.student_id || !row.Enrollment || !row.Enrollment.Student) return false;
+    const enrollmentStatus = String(row.Enrollment?.status || "").toLowerCase();
+    if (enrollmentStatus !== "confirmed" && enrollmentStatus !== "completed") return false;
+    return true;
+  });
+
+  return valid.map(mapSchedule);
 }
 
 async function getScheduleById(id, transaction) {
@@ -682,13 +726,24 @@ async function listMonthStatus(year, month) {
     repository.countQualifiedInstructors("pdc_experience"),
   ]);
 
-  // Capacity is instructor-driven, not vehicle-driven (each instructor manages their own vehicle)
-  const beginnerCapacity = Math.min(2, beginnerInstructorCount);
+  // PDC beginner is strictly 1 student per slot
+  const beginnerCapacity = beginnerInstructorCount > 0 ? 1 : 0;
   const experienceCapacity = experienceInstructorCount > 0 ? 1 : 0;
 
   const grouped = new Map();
 
   rows.forEach((row) => {
+    // Skip schedules for deleted students (no student_id or student doesn't exist)
+    if (!row.student_id || !row.Enrollment || !row.Enrollment.Student) {
+      return;
+    }
+
+    // Skip schedules for unpaid/pending enrollments - only count confirmed or completed
+    const enrollmentStatus = String(row.Enrollment?.status || "").toLowerCase();
+    if (enrollmentStatus !== "confirmed" && enrollmentStatus !== "completed") {
+      return;
+    }
+
     const key = row.schedule_date;
     if (!grouped.has(key)) {
       grouped.set(key, { morningBeginner: 0, afternoonBeginner: 0, experienceBooked: false });
@@ -724,9 +779,11 @@ async function listMonthStatus(year, month) {
 }
 
 async function addSchedule(payload, options = {}) {
-  const slotConfig = SLOT_MAP[payload.slot];
+  const normalizedSlot = normalizeText(payload.slot) || "morning";
+  const slotConfig = SLOT_MAP[normalizedSlot];
   const ownTransaction = !options.transaction;
   const transaction = options.transaction || await sequelize.transaction();
+  const allowPendingAssignment = Boolean(options.allowPendingEnrollment) && !payload.instructor_id;
 
   try {
     const selectedEnrollment = options.selectedEnrollment
@@ -765,35 +822,39 @@ async function addSchedule(payload, options = {}) {
     const effectiveCourseType = preferredCourseType
       || await resolveEffectiveCourseType(resolvedInput, resolvedCourseId, transaction);
 
-    const [selectedInstructor, careOfInstructor, qualifiedInstructorCount, vehicleCount] = await Promise.all([
-      repository.findInstructorById(payload.instructor_id, transaction),
-      payload.care_of_instructor_id ? repository.findInstructorById(payload.care_of_instructor_id, transaction) : Promise.resolve(null),
-      repository.countQualifiedInstructors(effectiveCourseType),
-      repository.countVehicles(),
-    ]);
+    const [selectedInstructor, careOfInstructor, qualifiedInstructorCount, vehicleCount] = allowPendingAssignment
+      ? [null, null, 0, 0]
+      : await Promise.all([
+          repository.findInstructorById(payload.instructor_id, transaction),
+          payload.care_of_instructor_id ? repository.findInstructorById(payload.care_of_instructor_id, transaction) : Promise.resolve(null),
+          repository.countQualifiedInstructors(effectiveCourseType),
+          repository.countVehicles(),
+        ]);
 
-    if (!selectedInstructor) {
-      const error = new Error("Selected instructor does not exist");
-      error.status = 400;
-      throw error;
-    }
+    if (!allowPendingAssignment) {
+      if (!selectedInstructor) {
+        const error = new Error("Selected instructor does not exist");
+        error.status = 400;
+        throw error;
+      }
 
-    if (selectedInstructor.status !== "Active") {
-      const error = new Error("Selected instructor is not active");
-      error.status = 400;
-      throw error;
-    }
+      if (selectedInstructor.status !== "Active") {
+        const error = new Error("Selected instructor is not active");
+        error.status = 400;
+        throw error;
+      }
 
-    if (!isInstructorQualifiedForCourse(selectedInstructor, effectiveCourseType)) {
-      const error = new Error("Selected instructor is not certified for this course type");
-      error.status = 400;
-      throw error;
-    }
+      if (!isInstructorQualifiedForCourse(selectedInstructor, effectiveCourseType)) {
+        const error = new Error("Selected instructor is not certified for this course type");
+        error.status = 400;
+        throw error;
+      }
 
-    if (payload.care_of_instructor_id && !careOfInstructor) {
-      const error = new Error("Care Of instructor does not exist");
-      error.status = 400;
-      throw error;
+      if (payload.care_of_instructor_id && !careOfInstructor) {
+        const error = new Error("Care Of instructor does not exist");
+        error.status = 400;
+        throw error;
+      }
     }
 
     const startDayCheck = validateCourseOperationalDay(payload.schedule_date, effectiveCourseType);
@@ -804,7 +865,7 @@ async function addSchedule(payload, options = {}) {
     }
 
     const requiresVehicle = courseRequiresVehicle(effectiveCourseType);
-    if (requiresVehicle && !payload.vehicle_id) {
+    if (requiresVehicle && !payload.vehicle_id && !allowPendingAssignment) {
       const error = new Error("Selected vehicle is required for this course type");
       error.status = 400;
       throw error;
@@ -819,7 +880,7 @@ async function addSchedule(payload, options = {}) {
       }
     }
 
-    const capacity = capacityByCategory(effectiveCourseType, qualifiedInstructorCount, vehicleCount);
+    const capacity = allowPendingAssignment ? 1 : capacityByCategory(effectiveCourseType, qualifiedInstructorCount, vehicleCount);
     if (!capacity) {
       const error = new Error(
         requiresVehicle
@@ -828,6 +889,38 @@ async function addSchedule(payload, options = {}) {
       );
       error.status = 400;
       throw error;
+    }
+
+    if (allowPendingAssignment) {
+      const createPayload = {
+        course_id: resolvedCourseId,
+        instructor_id: null,
+        care_of_instructor_id: null,
+        vehicle_id: null,
+        enrollment_id: selectedEnrollment?.id || null,
+        student_id: selectedEnrollment?.student_id || selectedEnrollment?.Student?.id || null,
+        schedule_date: payload.schedule_date,
+        slots: capacity,
+        remarks: appendRemarkTag(payload.remarks, "qr_public_pending_assignment"),
+      };
+
+      const createdSchedule = await repository.createSchedule({
+        ...createPayload,
+        start_time: slotConfig.startTime,
+        end_time: slotConfig.endTime,
+      }, transaction);
+
+      if (ownTransaction) {
+        await transaction.commit();
+      }
+
+      return {
+        item: createdSchedule,
+        createdItems: [createdSchedule],
+        reservedDates: [createdSchedule.schedule_date],
+        slot: normalizedSlot,
+        courseType: effectiveCourseType,
+      };
     }
 
     const [existingInSlot, existingInDay] = await Promise.all([

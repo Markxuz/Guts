@@ -518,9 +518,13 @@ export default function EnrollmentsPage() {
       { value: "", label: "None" },
       ...promoOfferRows
         .filter((item) => String(item?.status || "").toLowerCase() === "active")
+        .filter((item) => {
+          const appliesToScope = item?.applies_to || "ALL";
+          return appliesToScope === "ALL" || appliesToScope === selectedType;
+        })
         .map((item) => ({ value: String(item.id), label: item.name || `Promo #${item.id}` })),
     ],
-    [promoOfferRows]
+    [promoOfferRows, selectedType]
   );
 
   const selectedPromoOffer = useMemo(
@@ -1297,7 +1301,7 @@ export default function EnrollmentsPage() {
 
                 {scheduleCourseType === "pdc_beginner" ? (
                   <p className="mt-3 rounded-xl border border-[#d9c9a0] bg-white px-3 py-2 text-sm text-slate-700">
-                    Beginner scheduling automatically reserves the same slot on two consecutive operating days.
+                    Beginner scheduling automatically reserves the same slot on two consecutive operating days and only allows 1 student per slot.
                   </p>
                 ) : null}
 

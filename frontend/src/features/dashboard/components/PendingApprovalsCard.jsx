@@ -9,6 +9,7 @@ export default function PendingApprovalsCard({
   approveEnrollmentMutation,
   rejectEnrollmentMutation,
   onOpenEnrollment,
+  onRequestEnrollmentPayment,
   onApproved,
   onRejected,
   onBulkCompleted,
@@ -39,6 +40,11 @@ export default function PendingApprovalsCard({
 
     try {
       if (action === "accept") {
+        if (typeof onRequestEnrollmentPayment === "function") {
+          onRequestEnrollmentPayment(row);
+          return { ok: true };
+        }
+
         await approveEnrollmentMutation?.mutateAsync(row);
         return { ok: true };
       }
@@ -226,12 +232,12 @@ export default function PendingApprovalsCard({
             <h3 className="text-base font-semibold text-slate-900">Review Pending Request</h3>
             <p className="mt-2 text-sm text-slate-600">
               {decisionTarget.type === "enrollment"
-                ? `Do you want to accept or reject enrollment for ${decisionTarget.row?.studentName || "this student"}?`
+                ? `Do you want to review payment details for ${decisionTarget.row?.studentName || "this student"} before acceptance?`
                 : `Do you want to approve or reject schedule change for ${decisionTarget.row?.currentSchedule?.studentName || "this student"}?`}
             </p>
             {decisionTarget.type === "enrollment" ? (
               <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                Rejecting a pending enrollment will permanently remove this pending application.
+                Acceptance will open the payment modal first. Rejection will permanently remove this pending application.
               </p>
             ) : null}
 
@@ -257,7 +263,7 @@ export default function PendingApprovalsCard({
                 disabled={isAnyMutationPending || isBulkPending}
                 className="rounded-lg bg-[#800000] px-4 py-2 text-sm font-semibold text-white hover:bg-[#680000] disabled:opacity-60"
               >
-                {decisionTarget.type === "schedule" ? "Approve" : "Accept Enrollment"}
+                {decisionTarget.type === "schedule" ? "Approve" : "Proceed to Payment"}
               </button>
             </div>
           </div>

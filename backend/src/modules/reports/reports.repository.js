@@ -32,6 +32,10 @@ async function findEnrollmentsByDateRange(start, end) {
         [Op.gte]: start,
         [Op.lt]: end,
       },
+      // Exclude rejected/cancelled/deleted enrollments from reports
+      status: {
+        [Op.notIn]: ["rejected", "cancelled", "deleted"],
+      },
     },
     include: [
       { model: Student, attributes: ["id", "first_name", "last_name"] },
@@ -61,7 +65,7 @@ async function findEnrollmentsByDateRange(start, end) {
         ],
       },
     ],
-    order: [["created_at", "DESC"], ["id", "DESC"]],
+    order: [["id", "DESC"]],
   });
 }
 
@@ -151,7 +155,7 @@ async function findCompletedEnrollmentsWithVehicleByDateRange(start, end) {
         ],
       },
     ],
-    order: [["created_at", "DESC"], ["id", "DESC"]],
+    order: [["id", "DESC"]],
   });
 }
 

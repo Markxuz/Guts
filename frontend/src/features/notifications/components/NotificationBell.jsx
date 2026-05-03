@@ -22,8 +22,10 @@ function resolveNotificationTarget(item, role) {
 
   const text = String(item?.message || "").toLowerCase();
 
-  // Enrollment creation and progress updates are best reviewed on Students page.
-  if (/created enrollment|enrollment progress|updated enrollment status/.test(text)) return "/students";
+  // Enrollment creation and approval requests should land on Pending Approvals first.
+  if (/created enrollment|pending enrollment|enrollment progress|updated enrollment status|payment required|awaiting payment/.test(text)) {
+    return "/enrollments/pending";
+  }
 
   if (/student/.test(text)) return "/students";
   if (/enroll/.test(text)) return "/enrollments";

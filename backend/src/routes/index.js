@@ -28,6 +28,8 @@ const scheduleRoutes = require("../modules/schedules/schedules.routes");
 const backupsRoutes = require("../modules/system-backup/system-backup.routes");
 const { authenticateToken, authorizeRoles } = require("../shared/middleware/auth");
 const resourceContracts = require("./resourceContracts");
+const qrCodeRoutes = require("../../routes/qrCodeRoutes");
+const publicEnrollRoutes = require("../../routes/publicEnrollRoutes");
 
 function createApiRouter() {
   const router = express.Router();
@@ -158,11 +160,15 @@ function createApiRouter() {
   router.use(
     "/promo-offers",
     authenticateToken,
-    authorizeRoles("admin"),
     createCrudRouter(PromoOffer, {
       createRequiredFields: ["name"],
       createSchema: resourceContracts.promoOffers.createSchema,
       updateSchema: resourceContracts.promoOffers.updateSchema,
+      listMiddleware: [authorizeRoles("admin", "sub_admin", "staff")],
+      detailMiddleware: [authorizeRoles("admin", "sub_admin", "staff")],
+      createMiddleware: [authorizeRoles("admin")],
+      updateMiddleware: [authorizeRoles("admin")],
+      deleteMiddleware: [authorizeRoles("admin")],
     })
   );
   router.use(
@@ -197,6 +203,21 @@ function createApiRouter() {
       updateSchema: resourceContracts.certificates.updateSchema,
     })
   );
+  const qrCodeLegacyRouter = express.Router();
+  qrCodeLegacyRouter.use(
+    "/qrcodes",
+    authenticateToken,
+    authorizeRoles("admin"),
+    (req, res, next) => {
+      req.url = `/qrcodes${req.url}`;
+      next();
+    },
+    qrCodeRoutes
+  );
+
+  router.use("/admin", authenticateToken, authorizeRoles("admin", "sub_admin", "staff"), qrCodeRoutes);
+  router.use("/", qrCodeLegacyRouter);
+  router.use("/", publicEnrollRoutes);
 
   return router;
 }

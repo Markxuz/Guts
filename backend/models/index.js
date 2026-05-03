@@ -24,6 +24,7 @@ const PromoOffer = require("./PromoOffer")(sequelize);
 const SessionAttendance = require("./SessionAttendance")(sequelize);
 const OnlineImportQueue = require("./OnlineImportQueue")(sequelize);
 const ReportSchedule = require("./ReportSchedule")(sequelize);
+const QRCode = require("./QRCode")(sequelize);
 
 // Associations
 
@@ -93,6 +94,9 @@ Enrollment.belongsTo(PromoPackage, { foreignKey: "promo_package_id", as: "promoP
 PromoOffer.hasMany(Enrollment, { foreignKey: "promo_offer_id", as: "enrollments" });
 Enrollment.belongsTo(PromoOffer, { foreignKey: "promo_offer_id", as: "promoOffer" });
 
+QRCode.hasMany(Enrollment, { foreignKey: "qrCodeId", as: "enrollments" });
+Enrollment.belongsTo(QRCode, { foreignKey: "qrCodeId", as: "qrCode" });
+
 Enrollment.hasMany(SessionAttendance, { foreignKey: "enrollment_id", as: "sessionAttendance" });
 SessionAttendance.belongsTo(Enrollment, { foreignKey: "enrollment_id", as: "enrollment" });
 
@@ -152,4 +156,5 @@ module.exports = {
   SessionAttendance,
   OnlineImportQueue,
   ReportSchedule,
+  QRCode,
 };

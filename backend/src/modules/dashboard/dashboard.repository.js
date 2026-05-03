@@ -28,6 +28,11 @@ async function findAllEnrollmentsWithCode(start, end) {
     };
   }
 
+  // Exclude rejected/cancelled/deleted enrollments from dashboard queries
+  where.status = {
+    [Op.notIn]: ["rejected", "cancelled", "deleted"],
+  };
+
   return Enrollment.findAll({
     where,
     include: [
@@ -58,6 +63,10 @@ async function findEnrollmentsByDateRange(start, end) {
       created_at: {
         [Op.gte]: start,
         [Op.lt]: end,
+      },
+      // Exclude rejected/cancelled/deleted enrollments from dashboard reports
+      status: {
+        [Op.notIn]: ["rejected", "cancelled", "deleted"],
       },
     },
     include: [

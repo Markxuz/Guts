@@ -89,7 +89,7 @@ async function runManualBackup({ triggeredByUserId = null } = {}) {
   const dbName = assertRequiredEnv("DB_NAME");
   const dbUser = assertRequiredEnv("DB_USER");
   const dbPassword = assertRequiredEnv("DB_PASSWORD");
-  const dbHost = process.env.DB_HOST || "localhost";
+  const dbHost = process.env.DB_HOST || "db";
   const dumpCommand = process.env.MYSQL_DUMP_COMMAND || "mysqldump";
   const dumpExtraArgs = (process.env.MYSQL_DUMP_EXTRA_ARGS || "")
     .split(/\s+/)
@@ -115,18 +115,23 @@ async function runManualBackup({ triggeredByUserId = null } = {}) {
 
   let stderr = "";
   dump.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
+    const s = chunk.toString();
+    stderr += s;
   });
 
   try {
     await new Promise((resolve, reject) => {
-      dump.on("error", (error) => reject(error));
+      dump.on("error", (error) => {
+        reject(error);
+      });
+
       dump.on("close", (code) => {
         output.close();
         if (code === 0) {
           resolve();
         } else {
-          reject(new Error(`${dumpCommand} exited with code ${code}. ${stderr}`));
+          const err = new Error(`${dumpCommand} exited with code ${code}. ${stderr}`);
+          reject(err);
         }
       });
     });

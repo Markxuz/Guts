@@ -6,6 +6,7 @@ import {
   getCityOptions,
   getProvinceOptions,
   getRegionOptions,
+  getZipCodeByAddressCodes,
 } from "../../utils/phLocations";
 
 const genderOptions = [
@@ -103,14 +104,14 @@ export function PersonalInfoSection({ type, form, onFieldChange, promoOfferOptio
     <>
       {type === "PDC" || type === "TDC" || type === "PROMO" ? <SectionTitle>CLIENT INFORMATION</SectionTitle> : null}
       {type === "PDC" || type === "TDC" || type === "PROMO" ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          <FormField
-            label="EMAIL ADDRESS"
-            name="email"
-            value={form.student.email}
-            onChange={(event) => onFieldChange("student", "email", event.target.value)}
-            placeholder="Email Address"
-            required
+        <div className="mt-2 grid gap-3 md:grid-cols-2">
+          <SelectField
+            label="PROMO OFFER"
+            name="promo_offer_id"
+            value={form.enrollment.promo_offer_id}
+            onChange={(event) => onFieldChange("enrollment", "promo_offer_id", event.target.value)}
+            placeholder="Select promo offer"
+            options={promoOfferOptions}
           />
           <SelectField
             label="CLIENT TYPE"
@@ -120,19 +121,6 @@ export function PersonalInfoSection({ type, form, onFieldChange, promoOfferOptio
             placeholder="Select Client Type"
             options={clientTypeOptions}
             required
-          />
-        </div>
-      ) : null}
-
-      {type === "PDC" || type === "TDC" || type === "PROMO" ? (
-        <div className="mt-2 grid gap-3 md:grid-cols-2">
-          <SelectField
-            label="PROMO OFFER"
-            name="promo_offer_id"
-            value={form.enrollment.promo_offer_id}
-            onChange={(event) => onFieldChange("enrollment", "promo_offer_id", event.target.value)}
-            placeholder="Select promo offer"
-            options={promoOfferOptions}
           />
         </div>
       ) : null}
@@ -474,6 +462,27 @@ export function AddressSection({ type, form, onFieldChange }) {
     [form.extras.region, form.profile.province]
   );
   const barangayOptions = useMemo(() => getBarangayOptions(form.profile.city), [form.profile.city]);
+  
+  // Dito natin kinukuha ang auto zip code mula sa function natin (IDINAGDAG NA ANG BARANGAY)
+  const autoZipCode = useMemo(
+    () => getZipCodeByAddressCodes(form.extras.region, form.profile.province, form.profile.city, form.profile.barangay),
+    [form.extras.region, form.profile.province, form.profile.city, form.profile.barangay]
+  );
+
+  useEffect(() => {
+    if (!form.profile.city) {
+      if (form.profile.zip_code) {
+        onFieldChange("profile", "zip_code", "");
+      }
+      return;
+    }
+
+    // Ito ang nagse-set sa form ng nahanap na zip code
+    if (autoZipCode && String(form.profile.zip_code || "") !== String(autoZipCode)) {
+      onFieldChange("profile", "zip_code", autoZipCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoZipCode, form.profile.city]);
 
   return (
     <>
@@ -548,8 +557,12 @@ export function AddressSection({ type, form, onFieldChange }) {
           name="zip_code"
           value={form.profile.zip_code}
           onChange={(event) => onFieldChange("profile", "zip_code", event.target.value)}
-          placeholder="Zip Code"
+          placeholder="Auto-filled Zip Code"
           required
+          // Idinagdag ito para hindi na i-type ng user manually dahil nag-aauto fill na siya
+          inputClassName="bg-slate-100 cursor-not-allowed"
+          readOnly
+          tabIndex={-1}
         />
       </div>
     </>

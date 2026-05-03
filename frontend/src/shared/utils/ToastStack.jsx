@@ -6,8 +6,9 @@ import React from "react";
  *   - toasts: Array<{ id, message, type }>
  *   - onDismiss: function(id)
  */
-export default function ToastStack({ toasts, onDismiss }) {
-  if (!toasts.length) return null;
+export default function ToastStack({ toasts = [], onDismiss }) {
+  // Safe check: Kung walang laman o undefined ang toasts, wag mag-render
+  if (!toasts || toasts.length === 0) return null;
 
   return (
     <div className="fixed right-4 top-4 z-[60] flex w-full max-w-sm flex-col gap-2">
@@ -22,7 +23,12 @@ export default function ToastStack({ toasts, onDismiss }) {
         >
           <div className="flex items-start justify-between gap-3">
             <p>{toast.message}</p>
-            <button type="button" onClick={() => onDismiss(toast.id)} className="text-xs font-semibold">
+            <button 
+              type="button" 
+              // Safe check: Siguraduhing may onDismiss function bago tawagin
+              onClick={() => onDismiss && onDismiss(toast.id)} 
+              className="text-xs font-semibold hover:opacity-70 transition-opacity"
+            >
               Close
             </button>
           </div>

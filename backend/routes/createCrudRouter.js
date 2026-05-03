@@ -10,6 +10,11 @@ const createCrudRouter = (model, options = {}) => {
   const sanitizeResponse = options.sanitizeResponse;
   const listInclude = options.listInclude || [];
   const detailInclude = options.detailInclude || [];
+  const listMiddleware = Array.isArray(options.listMiddleware) ? options.listMiddleware : [];
+  const detailMiddleware = Array.isArray(options.detailMiddleware) ? options.detailMiddleware : [];
+  const createMiddleware = Array.isArray(options.createMiddleware) ? options.createMiddleware : [];
+  const updateMiddleware = Array.isArray(options.updateMiddleware) ? options.updateMiddleware : [];
+  const deleteMiddleware = Array.isArray(options.deleteMiddleware) ? options.deleteMiddleware : [];
   const createSchema = options.createSchema || null;
   const updateSchema = options.updateSchema || null;
 
@@ -40,7 +45,7 @@ const createCrudRouter = (model, options = {}) => {
     return sanitizeResponse ? sanitizeResponse(plain) : plain;
   };
 
-  router.get("/", async (req, res) => {
+  router.get("/", ...listMiddleware, async (req, res) => {
     try {
       const rows = await model.findAll({
         include: listInclude,
@@ -53,7 +58,7 @@ const createCrudRouter = (model, options = {}) => {
     }
   });
 
-  router.get("/:id", async (req, res) => {
+  router.get("/:id", ...detailMiddleware, async (req, res) => {
     try {
       const idValidation = validateSchema(idParamSchema, req.params);
       if (idValidation.error) {
@@ -74,7 +79,7 @@ const createCrudRouter = (model, options = {}) => {
     }
   });
 
-  router.post("/", async (req, res) => {
+  router.post("/", ...createMiddleware, async (req, res) => {
     try {
       if (createSchema) {
         const createValidation = validateSchema(createSchema, req.body);
@@ -96,7 +101,7 @@ const createCrudRouter = (model, options = {}) => {
     }
   });
 
-  router.put("/:id", async (req, res) => {
+  router.put("/:id", ...updateMiddleware, async (req, res) => {
     try {
       const idValidation = validateSchema(idParamSchema, req.params);
       if (idValidation.error) {
@@ -124,7 +129,7 @@ const createCrudRouter = (model, options = {}) => {
     }
   });
 
-  router.delete("/:id", async (req, res) => {
+  router.delete("/:id", ...deleteMiddleware, async (req, res) => {
     try {
       const idValidation = validateSchema(idParamSchema, req.params);
       if (idValidation.error) {

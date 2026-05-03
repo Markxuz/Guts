@@ -10,11 +10,26 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "Inactive" },
 ];
 
+const APPLIES_TO_OPTIONS = [
+  { value: "ALL", label: "All Enrollment Forms" },
+  { value: "TDC", label: "TDC Enrollment Form" },
+  { value: "PDC", label: "PDC Enrollment Form" },
+  { value: "PROMO", label: "TDC + PDC Promo Enrollment Form" },
+];
+
+const APPLIES_TO_LABEL = {
+  ALL: "All Enrollment Forms",
+  TDC: "TDC Enrollment Form",
+  PDC: "PDC Enrollment Form",
+  PROMO: "TDC + PDC Promo Enrollment Form",
+};
+
 function emptyForm() {
   return {
     name: "",
     description: "",
     status: "active",
+    applies_to: "ALL",
     fixed_price: "",
     discounted_price: "",
     notes: "",
@@ -70,7 +85,7 @@ export default function PromoOffersPage() {
     const keyword = search.trim().toLowerCase();
     return rows.filter((row) => {
       if (!keyword) return true;
-      return [row.name, row.description, row.status, row.fixed_price, row.discounted_price, row.notes]
+      return [row.name, row.description, row.status, row.applies_to, row.fixed_price, row.discounted_price, row.notes]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(keyword));
     });
@@ -88,6 +103,7 @@ export default function PromoOffersPage() {
       name: row.name || "",
       description: row.description || "",
       status: row.status || "active",
+      applies_to: row.applies_to || "ALL",
       fixed_price: row.fixed_price ?? "",
       discounted_price: row.discounted_price ?? "",
       notes: row.notes || "",
@@ -117,6 +133,7 @@ export default function PromoOffersPage() {
         name: form.name.trim(),
         description: form.description.trim() || null,
         status: form.status,
+        applies_to: form.applies_to || "ALL",
         fixed_price: form.fixed_price === "" ? null : Number(form.fixed_price),
         discounted_price: form.discounted_price === "" ? null : Number(form.discounted_price),
         notes: form.notes.trim() || null,
@@ -230,6 +247,7 @@ export default function PromoOffersPage() {
                     </div>
                     {row.description ? <p className="mt-2 text-sm text-slate-600">{row.description}</p> : null}
                     <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+                      <span>Applies to: <strong className="text-slate-800">{APPLIES_TO_LABEL[row.applies_to] || APPLIES_TO_LABEL.ALL}</strong></span>
                       <span>Fixed price: <strong className="text-slate-800">{formatMoney(row.fixed_price)}</strong></span>
                       <span>Discounted price: <strong className="text-slate-800">{formatMoney(row.discounted_price)}</strong></span>
                     </div>
@@ -278,6 +296,14 @@ export default function PromoOffersPage() {
                   <span className="mb-1 block text-xs font-semibold text-slate-600">Status</span>
                   <select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))} className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#800000]">
                     {STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-slate-600">Applies To</span>
+                  <select value={form.applies_to} onChange={(event) => setForm((current) => ({ ...current, applies_to: event.target.value }))} className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#800000]">
+                    {APPLIES_TO_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>

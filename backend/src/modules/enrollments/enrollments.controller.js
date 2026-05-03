@@ -31,7 +31,7 @@ async function createEnrollment(req, res) {
 
     if (req.user?.role === "admin" || req.user?.role === "sub_admin" || req.user?.role === "staff") {
       createNotification({
-        message: `${req.user.name || req.user.email} created enrollment #${created.id}.`,
+        message: `${req.user.name || req.user.email} created enrollment #${created.id}. Review Pending Approvals for payment confirmation before accepting it.`,
         actorId: req.user.id,
       }).catch((err) => {
         console.error("Error creating notification:", err.message);

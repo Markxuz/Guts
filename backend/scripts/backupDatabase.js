@@ -72,7 +72,7 @@ async function runBackup() {
   const dbName = assertRequiredEnv("DB_NAME");
   const dbUser = assertRequiredEnv("DB_USER");
   const dbPassword = assertRequiredEnv("DB_PASSWORD");
-  const dbHost = process.env.DB_HOST || "localhost";
+  const dbHost = process.env.DB_HOST || "db";
   const backupDir = path.resolve(process.env.BACKUP_DIR || "./backups");
   const retentionDays = Number(process.env.BACKUP_RETENTION_DAYS || 14);
 

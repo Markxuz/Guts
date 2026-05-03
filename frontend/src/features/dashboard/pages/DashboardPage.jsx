@@ -23,10 +23,12 @@ import { useScheduleMonthStatus } from "../hooks/useScheduleMonthStatus";
 import { formatDateToISO, parseDateValue } from "../../../shared/utils/date";
 import ToastStack from "../../../shared/utils/ToastStack";
 import { useToast } from "../../../shared/utils/toast";
+import { resourceServices } from "../../../services/resources";
 import { deleteStudent, fetchStudents, updateEnrollmentStatus } from "../../students/services/studentsApi";
 
 const CalendarScheduleModal = lazy(() => import("../components/CalendarScheduleModal"));
 const PrintReport = lazy(() => import("../components/PrintReport"));
+const PaymentDetailsModal = lazy(() => import("../../enrollments/components/PaymentDetailsModal.jsx"));
 
 function getDateRangeFromPreset(preset, customStartDate, customEndDate) {
   const now = new Date();
@@ -184,6 +186,7 @@ export default function DashboardPage() {
   const initialFilter = useMemo(() => buildReportFilter("thisMonth", "", ""), []);
   const [reportFilter, setReportFilter] = useState(initialFilter);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [selectedEnrollmentForPayment, setSelectedEnrollmentForPayment] = useState(null);
   const [calendarView, setCalendarView] = useState({
     year: new Date().getFullYear(),
     month: new Date().getMonth(),
@@ -218,11 +221,24 @@ export default function DashboardPage() {
   const approveScheduleChangeMutation = useApproveScheduleChangeRequest();
   const rejectScheduleChangeMutation = useRejectScheduleChangeRequest();
   const { data: pendingRequestsData, isLoading: pendingRequestsLoading } = usePendingScheduleChangeRequests(auth?.user?.role === "admin");
+  const { data: promoOffersData = [] } = useQuery({
+    queryKey: ["promo-offers", "dashboard-payment"],
+    queryFn: () => resourceServices.promoOffers.list(),
+    enabled: auth?.user?.role === "admin" || auth?.user?.role === "sub_admin",
+  });
   const { data: studentsData = [], isLoading: pendingEnrollmentsLoading } = useQuery({
     queryKey: ["students", "pending-approvals"],
     queryFn: fetchStudents,
     enabled: auth?.user?.role === "admin",
   });
+
+  const promoOfferOptions = useMemo(() => {
+    const rows = Array.isArray(promoOffersData) ? promoOffersData : promoOffersData?.items || promoOffersData?.data || [];
+    return rows.map((offer) => ({
+      value: offer.id,
+      label: `${offer.name} - ₱${offer.fixed_price || 0}`,
+    }));
+  }, [promoOffersData]);
 
   const pendingEnrollments = useMemo(() => {
     return (studentsData || [])
@@ -234,12 +250,33 @@ export default function DashboardPage() {
         return {
           id: student.id,
           enrollmentId: enrollment.id,
+          student,
+          enrollment,
           studentName: [student.first_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`,
           courseLabel: enrollment?.DLCode?.code || "Enrollment",
         };
       })
       .filter(Boolean);
   }, [studentsData]);
+
+  const approveEnrollmentWithPaymentMutation = useMutation({
+    mutationFn: async ({ row, paymentData }) => {
+      return resourceServices.enrollments.update(row.enrollment.id, {
+        ...paymentData,
+        status: "confirmed",
+      });
+    },
+    onSuccess: async (_data, variables) => {
+      addToast(`Enrollment accepted for ${variables?.row?.studentName || "student"}.`, "success");
+      setSelectedEnrollmentForPayment(null);
+      await queryClient.invalidateQueries({ queryKey: ["students"] });
+      await queryClient.invalidateQueries({ queryKey: ["students", "pending-approvals"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
+    },
+    onError: (mutationError) => {
+      addToast(mutationError?.message || "Failed to save payment details.", "error");
+    },
+  });
 
   const approveEnrollmentMutation = useMutation({
     mutationFn: async (row) => updateEnrollmentStatus(row.id, { enrollmentStatus: "confirmed" }),
@@ -414,6 +451,7 @@ export default function DashboardPage() {
                   approveEnrollmentMutation={approveEnrollmentMutation}
                   rejectEnrollmentMutation={rejectEnrollmentMutation}
                   onOpenEnrollment={(row) => navigate(`/students?focusStudentId=${encodeURIComponent(row.id)}`)}
+                  onRequestEnrollmentPayment={(row) => setSelectedEnrollmentForPayment(row)}
                   onApproved={(row) => addToast(`Approved schedule change for ${row.currentSchedule?.studentName || "student"}.`, "success")}
                   onRejected={(row) => addToast(`Rejected schedule change for ${row.currentSchedule?.studentName || "student"}.`, "success")}
                   onBulkCompleted={({ action, successCount, failedCount }) => {
@@ -452,6 +490,26 @@ export default function DashboardPage() {
           selectedDate={selectedDate}
           onClose={() => setScheduleModalOpen(false)}
         />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        {selectedEnrollmentForPayment ? (
+          <PaymentDetailsModal
+            enrollment={selectedEnrollmentForPayment.enrollment}
+            student={selectedEnrollmentForPayment.student}
+            studentProfile={selectedEnrollmentForPayment.student?.StudentProfile}
+            studentName={selectedEnrollmentForPayment.studentName}
+            studentEmail={selectedEnrollmentForPayment.student?.email}
+            studentPhone={selectedEnrollmentForPayment.student?.phone}
+            enrollmentLabel={`Enrollment #${selectedEnrollmentForPayment.enrollmentId}`}
+            courseLabel={selectedEnrollmentForPayment.courseLabel}
+            promoOfferLabel={selectedEnrollmentForPayment.enrollment?.promoOffer?.name || selectedEnrollmentForPayment.enrollment?.promo_offer_name || "None"}
+            promoOfferOptions={promoOfferOptions}
+            onSubmit={(paymentData) => approveEnrollmentWithPaymentMutation.mutate({ row: selectedEnrollmentForPayment, paymentData })}
+            onCancel={() => setSelectedEnrollmentForPayment(null)}
+            isPending={approveEnrollmentWithPaymentMutation.isPending}
+          />
+        ) : null}
       </Suspense>
 
       <ToastStack

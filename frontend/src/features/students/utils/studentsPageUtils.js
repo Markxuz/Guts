@@ -27,7 +27,7 @@ function toNumber(value) {
 
 export function getEnrollmentPaymentSummary(enrollment) {
   const payments = Array.isArray(enrollment?.payments) ? enrollment.payments : [];
-  const totalDue = toNumber(enrollment?.fee_amount);
+  const totalDue = Math.max(toNumber(enrollment?.fee_amount) - toNumber(enrollment?.discount_amount), 0);
   const totalPaid = payments.reduce((sum, payment) => sum + toNumber(payment?.amount), 0);
   const remainingBalance = Math.max(totalDue - totalPaid, 0);
 

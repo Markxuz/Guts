@@ -15,6 +15,11 @@ module.exports = (sequelize) => {
 			allowNull: false,
 			defaultValue: "active",
 		},
+		applies_to: {
+			type: DataTypes.ENUM("ALL", "TDC", "PDC", "PROMO"),
+			allowNull: false,
+			defaultValue: "ALL",
+		},
 		fixed_price: {
 			type: DataTypes.DECIMAL(10, 2),
 			allowNull: true,

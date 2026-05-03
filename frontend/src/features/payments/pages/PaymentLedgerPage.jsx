@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, List } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { resourceServices } from "../../../services/resources";
 import {
   getEnrollmentPaymentSummary,
@@ -9,6 +9,7 @@ import {
   getLatestEnrollment,
   getCourseCode,
 } from "../../students/utils/studentsPageUtils";
+import RecordPaymentModal from "../components/RecordPaymentModal";
 
 function money(value) {
   const numeric = Number(value || 0);
@@ -28,7 +29,10 @@ function StatusBadge({ label, tone }) {
 
 export default function PaymentLedgerPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [paymentFilter, setPaymentFilter] = useState("with_balance");
+  const [paymentTarget, setPaymentTarget] = useState(null);
+  const [banner, setBanner] = useState("");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["students", "payment-ledger"],
@@ -78,6 +82,34 @@ export default function PaymentLedgerPage() {
     };
   }, [students]);
 
+  const recordPaymentMutation = useMutation({
+    mutationFn: async ({ row, form }) => {
+      setBanner("");
+      const payment = await resourceServices.payments.create({
+        enrollment_id: row.enrollment.id,
+        amount: form.amount,
+        payment_method: form.payment_method,
+        payment_status: "paid",
+        reference_number: form.reference_number || null,
+      });
+
+      const remainingAfter = Number(row.summary.remainingBalance) - Number(form.amount);
+      const nextStatus = remainingAfter <= 0 ? "completed" : "confirmed";
+      await resourceServices.enrollments.update(row.enrollment.id, { status: nextStatus });
+
+      return payment;
+    },
+    onSuccess: async () => {
+      setBanner("Payment saved successfully.");
+      setPaymentTarget(null);
+      await queryClient.invalidateQueries({ queryKey: ["students"] });
+      await queryClient.invalidateQueries({ queryKey: ["students", "payment-ledger"] });
+    },
+    onError: (error) => {
+      setBanner(error?.message || "Failed to save payment.");
+    },
+  });
+
   return (
     <section className="space-y-4">
       <div className="rounded-2xl border border-slate-300 bg-gradient-to-r from-white to-slate-100 p-5 shadow-sm">
@@ -126,6 +158,12 @@ export default function PaymentLedgerPage() {
           </div>
         </div>
       </div>
+
+      {banner ? (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {banner}
+        </div>
+      ) : null}
 
       <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
@@ -207,13 +245,24 @@ export default function PaymentLedgerPage() {
                       {Array.isArray(row.enrollment.payments) ? row.enrollment.payments.length : 0}
                     </td>
                     <td className="px-4 py-2.5 align-top">
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/students?focusStudentId=${row.student.id}`)}
-                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                      >
-                        Open Student
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        {row.summary.remainingBalance > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setPaymentTarget(row)}
+                            className="rounded-md bg-[#800000] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#6d1224]"
+                          >
+                            Add Payment
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/students?focusStudentId=${row.student.id}`)}
+                          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                        >
+                          Open Student
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -222,6 +271,16 @@ export default function PaymentLedgerPage() {
           </table>
         </div>
       </div>
+
+      {paymentTarget ? (
+        <RecordPaymentModal
+          studentName={[paymentTarget.student.first_name, paymentTarget.student.middle_name, paymentTarget.student.last_name].filter(Boolean).join(" ")}
+          remainingBalance={paymentTarget.summary.remainingBalance}
+          onSubmit={(form) => recordPaymentMutation.mutate({ row: paymentTarget, form })}
+          onCancel={() => setPaymentTarget(null)}
+          isPending={recordPaymentMutation.isPending}
+        />
+      ) : null}
     </section>
   );
 }

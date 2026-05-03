@@ -48,7 +48,9 @@ function attachPaymentSummary(enrollment) {
   const plain = enrollment.toJSON ? enrollment.toJSON() : enrollment;
   const payments = Array.isArray(plain.payments) ? plain.payments : [];
   const totalPaid = payments.reduce((sum, payment) => sum + toCurrencyNumber(payment.amount), 0);
-  const totalDue = Math.max(toCurrencyNumber(plain.fee_amount), 0);
+  const discountAmount = toCurrencyNumber(plain.discount_amount);
+  const grossFee = toCurrencyNumber(plain.fee_amount);
+  const totalDue = Math.max(grossFee - discountAmount, 0);
   const remainingBalance = Math.max(totalDue - totalPaid, 0);
 
   return {
@@ -113,7 +115,7 @@ function normalizeProfilePayload(studentId, profile = {}, extras = {}) {
   };
 }
 
-function normalizeEnrollmentPayload(enrollment = {}, extras = {}, studentId, dlCodeId) {
+function normalizeEnrollmentPayload(enrollment = {}, extras = {}, studentId, dlCodeId, qrCodeId = null) {
   const normalizedPdcType = normalizePdcType(enrollment.pdc_type, enrollment.pdc_category);
   const channel = normalizeText(enrollment.enrollment_channel) || "walk_in";
   const startMode = normalizeText(enrollment.pdc_start_mode) || "later";
@@ -125,6 +127,7 @@ function normalizeEnrollmentPayload(enrollment = {}, extras = {}, studentId, dlC
     package_id: enrollment.package_id ?? null,
     promo_offer_id: enrollment.promo_offer_id ?? null,
     dl_code_id: dlCodeId,
+    qrCodeId,
     client_type: normalizeText(enrollment.client_type),
     is_already_driver: Boolean(enrollment.is_already_driver),
     target_vehicle: normalizeText(enrollment.target_vehicle),
@@ -344,6 +347,7 @@ async function addEnrollment(payload) {
 
   try {
     const hasPdcSelection = Boolean(payload.enrollment?.pdc_category || payload.enrollment?.pdc_type);
+    const isPublicQrEnrollment = payload.enrollment?.enrollment_channel === "qr_public";
 
     if (payload.enrollment_type === "PDC" && !hasPdcSelection) {
       const error = new Error("pdc_category is required for PDC enrollments");
@@ -362,7 +366,7 @@ async function addEnrollment(payload) {
     await upsertStudentProfile(student.id, payload.profile, payload.extras, transaction);
     const dlCode = await resolveDlCode(payload.enrollment_type, transaction);
     const enrollment = await repository.createEnrollment(
-      normalizeEnrollmentPayload(payload.enrollment, payload.extras, student.id, dlCode.id),
+      normalizeEnrollmentPayload(payload.enrollment, payload.extras, student.id, dlCode.id, payload.qrCodeId ?? payload.qr_code_id ?? null),
       transaction
     );
 
@@ -385,6 +389,7 @@ async function addEnrollment(payload) {
           transaction,
           selectedEnrollment: enrollment,
           allowPendingEnrollment: true,
+          allowPendingAssignment: isPublicQrEnrollment,
         }
       );
 
@@ -401,6 +406,7 @@ async function addEnrollment(payload) {
             transaction,
             selectedEnrollment: enrollment,
             allowPendingEnrollment: true,
+            allowPendingAssignment: isPublicQrEnrollment,
           }
         );
       }
@@ -471,7 +477,12 @@ async function addEnrollment(payload) {
 }
 
 async function editEnrollment(id, payload) {
-  const enrollment = await getEnrollment(id);
+  const enrollment = await repository.findEnrollmentById(id);
+  if (!enrollment) {
+    const error = new Error("Enrollment not found");
+    error.status = 404;
+    throw error;
+  }
   return repository.updateEnrollment(enrollment, payload);
 }
 

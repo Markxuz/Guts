@@ -29,6 +29,7 @@ const schedulePayloadSchema = Joi.object({
 
 const enrollmentCreateSchema = Joi.object({
   enrollment_type: Joi.string().valid("TDC", "PDC", "PROMO").required(),
+  qrCodeId: Joi.number().integer().positive().allow(null),
   student: Joi.object({
     id: Joi.number().integer(),
     first_name: Joi.string().trim().required(),
@@ -77,7 +78,7 @@ const enrollmentCreateSchema = Joi.object({
     payment_reference_number: optionalText,
     payment_notes: optionalText,
     tdc_source: Joi.string().valid("guts", "external").allow("", null),
-    enrollment_channel: Joi.string().valid("walk_in", "saferoads", "otdc", "partner").allow("", null),
+    enrollment_channel: Joi.string().valid("walk_in", "saferoads", "otdc", "partner", "qr_public").allow("", null),
     external_application_ref: optionalText,
     is_already_driver: Joi.boolean().allow(null),
     target_vehicle: targetVehicleSchema,
@@ -86,7 +87,7 @@ const enrollmentCreateSchema = Joi.object({
     training_method: optionalText,
     pdc_start_mode: Joi.string().valid("now", "later").allow("", null),
     pdc_type: Joi.string().valid("beginner", "experience").allow(null, ""),
-    pdc_category: Joi.string().valid("Beginner", "Experience").allow(null, ""),
+    pdc_category: Joi.string().valid("Beginner", "Experience", "beginner", "experience").allow(null, ""),
     enrolling_for: optionalText,
     score: optionalText,
     status: Joi.string().valid("pending", "confirmed", "completed").default("pending"),
@@ -179,16 +180,29 @@ const enrollmentCreateSchema = Joi.object({
     const promoTdc = value.promo_schedule?.tdc || {};
     const promoPdc = value.promo_schedule?.pdc || {};
     const promoPdcEnabled = Boolean(promoPdc.enabled);
+    const isPublicQr = value.enrollment?.enrollment_channel === "qr_public";
 
-    if (!promoTdc.schedule_date || !promoTdc.slot || !promoTdc.instructor_id) {
+    if (!promoTdc.schedule_date) {
       return helpers.error("any.custom", {
-        message: "promo_schedule.tdc requires schedule_date, slot, and instructor_id",
+        message: "promo_schedule.tdc requires schedule_date",
       });
     }
 
-    if (promoPdcEnabled && (!promoPdc.schedule_date || !promoPdc.slot || !promoPdc.instructor_id || !promoPdc.vehicle_id)) {
+    if (!isPublicQr) {
+      if (!promoTdc.slot || !promoTdc.instructor_id) {
+        return helpers.error("any.custom", {
+          message: "promo_schedule.tdc requires slot and instructor_id",
+        });
+      }
+
+      if (promoPdcEnabled && (!promoPdc.schedule_date || !promoPdc.slot || !promoPdc.instructor_id || !promoPdc.vehicle_id)) {
+        return helpers.error("any.custom", {
+          message: "promo_schedule.pdc requires schedule_date, slot, instructor_id, and vehicle_id",
+        });
+      }
+    } else if (promoPdcEnabled && !promoPdc.schedule_date) {
       return helpers.error("any.custom", {
-        message: "promo_schedule.pdc requires schedule_date, slot, instructor_id, and vehicle_id",
+        message: "promo_schedule.pdc requires schedule_date when Schedule Now is selected",
       });
     }
   }
@@ -264,7 +278,7 @@ const enrollmentUpdateSchema = Joi.object({
   pdc_category: Joi.string().valid("Beginner", "Experience").allow(null, ""),
   enrolling_for: optionalText,
   score: optionalText,
-  status: Joi.string().valid("pending", "confirmed", "completed"),
+  status: Joi.string().valid("pending", "confirmed", "completed", "rejected"),
 }).min(1);
 
 module.exports = {

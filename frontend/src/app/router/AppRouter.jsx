@@ -3,6 +3,10 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "../../features/auth/components/ProtectedRoute";
 import { useAuth } from "../../features/auth/hooks/useAuth";
 import { routeLoaders } from "./routeLoaders";
+import PublicEnrollPage from "../../pages/PublicEnrollPage";
+import PendingQREnrollmentsPage from "../../pages/PendingQREnrollmentsPage";
+import QRCodeAdminPage from "../../pages/QRCodeAdminPage";
+import QREnrollmentPaymentPage from "../../pages/QREnrollmentPaymentPage";
 
 const LoginPage = lazy(routeLoaders.loginPage);
 const DashboardPage = lazy(routeLoaders.dashboardPage);
@@ -38,6 +42,7 @@ export default function AppRouter() {
     <Suspense fallback={<RouteLoadingFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/enroll" element={<PublicEnrollPage />} />
 
         <Route
           element={
@@ -48,9 +53,18 @@ export default function AppRouter() {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/enrollments" element={<EnrollmentsPage />} />
-          <Route path="/enrollments/pending" element={<PendingEnrollmentsPage />} />
+          <Route
+            path="/enrollments/pending"
+            element={
+              <RoleRoute allowedRoles={["admin", "sub_admin", "staff"]}>
+                <PendingEnrollmentsPage />
+              </RoleRoute>
+            }
+          />
           <Route path="/enrollments/schedule-pdc-later" element={<SchedulePdcLaterPage />} />
+          <Route path="/enrollments/qr-pending" element={<PendingQREnrollmentsPage />} />
           <Route path="/students" element={<StudentsPage />} />
+          <Route path="/enrollments/qr-payment/:id" element={<QREnrollmentPaymentPage />} />
           <Route
             path="/payments"
             element={
@@ -62,7 +76,7 @@ export default function AppRouter() {
           <Route
             path="/reports"
             element={
-              <RoleRoute allowedRoles={["admin", "sub_admin"]}>
+              <RoleRoute allowedRoles={["admin"]}>
                 <ReportsPage />
               </RoleRoute>
             }
@@ -70,7 +84,7 @@ export default function AppRouter() {
           <Route
             path="/reports/overview"
             element={
-              <RoleRoute allowedRoles={["admin", "sub_admin"]}>
+              <RoleRoute allowedRoles={["admin"]}>
                 <OverviewReportsPage />
               </RoleRoute>
             }
@@ -94,7 +108,7 @@ export default function AppRouter() {
           <Route
             path="/settings/promo-offers"
             element={
-              <RoleRoute allowedRoles={["admin"]}>
+              <RoleRoute allowedRoles={["admin", "sub_admin"]}>
                 <PromoOffersPage />
               </RoleRoute>
             }
@@ -112,6 +126,14 @@ export default function AppRouter() {
             element={
               <RoleRoute allowedRoles={["admin"]}>
                 <ManageUsersPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/admin/qrcodes"
+            element={
+              <RoleRoute allowedRoles={["admin"]}>
+                <QRCodeAdminPage />
               </RoleRoute>
             }
           />

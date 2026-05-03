@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Database, Trash2, UserCog, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, Database, LoaderCircle, Trash2, UserCog, X } from "lucide-react";
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from "../../users/hooks/useUsers";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { api } from "../../../services/api";
@@ -43,9 +43,19 @@ export default function ManageUsersPage() {
   const [editError, setEditError] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [isBackupRunning, setIsBackupRunning] = useState(false);
+  const [backupStepIndex, setBackupStepIndex] = useState(0);
+  const [backupElapsedMs, setBackupElapsedMs] = useState(0);
   const [backupStatus, setBackupStatus] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
+  const backupTimerRef = useRef(null);
+
+  const backupSteps = [
+    "Preparing backup request",
+    "Running database dump",
+    "Writing backup file",
+    "Finalizing status and cleanup",
+  ];
 
   function toast(msg) {
     setToastMsg(msg);
@@ -56,8 +66,10 @@ export default function ManageUsersPage() {
     try {
       const payload = await api.get("/backups/status");
       setBackupStatus(payload);
+      return payload;
     } catch {
       setBackupStatus(null);
+      return null;
     }
   }
 
@@ -130,14 +142,39 @@ export default function ManageUsersPage() {
   }
 
   async function handleRunBackup() {
+    const startedAt = Date.now();
+    setBackupStepIndex(0);
+    setBackupElapsedMs(0);
+
+    if (backupTimerRef.current) {
+      clearInterval(backupTimerRef.current);
+    }
+
     try {
       setIsBackupRunning(true);
+      backupTimerRef.current = setInterval(() => {
+        setBackupElapsedMs(Date.now() - startedAt);
+        setBackupStepIndex((current) => Math.min(current + 1, backupSteps.length - 1));
+      }, 1200);
+
       const payload = await api.post("/backups/run", {});
       toast(`Backup complete: ${payload.backupFileName || "database backup created"}`);
       await loadBackupStatus();
     } catch (error) {
-      toast(`Backup failed: ${error.message}`);
+      // Some environments return a non-2xx response even when the backup completes.
+      // Refresh status and show success if the status file reports success.
+      const statusPayload = await loadBackupStatus();
+      if (statusPayload?.status?.status === "success") {
+        toast(`Backup complete: ${statusPayload.status.backupFileName || "database backup created"}`);
+      } else {
+        toast(`Backup failed: ${error?.message || "Request failed"}`);
+      }
     } finally {
+      if (backupTimerRef.current) {
+        clearInterval(backupTimerRef.current);
+        backupTimerRef.current = null;
+      }
+      setBackupElapsedMs(Date.now() - startedAt);
       setIsBackupRunning(false);
     }
   }
@@ -149,8 +186,69 @@ export default function ManageUsersPage() {
     return date.toLocaleString();
   }
 
+  function formatElapsed(ms) {
+    const seconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+  }
+
   return (
     <section className="space-y-4">
+      {isBackupRunning && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                <LoaderCircle className="h-6 w-6 animate-spin" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-3">
+                <h2 className="text-lg font-bold text-slate-900">Backup in progress</h2>
+                <p className="text-sm text-slate-600">
+                  The database backup is running now. Please wait until it finishes before doing anything else on this page.
+                </p>
+                <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    Do not refresh, close, or cancel this action. Interrupting a backup can leave incomplete files behind.
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <span>Current process</span>
+                    <span>{formatElapsed(backupElapsedMs)}</span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {backupSteps.map((step, index) => {
+                      const isActive = index === backupStepIndex;
+                      const isComplete = index < backupStepIndex;
+                      return (
+                        <div
+                          key={step}
+                          className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-sm transition ${
+                            isActive
+                              ? "border-[#800000]/30 bg-[#800000]/5 text-[#800000]"
+                              : isComplete
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : "border-slate-200 bg-white text-slate-500"
+                          }`}
+                        >
+                          <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${isActive ? "bg-[#800000] text-white" : isComplete ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600"}`}>
+                            {isComplete ? "✓" : index + 1}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate">{step}</span>
+                          {isActive && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toastMsg && (
         <div className="rounded-lg bg-[#800000] px-4 py-3 text-sm font-medium text-white shadow">
           {toastMsg}
@@ -167,10 +265,11 @@ export default function ManageUsersPage() {
             type="button"
             onClick={() => void handleRunBackup()}
             disabled={isBackupRunning}
+            aria-busy={isBackupRunning}
             className="inline-flex items-center gap-2 rounded-lg border border-[#800000]/30 bg-white px-4 py-2 text-sm font-semibold text-[#800000] transition hover:bg-[#800000]/5 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Database size={14} />
-            {isBackupRunning ? "Running Backup..." : "Backup Now"}
+            {isBackupRunning ? <LoaderCircle size={14} className="animate-spin" /> : <Database size={14} />}
+            {isBackupRunning ? "Backup Running..." : "Backup Now"}
           </button>
 
           <button
