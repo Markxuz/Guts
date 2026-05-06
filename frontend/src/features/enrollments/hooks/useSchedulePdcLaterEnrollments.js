@@ -7,18 +7,14 @@ async function fetchSchedulePdcLaterEnrollments() {
   const enrollments = await resourceServices.enrollments.list();
 
   // Filter for promo enrollments with PDC intentionally scheduled later.
-  // Current API marks promo enrollments using promo_package_id/promoPackage,
-  // while older keys like enrollment_type and Schedule are no longer present.
+  // Include enrollments that are not still 'pending' (e.g. confirmed/active/completed)
   return (Array.isArray(enrollments) ? enrollments : []).filter((enrollment) => {
     const isPromo = Boolean(enrollment?.promo_package_id || enrollment?.promoPackage?.id);
     const hasPdcLater = enrollment?.pdc_start_mode === "later";
     const isPendingPdcSchedule = String(enrollment?.enrollment_state || "") === "pdc_pending_schedule";
-    const isCompleted = String(enrollment?.status || "") === "completed";
+    const hasBeenProcessed = String(enrollment?.status || "") !== "pending";
 
-    return isPromo
-      && hasPdcLater
-      && isCompleted
-      && (isPendingPdcSchedule || !enrollment?.pdc_eligibility_date);
+    return isPromo && hasPdcLater && hasBeenProcessed && (isPendingPdcSchedule || !enrollment?.pdc_eligibility_date);
   });
 }
 

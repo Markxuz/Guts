@@ -19,6 +19,7 @@ router.post("/", validateRequest(studentCreateSchema), controller.createStudent)
 router.put("/:id", validateRequest(studentUpdateSchema), controller.updateStudent);
 router.put(
 	"/:id/enrollment-status",
+	authorizeRoles("admin", "sub_admin"),
 	validateRequest(enrollmentStatusUpdateSchema),
 	controller.updateEnrollmentStatus
 );

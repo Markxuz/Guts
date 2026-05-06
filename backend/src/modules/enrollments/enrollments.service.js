@@ -26,6 +26,12 @@ function normalizeText(value) {
   return trimmed ? trimmed : null;
 }
 
+function normalizeUpperText(value) {
+  if (typeof value !== "string") return value ?? null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.toUpperCase() : null;
+}
+
 function normalizeAmount(value) {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -80,9 +86,10 @@ function normalizePdcType(rawType, rawCategory) {
 
 function normalizeStudentPayload(student = {}) {
   return {
-    first_name: normalizeText(student.first_name),
-    middle_name: normalizeText(student.middle_name),
-    last_name: normalizeText(student.last_name),
+    // Store names in uppercase for encoder/staff consistency
+    first_name: normalizeUpperText(student.first_name),
+    middle_name: normalizeUpperText(student.middle_name),
+    last_name: normalizeUpperText(student.last_name),
     email: normalizeText(student.email),
     phone: normalizeText(student.phone),
   };
@@ -101,11 +108,12 @@ function normalizeProfilePayload(studentId, profile = {}, extras = {}, enrollmen
     fb_link: normalizeText(profile.fb_link),
     gmail_account: normalizeText(profile.gmail_account),
     // Address Information
-    house_number: normalizeText(profile.house_number),
-    street: normalizeText(profile.street),
-    barangay: normalizeText(profile.barangay),
-    city: normalizeText(profile.city),
-    province: normalizeText(profile.province),
+    // Store address parts uppercase for consistency
+    house_number: normalizeUpperText(profile.house_number),
+    street: normalizeUpperText(profile.street),
+    barangay: normalizeUpperText(profile.barangay),
+    city: normalizeUpperText(profile.city),
+    province: normalizeUpperText(profile.province),
     zip_code: normalizeText(profile.zip_code),
     region: normalizeText(extras.region),
     // Emergency and Education

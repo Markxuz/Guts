@@ -632,8 +632,10 @@ export function useStudentsPageLogic(options = {}) {
     const courseCode = getCourseCode(updatingStatusStudent);
 
     if (courseCode === "PROMO") {
-      if (!statusForm.promoTdcOutcome || !statusForm.promoPdcOutcome) {
-        addToast("For Promo students, please set both TDC and PDC outcomes.", "error");
+      // Allow saving when at least one of TDC or PDC outcome is set.
+      // This enables saving TDC outcome even when PDC is not yet set.
+      if (!statusForm.promoTdcOutcome && !statusForm.promoPdcOutcome) {
+        addToast("For Promo students, please set at least one of TDC or PDC outcomes.", "error");
         return;
       }
     }
@@ -645,9 +647,24 @@ export function useStudentsPageLogic(options = {}) {
       return;
     }
 
-    const mappedEnrollmentStatus = isCancellingEnrollment
-      ? "cancelled"
-      : mapOutcomeToEnrollmentStatus(statusForm.courseOutcome);
+    let mappedEnrollmentStatus;
+    if (isCancellingEnrollment) {
+      mappedEnrollmentStatus = "cancelled";
+    } else if (courseCode === "PROMO") {
+      // If PDC outcome is present, use it to determine final enrollment status.
+      // If only TDC outcome is set (PDC pending), keep existing enrollment status to avoid marking enrollment completed.
+      if (statusForm.promoPdcOutcome) {
+        mappedEnrollmentStatus = mapOutcomeToEnrollmentStatus(statusForm.promoPdcOutcome);
+      } else if (statusForm.promoTdcOutcome) {
+        const latest = getLatestEnrollment(updatingStatusStudent);
+        mappedEnrollmentStatus = (latest && String(latest.status || "")?.toLowerCase()) || "pending";
+      } else {
+        mappedEnrollmentStatus = mapOutcomeToEnrollmentStatus(statusForm.courseOutcome);
+      }
+    } else {
+      mappedEnrollmentStatus = mapOutcomeToEnrollmentStatus(statusForm.courseOutcome);
+    }
+
     const scoreValue = isCancellingEnrollment
       ? "CANCELLED"
       : courseCode === "PROMO"

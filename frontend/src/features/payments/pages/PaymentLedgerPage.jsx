@@ -42,10 +42,12 @@ export default function PaymentLedgerPage() {
   const students = useMemo(() => (Array.isArray(data) ? data : data?.data || []), [data]);
 
   const rows = useMemo(() => {
-    return students
+        return students
       .map((student) => {
         const enrollment = getLatestEnrollment(student);
-        if (!enrollment) return null;
+            if (!enrollment) return null;
+            // Do not include enrollments that are still pending approval in the payment ledger
+            if (String(enrollment.status || "").toLowerCase() === "pending") return null;
 
         const summary = getEnrollmentPaymentSummary(enrollment);
         const category = getPaymentCategoryLabel(enrollment);

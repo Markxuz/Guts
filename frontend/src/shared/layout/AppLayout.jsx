@@ -25,7 +25,7 @@ function buildNavItems(role) {
     return [
       { label: "Dashboard", to: "/", icon: LayoutDashboard },
       { label: "Enrollments", to: "/enrollments", icon: UserRound },
-      { label: "Pending Approvals", to: "/enrollments/pending", icon: Clock },
+      // Staff should not access Pending Approvals; keep QR review and scheduling
       { label: "Pending QR Enrollments", to: "/enrollments/qr-pending", icon: ShieldCheck },
       { label: "Schedule PDC Later", to: "/enrollments/schedule-pdc-later", icon: Clock },
       { label: "Students", to: "/students", icon: Users },
