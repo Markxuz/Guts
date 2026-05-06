@@ -508,7 +508,7 @@ async function editEnrollment(id, payload) {
   }
 
   // Extract nested fields that require separate model updates
-  const { student: studentPayload, profile: profilePayload, ...enrollmentPayload } = payload;
+  const { student: studentPayload, profile: profilePayload, promo_schedule_tdc, promo_schedule_pdc, ...enrollmentPayload } = payload;
 
   // Update student if provided
   if (studentPayload && enrollment.student_id) {
@@ -528,9 +528,31 @@ async function editEnrollment(id, payload) {
   // Update student profile if provided
   if (profilePayload && enrollment.student_id) {
     const profile = await repository.findStudentProfileByStudentId(enrollment.student_id);
-    if (profile && profilePayload.gmail_account !== undefined) {
+    if (profile) {
       const profileUpdates = {};
-      if (profilePayload.gmail_account !== undefined) profileUpdates.gmail_account = profilePayload.gmail_account;
+      
+      // Update all provided profile fields
+      const updateFields = [
+        'gmail_account', 'house_number', 'street', 'barangay', 'city', 'province',
+        'zip_code', 'birthdate', 'birthplace', 'age', 'gender', 'civil_status',
+        'nationality', 'fb_link', 'region', 'educational_attainment',
+        'emergency_contact_person', 'emergency_contact_number', 'lto_portal_account',
+        'driving_school_tdc', 'year_completed_tdc', 'client_type', 'enrolling_for',
+        'pdc_category', 'tdc_source', 'training_method', 'is_already_driver',
+        'target_vehicle', 'transmission_type', 'motorcycle_type', 'promo_offer_id'
+      ];
+      
+      updateFields.forEach(field => {
+        if (field in profilePayload) {
+          const value = profilePayload[field];
+          // Apply uppercase normalization for address fields
+          if (['house_number', 'street', 'barangay', 'city', 'province', 'first_name', 'last_name', 'middle_name'].includes(field)) {
+            profileUpdates[field] = normalizeUpperText(value);
+          } else {
+            profileUpdates[field] = value;
+          }
+        }
+      });
       
       if (Object.keys(profileUpdates).length > 0) {
         await repository.updateStudentProfile(profile, profileUpdates);
@@ -538,7 +560,15 @@ async function editEnrollment(id, payload) {
     }
   }
 
-  // Update enrollment with remaining fields (promo_schedule_tdc and promo_schedule_pdc are metadata, not stored directly)
+  // Map promo schedule dates to enrollment date fields
+  if (promo_schedule_tdc?.schedule_date) {
+    enrollmentPayload.tdc_completion_deadline = promo_schedule_tdc.schedule_date;
+  }
+  if (promo_schedule_pdc?.schedule_date) {
+    enrollmentPayload.pdc_eligibility_date = promo_schedule_pdc.schedule_date;
+  }
+
+  // Update enrollment with mapped fields
   return repository.updateEnrollment(enrollment, enrollmentPayload);
 }
 

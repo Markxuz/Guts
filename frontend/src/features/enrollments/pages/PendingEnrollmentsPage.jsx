@@ -85,9 +85,16 @@ export default function PendingEnrollmentsPage() {
   }
 
   function handlePaymentSubmit(paymentData) {
+    // Convert empty strings to null to avoid validation errors
+    const sanitized = Object.fromEntries(
+      Object.entries(paymentData).map(([key, value]) => [
+        key,
+        (typeof value === 'string' && value.trim() === '') ? null : value,
+      ])
+    );
     updatePaymentMutation.mutate({
       enrollmentId: selectedForPayment.id,
-      paymentData,
+      paymentData: sanitized,
     });
   }
 

@@ -12,10 +12,14 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
   const [form, setForm] = useState({
     promo_schedule_tdc: {
       schedule_date: "",
+      instructor_id: null,
+      care_of_instructor_id: null,
     },
     promo_schedule_pdc: {
       enabled: "Schedule Now",
       schedule_date: "",
+      instructor_id: null,
+      care_of_instructor_id: null,
     },
     student: {
       first_name: "",
@@ -37,10 +41,14 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
       setForm({
         promo_schedule_tdc: {
           schedule_date: enrollment?.promo_schedule_tdc?.schedule_date || "",
+          instructor_id: enrollment?.promo_schedule_tdc?.instructor_id || null,
+          care_of_instructor_id: enrollment?.promo_schedule_tdc?.care_of_instructor_id || null,
         },
         promo_schedule_pdc: {
           enabled: enrollment?.promo_schedule_pdc?.enabled ? "Schedule Now" : "Schedule Later",
           schedule_date: enrollment?.promo_schedule_pdc?.schedule_date || "",
+          instructor_id: enrollment?.promo_schedule_pdc?.instructor_id || null,
+          care_of_instructor_id: enrollment?.promo_schedule_pdc?.care_of_instructor_id || null,
         },
         student: {
           first_name: enrollment?.student?.first_name || "",
@@ -60,12 +68,16 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
       const payload = {
         promo_schedule_tdc: {
           schedule_date: form.promo_schedule_tdc.schedule_date || null,
+          instructor_id: form.promo_schedule_tdc.instructor_id || null,
+          care_of_instructor_id: form.promo_schedule_tdc.care_of_instructor_id || null,
         },
         promo_schedule_pdc: {
           enabled: normalizeBooleanValue(form.promo_schedule_pdc.enabled),
           schedule_date: normalizeBooleanValue(form.promo_schedule_pdc.enabled)
             ? form.promo_schedule_pdc.schedule_date || null
             : null,
+          instructor_id: form.promo_schedule_pdc.instructor_id || null,
+          care_of_instructor_id: form.promo_schedule_pdc.care_of_instructor_id || null,
         },
         student: {
           first_name: form.student.first_name,
@@ -215,17 +227,45 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
             {/* TDC Schedule Section */}
             <section>
               <h3 className="mb-4 text-sm font-semibold text-slate-900">TDC Schedule Session</h3>
-              <label className="flex flex-col gap-1">
-                <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Desired Date *</span>
-                <input
-                  type="date"
-                  value={form.promo_schedule_tdc.schedule_date}
-                  onChange={(event) => handleFieldChange("promo_schedule_tdc", "schedule_date", event.target.value)}
-                  className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                />
-              </label>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Desired Date *</span>
+                  <input
+                    type="date"
+                    value={form.promo_schedule_tdc.schedule_date}
+                    onChange={(event) => handleFieldChange("promo_schedule_tdc", "schedule_date", event.target.value)}
+                    className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Instructor (Optional)</span>
+                  <input
+                    type="text"
+                    placeholder="Select instructor"
+                    value={form.promo_schedule_tdc.instructor_id ? `Instructor ${form.promo_schedule_tdc.instructor_id}` : ""}
+                    onChange={(event) => {
+                      const match = event.target.value.match(/\d+/);
+                      handleFieldChange("promo_schedule_tdc", "instructor_id", match ? parseInt(match[0]) : null);
+                    }}
+                    className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Care of Instructor (Optional)</span>
+                  <input
+                    type="text"
+                    placeholder="Select care-of instructor"
+                    value={form.promo_schedule_tdc.care_of_instructor_id ? `Instructor ${form.promo_schedule_tdc.care_of_instructor_id}` : ""}
+                    onChange={(event) => {
+                      const match = event.target.value.match(/\d+/);
+                      handleFieldChange("promo_schedule_tdc", "care_of_instructor_id", match ? parseInt(match[0]) : null);
+                    }}
+                    className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                  />
+                </label>
+              </div>
               <p className="mt-2 rounded-lg border border-[#d9c9a0] bg-white px-3 py-2 text-xs text-slate-600">
-                Encoder/staff will assign the instructor, time slot, and final schedule details after review.
+                Encoder/staff will finalize the instructor, time slot, and schedule details after review.
               </p>
             </section>
 
@@ -261,15 +301,45 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
               </div>
 
               {schedulePdcNow ? (
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Desired Date *</span>
-                  <input
-                    type="date"
-                    value={form.promo_schedule_pdc.schedule_date}
-                    onChange={(event) => handleFieldChange("promo_schedule_pdc", "schedule_date", event.target.value)}
-                    className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                  />
-                </label>
+                <div className="space-y-3">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Desired Date *</span>
+                    <input
+                      type="date"
+                      value={form.promo_schedule_pdc.schedule_date}
+                      onChange={(event) => handleFieldChange("promo_schedule_pdc", "schedule_date", event.target.value)}
+                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                    />
+                  </label>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Instructor (Optional)</span>
+                      <input
+                        type="text"
+                        placeholder="Select instructor"
+                        value={form.promo_schedule_pdc.instructor_id ? `Instructor ${form.promo_schedule_pdc.instructor_id}` : ""}
+                        onChange={(event) => {
+                          const match = event.target.value.match(/\d+/);
+                          handleFieldChange("promo_schedule_pdc", "instructor_id", match ? parseInt(match[0]) : null);
+                        }}
+                        className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Care of Instructor (Optional)</span>
+                      <input
+                        type="text"
+                        placeholder="Select care-of instructor"
+                        value={form.promo_schedule_pdc.care_of_instructor_id ? `Instructor ${form.promo_schedule_pdc.care_of_instructor_id}` : ""}
+                        onChange={(event) => {
+                          const match = event.target.value.match(/\d+/);
+                          handleFieldChange("promo_schedule_pdc", "care_of_instructor_id", match ? parseInt(match[0]) : null);
+                        }}
+                        className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                      />
+                    </label>
+                  </div>
+                </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-[#d9c9a0] bg-white px-4 py-3">
                   <p className="text-sm text-slate-600">

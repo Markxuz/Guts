@@ -10,7 +10,17 @@ export function FormField({
   onChange,
   className = "",
   inputClassName = "",
+  shouldUppercase = true,
 }) {
+  const handleChange = (e) => {
+    let val = e.target.value;
+    // Convert to uppercase for text inputs (for encoder data entry like names, addresses)
+    if (shouldUppercase && (type === "text" || type === "email")) {
+      val = val.toUpperCase();
+    }
+    onChange({ ...e, target: { ...e.target, value: val } });
+  };
+
   return (
     <label className={`flex flex-col gap-1 ${className}`.trim()}>
       <span className="text-[10px] font-bold tracking-wide text-slate-500">
@@ -20,7 +30,7 @@ export function FormField({
       <input
         name={name}
         value={value ?? ""}
-        onChange={onChange}
+        onChange={handleChange}
         type={type}
         placeholder={placeholder}
         required={required}

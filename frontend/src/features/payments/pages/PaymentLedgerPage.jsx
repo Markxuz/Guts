@@ -65,7 +65,8 @@ export default function PaymentLedgerPage() {
       .filter((row) => {
         if (paymentFilter === "all") return true;
         if (paymentFilter === "completed_payment") return row.summary.paymentStatus === "completed_payment";
-        return row.summary.paymentStatus !== "completed_payment" && row.summary.paymentStatus !== "not_set";
+        // Show enrollments with with_balance (includes partial and full balance owing) excluding not_set
+        return row.summary.paymentStatus === "with_balance" || row.summary.paymentStatus === "partial_payment";
       })
       .sort((a, b) => {
         if (paymentFilter === "completed_payment") return Number(a.student.id) - Number(b.student.id);
