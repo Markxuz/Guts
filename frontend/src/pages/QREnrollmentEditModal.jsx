@@ -80,8 +80,12 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
       return api.put(`/enrollments/${enrollment.id}`, payload);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["enrollments", "pending-qr"] });
-      await queryClient.invalidateQueries({ queryKey: ["enrollments"] });
+      // Only invalidate the specific key for pending QR enrollments on the PendingQREnrollmentsPage
+      // This prevents the broad ["enrollments"] invalidation from affecting other pages like Pending Approvals
+      await queryClient.invalidateQueries({ 
+        queryKey: ["enrollments", "pending"],
+        exact: false,
+      });
 
       if (typeof onSaveComplete === "function") {
         onSaveComplete("QR enrollment updated successfully.");

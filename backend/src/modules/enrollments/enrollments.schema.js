@@ -279,6 +279,22 @@ const enrollmentUpdateSchema = Joi.object({
   enrolling_for: optionalText,
   score: optionalText,
   status: Joi.string().valid("pending", "confirmed", "completed", "rejected"),
+  // QR enrollment modal fields for updating promo schedules and student info
+  promo_schedule_tdc: Joi.object({
+    schedule_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow("", null),
+  }).allow(null),
+  promo_schedule_pdc: Joi.object({
+    enabled: Joi.boolean().allow(null),
+    schedule_date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow("", null),
+  }).allow(null),
+  student: Joi.object({
+    first_name: Joi.string().trim(),
+    last_name: Joi.string().trim(),
+    phone: optionalText,
+  }).allow(null),
+  profile: Joi.object({
+    gmail_account: optionalText,
+  }).allow(null),
 }).min(1);
 
 module.exports = {

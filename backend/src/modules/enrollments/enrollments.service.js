@@ -498,7 +498,40 @@ async function editEnrollment(id, payload) {
     error.status = 404;
     throw error;
   }
-  return repository.updateEnrollment(enrollment, payload);
+
+  // Extract nested fields that require separate model updates
+  const { student: studentPayload, profile: profilePayload, ...enrollmentPayload } = payload;
+
+  // Update student if provided
+  if (studentPayload && enrollment.student_id) {
+    const student = await repository.findStudentById(enrollment.student_id);
+    if (student && (studentPayload.first_name || studentPayload.last_name || studentPayload.phone)) {
+      const studentUpdates = {};
+      if (studentPayload.first_name) studentUpdates.first_name = studentPayload.first_name;
+      if (studentPayload.last_name) studentUpdates.last_name = studentPayload.last_name;
+      if (studentPayload.phone !== undefined) studentUpdates.phone = studentPayload.phone;
+      
+      if (Object.keys(studentUpdates).length > 0) {
+        await repository.updateStudent(student, studentUpdates);
+      }
+    }
+  }
+
+  // Update student profile if provided
+  if (profilePayload && enrollment.student_id) {
+    const profile = await repository.findStudentProfileByStudentId(enrollment.student_id);
+    if (profile && profilePayload.gmail_account !== undefined) {
+      const profileUpdates = {};
+      if (profilePayload.gmail_account !== undefined) profileUpdates.gmail_account = profilePayload.gmail_account;
+      
+      if (Object.keys(profileUpdates).length > 0) {
+        await repository.updateStudentProfile(profile, profileUpdates);
+      }
+    }
+  }
+
+  // Update enrollment with remaining fields (promo_schedule_tdc and promo_schedule_pdc are metadata, not stored directly)
+  return repository.updateEnrollment(enrollment, enrollmentPayload);
 }
 
 async function removeEnrollment(id) {
