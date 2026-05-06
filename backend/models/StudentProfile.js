@@ -113,6 +113,46 @@ module.exports = (sequelize) => {
         type: DataTypes.DATEONLY,
         allowNull: true,
       },
+      client_type: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      promo_offer_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      enrolling_for: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      pdc_category: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      tdc_source: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      training_method: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      is_already_driver: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+      },
+      target_vehicle: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      transmission_type: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      motorcycle_type: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
     },
     {
       tableName: "student_profiles",

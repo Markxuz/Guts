@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Clock3, Loader2, ShieldCheck, Edit } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, Loader2, ShieldCheck } from "lucide-react";
 import QREnrollmentEditModal from "./QREnrollmentEditModal";
 import { api } from "../services/api";
 
@@ -10,11 +9,9 @@ function moneyLabel(value) {
 }
 
 export default function PendingQREnrollmentsPage() {
-  const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [approving, setApproving] = useState(null);
   const [editingEnrollment, setEditingEnrollment] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
 
@@ -51,23 +48,7 @@ export default function PendingQREnrollmentsPage() {
     };
   }, []);
 
-  async function handleApprove(id) {
-    setApproving(id);
-    setError("");
-
-    try {
-      await api.put(`/admin/enrollments/${id}/approve`, {});
-
-      setEnrollments((current) => current.filter((enrollment) => enrollment.id !== id));
-      navigate(`/enrollments/qr-payment/${id}`, { replace: true });
-    } catch (approvalError) {
-      setError(approvalError?.message || "Approval failed.");
-    } finally {
-      setApproving(null);
-    }
-  }
-
-  function handleEditClick(enrollment) {
+  function handleReview(enrollment) {
     setEditingEnrollment(enrollment);
   }
 
@@ -191,25 +172,14 @@ export default function PendingQREnrollmentsPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
+                        <button
                             type="button"
-                            onClick={() => handleEditClick(enrollment)}
-                            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                            onClick={() => handleReview(enrollment)}
+                            className="inline-flex items-center gap-2 rounded-full bg-[#800000] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_28px_rgba(128,0,0,0.2)] transition hover:bg-[#680000]"
                           >
-                            <Edit size={14} />
-                            Edit
+                            <ArrowRight size={14} />
+                            Review
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(enrollment.id)}
-                            disabled={approving === enrollment.id}
-                            className="inline-flex items-center gap-2 rounded-full bg-[#800000] px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_28px_rgba(128,0,0,0.2)] transition hover:bg-[#680000] disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {approving === enrollment.id ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
-                            {approving === enrollment.id ? "Approving..." : "Approve"}
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   ))}

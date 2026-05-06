@@ -740,6 +740,7 @@ export function useStudentsPageLogic(options = {}) {
     setBulkStatusForm,
     setSelectedStudent,
     setDeletingStudent,
+    addToast,
     removeToast,
     setSearch: (value) => {
       setSearch(value);

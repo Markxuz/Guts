@@ -319,7 +319,9 @@ export default function VehiclesPage() {
   }
 
   useEffect(() => {
-    loadVehicles();
+    Promise.resolve().then(() => {
+      void loadVehicles();
+    });
     // loadVehicles is intentionally recreated from component state; statusDate drives refreshes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusDate]);
@@ -377,7 +379,9 @@ export default function VehiclesPage() {
   }, [maintenanceLogs]);
 
   useEffect(() => {
-    setPage(1);
+    Promise.resolve().then(() => {
+      setPage(1);
+    });
   }, [activeTab, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));

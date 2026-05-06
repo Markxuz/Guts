@@ -151,8 +151,14 @@ export default function AppLayout() {
   }, [theme]);
 
   useEffect(() => {
-    setIsMobileNavOpen(false);
-  }, [pathname]);
+    if (!isMobileNavOpen) {
+      return;
+    }
+
+    Promise.resolve().then(() => {
+      setIsMobileNavOpen(false);
+    });
+  }, [pathname, isMobileNavOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") {

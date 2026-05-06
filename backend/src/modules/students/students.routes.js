@@ -13,6 +13,7 @@ const router = express.Router();
 router.use(authenticateToken);
 
 router.get("/", controller.getAllStudents);
+router.get("/export", controller.exportStudents);
 router.get("/:id", controller.getStudentById);
 router.post("/", validateRequest(studentCreateSchema), controller.createStudent);
 router.put("/:id", validateRequest(studentUpdateSchema), controller.updateStudent);

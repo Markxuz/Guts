@@ -1,11 +1,12 @@
-import { lazy, Suspense } from "react";
-import { Search } from "lucide-react";
+import { lazy, Suspense, useState } from "react";
+import { Download, Search } from "lucide-react";
 import StudentTable from "../components/StudentTable";
 import SummaryCards from "../components/SummaryCards";
 import ToastStack from "../../../shared/utils/ToastStack";
 import { useStudentsPageLogic } from "../hooks/useStudentsPageLogic";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { useSearchParams } from "react-router-dom";
+import { exportStudents } from "../services/studentsApi";
 
 const StudentDetailsModal = lazy(() => import("../components/StudentDetailsModal"));
 const EditStudentModal = lazy(() => import("../components/EditStudentModal"));
@@ -17,6 +18,7 @@ function StudentsPage() {
   const { role } = useAuth();
   const [searchParams] = useSearchParams();
   const focusedStudentId = searchParams.get("focusStudentId");
+  const [isExporting, setIsExporting] = useState(false);
 
   const {
     search,
@@ -50,6 +52,7 @@ function StudentsPage() {
     setBulkStatusForm,
     setSelectedStudent,
     setDeletingStudent,
+    addToast,
     removeToast,
     setSearch,
     setCourseFilter,
@@ -71,6 +74,29 @@ function StudentsPage() {
     confirmDelete,
     toggleTableSort,
   } = useStudentsPageLogic({ focusedStudentId });
+
+  const [exportFormat, setExportFormat] = useState("csv");
+  const [exportRange, setExportRange] = useState("overall");
+
+  async function handleExport() {
+    try {
+      setIsExporting(true);
+      const rangeParam = exportRange === "overall" ? undefined : exportRange;
+      const blob = await exportStudents(exportFormat, rangeParam);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      const extension = exportFormat === "excel" || exportFormat === "xls" || exportFormat === "xlsx" ? "xls" : "csv";
+      anchor.download = `students-${new Date().toISOString().slice(0, 10)}.${extension}`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      addToast(`Student list exported successfully (${extension.toUpperCase()}).`, "success");
+    } catch (exportError) {
+      addToast(exportError?.message || "Failed to export student data.", "error");
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   return (
     <section className="min-w-0 space-y-4">
@@ -168,6 +194,39 @@ function StudentsPage() {
             >
               Bulk Update Status ({selectedStudentIds.length})
             </button>
+            <div className="flex items-center gap-2">
+              <select
+                value={exportRange}
+                onChange={(e) => setExportRange(e.target.value)}
+                className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none"
+              >
+                <option value="overall">Overall</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+
+              <select
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value)}
+                className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none"
+              >
+                <option value="csv">CSV</option>
+                <option value="excel">Excel</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={isExporting}
+                className="h-10 rounded-lg border border-[#800000]/30 bg-white px-3 text-xs font-semibold text-[#800000] transition hover:bg-[#800000]/5 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Download size={14} />
+                  {isExporting ? "Exporting..." : "Export"}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

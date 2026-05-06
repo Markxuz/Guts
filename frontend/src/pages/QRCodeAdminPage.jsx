@@ -127,7 +127,9 @@ export default function QRCodeAdminPage() {
     if (qrcodes.length > 0) {
       hydrateImages();
     } else {
-      setQrImages({});
+      Promise.resolve().then(() => {
+        setQrImages({});
+      });
     }
 
     return () => {

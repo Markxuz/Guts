@@ -74,7 +74,9 @@ export default function ManageUsersPage() {
   }
 
   useEffect(() => {
-    void loadBackupStatus();
+    Promise.resolve().then(() => {
+      void loadBackupStatus();
+    });
   }, []);
 
   const createUser = useCreateUser({

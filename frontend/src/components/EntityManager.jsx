@@ -31,11 +31,13 @@ function EntityManager({ title, fields, service }) {
   }, [service]);
 
   useEffect(() => {
-    loadItems();
-    setFormData(initialForm(fields));
-    setEditingId(null);
-    setMessage("");
-    setError("");
+    Promise.resolve().then(() => {
+      void loadItems();
+      setFormData(initialForm(fields));
+      setEditingId(null);
+      setMessage("");
+      setError("");
+    });
   }, [fields, loadItems]);
 
   const onChange = (event) => {

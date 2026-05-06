@@ -5,6 +5,9 @@ export const PDC_OUTCOME_OPTIONS = [
   "RESCHED/RE ENROLL",
   "RESCHED/PENALTY",
   "RESCHEDULE ONLY",
+  "CANCEL",
+  "CANCELLED",
+  "VOID",
 ];
 
 export const TDC_OUTCOME_OPTIONS = [
@@ -16,6 +19,9 @@ export const TDC_OUTCOME_OPTIONS = [
   "SEAT IN",
   "SCHOLAR",
   "FREE TDC",
+  "CANCEL",
+  "CANCELLED",
+  "VOID",
 ];
 
 export function getOutcomeOptionsByCourse(courseCode, promoCategory = "TDC") {

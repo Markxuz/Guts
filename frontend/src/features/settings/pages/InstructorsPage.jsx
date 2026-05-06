@@ -210,7 +210,9 @@ export default function InstructorsPage() {
   }
 
   useEffect(() => {
-    loadInstructors();
+    Promise.resolve().then(() => {
+      void loadInstructors();
+    });
   }, []);
 
   const filteredRows = useMemo(() => {
@@ -238,7 +240,9 @@ export default function InstructorsPage() {
   }, [rows, search, activeTab, statusFilter]);
 
   useEffect(() => {
-    setPage(1);
+    Promise.resolve().then(() => {
+      setPage(1);
+    });
   }, [search, activeTab, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));

@@ -373,6 +373,18 @@ export default function PublicEnrollPage() {
         next = createNestedValue(next, "profile.zip_code", getAutoZipCode(next));
       }
 
+      // Auto-calculate age from birthdate
+      if (name === "profile.birthdate" && value) {
+        const birthDate = new Date(value);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        next = createNestedValue(next, "profile.age", String(age));
+      }
+
       return next;
     });
   }
@@ -381,6 +393,8 @@ export default function PublicEnrollPage() {
     event.preventDefault();
     setSubmitState("submitting");
     setStatus("Submitting your enrollment...");
+
+    const promoPdcEnabled = normalizeBooleanValue(formData.promo_schedule_pdc?.enabled);
 
     const payload = {
       ...formData,
@@ -393,18 +407,32 @@ export default function PublicEnrollPage() {
       },
       promo_schedule_pdc: {
         ...(formData.promo_schedule_pdc || {}),
-        enabled: normalizeBooleanValue(formData.promo_schedule_pdc?.enabled),
+        enabled: promoPdcEnabled,
       },
+      promo_schedule:
+        (template?.enrollment_type || formData.enrollment_type) === "PROMO"
+          ? {
+              enabled: true,
+              tdc: {
+                ...(formData.promo_schedule_tdc || {}),
+                enabled: true,
+              },
+              pdc: {
+                ...(formData.promo_schedule_pdc || {}),
+                enabled: promoPdcEnabled,
+              },
+            }
+          : undefined,
     };
 
     if (payload.enrollment_type === "PROMO") {
-      if (!payload.promo_schedule_tdc?.schedule_date) {
+      if (!payload.promo_schedule?.tdc?.schedule_date) {
         setSubmitState("idle");
         setStatus("Please provide the desired TDC date.");
         return;
       }
 
-      if (payload.promo_schedule_pdc.enabled && !payload.promo_schedule_pdc.schedule_date) {
+      if (payload.promo_schedule?.pdc?.enabled && !payload.promo_schedule?.pdc?.schedule_date) {
         setSubmitState("idle");
         setStatus("Please provide the desired PDC date when choosing Schedule Now.");
         return;
@@ -434,21 +462,41 @@ export default function PublicEnrollPage() {
 
   const sections = useMemo(() => {
     const sourceSections = template?.sections || [];
+    const processedSections = [];
+    const isPDCScheduleNow = formData.promo_schedule_pdc?.enabled === "true" || formData.promo_schedule_pdc?.enabled === true;
 
-    return sourceSections.map((section) => ({
-      ...section,
-      fields: (section.fields || []).map((field) => {
+    for (const section of sourceSections) {
+      let fields = (section.fields || []).map((field) => {
         if (field?.name === "enrollment.promo_offer_id" && field?.type === "select") {
           return {
             ...field,
             options: promoOptions,
           };
         }
-
         return field;
-      }),
-    }));
-  }, [template, promoOptions]);
+      });
+
+      // For PROMO: hide PDC COURSE INFORMATION and PDC Schedule Session unless "Schedule Now" is selected
+      if (template?.enrollment_type === "PROMO") {
+        if ((section.title === "PDC COURSE INFORMATION" || section.title === "PDC Schedule Session") && !isPDCScheduleNow) {
+          // Skip these sections if Schedule Later is selected
+          continue;
+        }
+      }
+
+      // For PDC Schedule Session, hide the date field when "Schedule Later" is selected
+      if (section.title === "PDC Schedule Session" && (formData.promo_schedule_pdc?.enabled === "false" || formData.promo_schedule_pdc?.enabled === false)) {
+        fields = fields.filter(field => field.name !== "promo_schedule_pdc.schedule_date");
+      }
+
+      processedSections.push({
+        ...section,
+        fields,
+      });
+    }
+
+    return processedSections;
+  }, [template, promoOptions, formData]);
 
   if (!token) {
     return (
@@ -476,8 +524,8 @@ export default function PublicEnrollPage() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(128,0,0,0.08),_transparent_28%),linear-gradient(180deg,_#faf7f5_0%,_#ffffff_42%,_#f8fafc_100%)] px-4 py-10 text-slate-900">
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <section className="rounded-[32px] border border-slate-200 bg-white/95 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div className="mx-auto flex flex-col-reverse gap-6 lg:grid lg:max-w-6xl lg:grid-cols-[1.15fr_0.85fr]">
+        <section className="rounded-[32px] border border-slate-200 bg-white/95 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur lg:order-1">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="inline-flex items-center gap-2 rounded-full bg-[#800000]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-[#800000]">
@@ -518,35 +566,44 @@ export default function PublicEnrollPage() {
                 }
                 
                 return (
-                <div key={section.title} className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
-                  <div className="flex flex-col gap-1 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-bold text-slate-950">{section.title}</h2>
-                      {section.description ? <p className="text-sm text-slate-600">{section.description}</p> : null}
+                <div key={section.title}>
+                  <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex flex-col gap-1 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <h2 className="text-lg font-bold text-slate-950">{section.title}</h2>
+                        {section.description ? <p className="text-sm text-slate-600">{section.description}</p> : null}
+                      </div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        {fieldsToRender?.length || 0} fields
+                      </div>
                     </div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                      {fieldsToRender?.length || 0} fields
+
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      {fieldsToRender.map((field) => (
+                        <label key={field.name || field.content} className={field.type === "textarea" || field.type === "note" ? "md:col-span-2" : ""}>
+                          {field.type !== "note" ? (
+                            <span className="text-sm font-semibold text-slate-700">
+                              {field.label}
+                              {field.required ? <span className="ml-1 text-[#800000]">*</span> : null}
+                            </span>
+                          ) : null}
+                          <FieldControl
+                            field={field}
+                            value={field.type === "note" ? undefined : getNestedValue(formData, field.name)}
+                            onChange={handleChange}
+                            formData={formData}
+                          />
+                        </label>
+                      ))}
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-4 md:grid-cols-2">
-                    {fieldsToRender.map((field) => (
-                      <label key={field.name || field.content} className={field.type === "textarea" || field.type === "note" ? "md:col-span-2" : ""}>
-                        {field.type !== "note" ? (
-                          <span className="text-sm font-semibold text-slate-700">
-                            {field.label}
-                            {field.required ? <span className="ml-1 text-[#800000]">*</span> : null}
-                          </span>
-                        ) : null}
-                        <FieldControl
-                          field={field}
-                          value={field.type === "note" ? undefined : getNestedValue(formData, field.name)}
-                          onChange={handleChange}
-                          formData={formData}
-                        />
-                      </label>
-                    ))}
-                  </div>
+                  {/* Show message when Schedule Later is selected in PROMO forms */}
+                  {template?.enrollment_type === "PROMO" && section.title === "PDC Start Option" && formData.promo_schedule_pdc?.enabled === "false" && (
+                    <div className="mt-4 rounded-2xl border border-[#d9c9a0] bg-white px-4 py-3 text-sm text-slate-600">
+                      PDC is set to Schedule Later. PDC course information and schedule fields are hidden for now and can be filled once Schedule PDC Now is selected.
+                    </div>
+                  )}
                 </div>
                 );
               })}
@@ -575,7 +632,7 @@ export default function PublicEnrollPage() {
           ) : null}
         </section>
 
-        <aside className="space-y-6">
+        <aside className="space-y-6 lg:order-2">
           <div className="rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-200">Workflow</p>
             <ol className="mt-4 space-y-3 text-sm text-slate-200">

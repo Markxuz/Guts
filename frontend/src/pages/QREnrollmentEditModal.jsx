@@ -33,24 +33,26 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
       return;
     }
 
-    setForm({
-      promo_schedule_tdc: {
-        schedule_date: enrollment?.promo_schedule_tdc?.schedule_date || "",
-      },
-      promo_schedule_pdc: {
-        enabled: enrollment?.promo_schedule_pdc?.enabled ? "Schedule Now" : "Schedule Later",
-        schedule_date: enrollment?.promo_schedule_pdc?.schedule_date || "",
-      },
-      student: {
-        first_name: enrollment?.student?.first_name || "",
-        last_name: enrollment?.student?.last_name || "",
-        phone: enrollment?.student?.phone || "",
-      },
-      profile: {
-        gmail_account: enrollment?.profile?.gmail_account || enrollment?.Student?.StudentProfile?.gmail_account || "",
-      },
+    Promise.resolve().then(() => {
+      setForm({
+        promo_schedule_tdc: {
+          schedule_date: enrollment?.promo_schedule_tdc?.schedule_date || "",
+        },
+        promo_schedule_pdc: {
+          enabled: enrollment?.promo_schedule_pdc?.enabled ? "Schedule Now" : "Schedule Later",
+          schedule_date: enrollment?.promo_schedule_pdc?.schedule_date || "",
+        },
+        student: {
+          first_name: enrollment?.student?.first_name || "",
+          last_name: enrollment?.student?.last_name || "",
+          phone: enrollment?.student?.phone || "",
+        },
+        profile: {
+          gmail_account: enrollment?.profile?.gmail_account || enrollment?.Student?.StudentProfile?.gmail_account || "",
+        },
+      });
+      setErrorMessage("");
     });
-    setErrorMessage("");
   }, [isOpen, enrollment]);
 
   const saveMutation = useMutation({

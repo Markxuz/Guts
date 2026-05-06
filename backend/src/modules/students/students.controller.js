@@ -20,6 +20,50 @@ async function getAllStudents(req, res) {
   }
 }
 
+async function exportStudents(req, res) {
+  try {
+    const format = String(req.query?.format || "csv").toLowerCase();
+    const datePart = new Date().toISOString().slice(0, 10);
+
+    // Parse optional range or explicit startDate/endDate
+    const range = String(req.query?.range || "").toLowerCase();
+    let { startDate, endDate } = req.query || {};
+
+    if (!startDate && !endDate && range) {
+      const now = new Date();
+      let days = 0;
+      if (range === "daily") days = 1;
+      else if (range === "weekly") days = 7;
+      else if (range === "monthly") days = 30;
+
+      if (days > 0) {
+        const start = new Date(now);
+        start.setUTCDate(start.getUTCDate() - days);
+        startDate = start.toISOString();
+        endDate = now.toISOString();
+      }
+    }
+
+    const options = {};
+    if (startDate) options.startDate = startDate;
+    if (endDate) options.endDate = endDate;
+
+    if (format === "xlsx" || format === "xls" || format === "excel") {
+      const content = await service.exportStudentsExcel(options);
+      res.setHeader("Content-Type", "application/vnd.ms-excel; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="students-${datePart}.xls"`);
+      return res.status(200).send(content);
+    }
+
+    const csv = await service.exportStudentsCsv(options);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="students-${datePart}.csv"`);
+    return res.status(200).send(csv);
+  } catch (error) {
+    return sendHttpError(res, error, 500, "Failed to export students");
+  }
+}
+
 async function getStudentById(req, res) {
   try {
     const row = await service.getStudent(req.params.id);
@@ -100,6 +144,7 @@ async function updateEnrollmentStatus(req, res) {
 
 module.exports = {
   getAllStudents,
+  exportStudents,
   getStudentById,
   createStudent,
   updateStudent,

@@ -22,11 +22,55 @@ async function getTestClient() {
 
   if (!initializing) {
     initializing = (async () => {
+      const { DataTypes } = require("sequelize");
       await sequelize.authenticate();
       await ensureTableColumn("Enrollments", "promo_offer_id", {
-        type: require("sequelize").DataTypes.INTEGER,
+        type: DataTypes.INTEGER,
         allowNull: true,
       });
+
+      // Keep contract tests resilient even if local test DB missed recent migrations.
+      await ensureTableColumn("student_profiles", "client_type", {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+      await ensureTableColumn("student_profiles", "promo_offer_id", {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      });
+      await ensureTableColumn("student_profiles", "enrolling_for", {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+      await ensureTableColumn("student_profiles", "pdc_category", {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+      await ensureTableColumn("student_profiles", "tdc_source", {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+      await ensureTableColumn("student_profiles", "training_method", {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+      await ensureTableColumn("student_profiles", "is_already_driver", {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+      });
+      await ensureTableColumn("student_profiles", "target_vehicle", {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+      await ensureTableColumn("student_profiles", "transmission_type", {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+      await ensureTableColumn("student_profiles", "motorcycle_type", {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+
       await ensureDefaultUsers();
       cached = request(createApp());
       return cached;

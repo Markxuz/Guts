@@ -33,6 +33,17 @@ async function getSafeStudentProfileAttributes() {
     "student_permit_status",
     "medical_certificate_provider",
     "medical_certificate_date",
+    // Enrollment-specific fields
+    "client_type",
+    "promo_offer_id",
+    "enrolling_for",
+    "pdc_category",
+    "tdc_source",
+    "training_method",
+    "is_already_driver",
+    "target_vehicle",
+    "transmission_type",
+    "motorcycle_type",
   ];
 
   try {
@@ -127,7 +138,8 @@ const fullEnrollmentInclude = {
   ],
 };
 
-async function findAllStudents() {
+async function findAllStudents(options = {}) {
+  const { startDate, endDate } = options || {};
   const profileAttributes = await getSafeStudentProfileAttributes();
 
   const students = await Student.findAll({
@@ -145,10 +157,28 @@ async function findAllStudents() {
   // Only include students who have at least one "confirmed" or "completed" enrollment
   return students.filter((student) => {
     const enrollments = student.Enrollments || [];
-    
+
     // If no enrollments, don't show in list
     if (enrollments.length === 0) {
       return false;
+    }
+
+    // Optionally filter by date range on enrollment.created_at
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : null;
+      const end = endDate ? new Date(endDate) : null;
+
+      const inRange = enrollments.some((enrollment) => {
+        const created = enrollment.created_at || enrollment.createdAt || null;
+        if (!created) return false;
+        const createdDate = new Date(created);
+        if (Number.isNaN(createdDate.getTime())) return false;
+        if (start && createdDate < start) return false;
+        if (end && createdDate > end) return false;
+        return true;
+      });
+
+      if (!inRange) return false;
     }
 
     // Check if student has at least one paid (confirmed or completed) enrollment

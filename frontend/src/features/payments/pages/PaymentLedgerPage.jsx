@@ -39,7 +39,7 @@ export default function PaymentLedgerPage() {
     queryFn: () => resourceServices.students.list(),
   });
 
-  const students = Array.isArray(data) ? data : data?.data || [];
+  const students = useMemo(() => (Array.isArray(data) ? data : data?.data || []), [data]);
 
   const rows = useMemo(() => {
     return students

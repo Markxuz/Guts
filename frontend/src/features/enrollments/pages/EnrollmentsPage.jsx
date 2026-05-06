@@ -390,13 +390,15 @@ export default function EnrollmentsPage() {
     const birthdate = form.profile.birthdate;
     const age = calculateAge(birthdate);
     if (birthdate && age !== form.profile.age) {
-      setForm((current) => ({
-        ...current,
-        profile: {
-          ...current.profile,
-          age,
-        },
-      }));
+      Promise.resolve().then(() => {
+        setForm((current) => ({
+          ...current,
+          profile: {
+            ...current.profile,
+            age,
+          },
+        }));
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.profile.birthdate]);
@@ -551,22 +553,24 @@ export default function EnrollmentsPage() {
       return;
     }
 
-    setForm((current) => {
-      const nextFeeAmount = promoAmountSnapshot.fee_amount;
-      const nextDiscountAmount = promoAmountSnapshot.discount_amount;
+    Promise.resolve().then(() => {
+      setForm((current) => {
+        const nextFeeAmount = promoAmountSnapshot.fee_amount;
+        const nextDiscountAmount = promoAmountSnapshot.discount_amount;
 
-      if (current.enrollment.fee_amount === nextFeeAmount && current.enrollment.discount_amount === nextDiscountAmount) {
-        return current;
-      }
+        if (current.enrollment.fee_amount === nextFeeAmount && current.enrollment.discount_amount === nextDiscountAmount) {
+          return current;
+        }
 
-      return {
-        ...current,
-        enrollment: {
-          ...current.enrollment,
-          fee_amount: nextFeeAmount,
-          discount_amount: nextDiscountAmount,
-        },
-      };
+        return {
+          ...current,
+          enrollment: {
+            ...current.enrollment,
+            fee_amount: nextFeeAmount,
+            discount_amount: nextDiscountAmount,
+          },
+        };
+      });
     });
   }, [promoAmountSnapshot]);
 

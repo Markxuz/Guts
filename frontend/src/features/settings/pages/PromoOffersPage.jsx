@@ -38,7 +38,7 @@ function emptyForm() {
 
 export default function PromoOffersPage() {
   const navigate = useNavigate();
-  const { auth, role, logout } = useAuth();
+  const { auth, logout } = useAuth();
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -78,7 +78,9 @@ export default function PromoOffersPage() {
   }
 
   useEffect(() => {
-    loadOffers();
+    Promise.resolve().then(() => {
+      void loadOffers();
+    });
   }, []);
 
   const filteredRows = useMemo(() => {

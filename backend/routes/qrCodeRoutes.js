@@ -1,5 +1,5 @@
 const express = require("express");
-const { QRCode, User } = require("../models");
+const { QRCode } = require("../models");
 const { Op } = require("sequelize");
 const { v4: uuidv4 } = require("uuid");
 const { ActivityLog } = require("../models");
@@ -24,7 +24,7 @@ function requireEnrollmentReviewAccess(req, res, next) {
 }
 
 // Add audit logging for QR actions
-async function logActivity(userId, action, details) {
+async function logActivity(userId, action) {
   try {
     await ActivityLog.create({ userId, action });
   } catch (err) {

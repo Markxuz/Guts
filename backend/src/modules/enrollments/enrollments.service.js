@@ -88,9 +88,10 @@ function normalizeStudentPayload(student = {}) {
   };
 }
 
-function normalizeProfilePayload(studentId, profile = {}, extras = {}) {
+function normalizeProfilePayload(studentId, profile = {}, extras = {}, enrollment = {}) {
   return {
     student_id: studentId,
+    // Personal Information
     birthdate: normalizeText(profile.birthdate),
     birthplace: normalizeText(profile.birthplace),
     age: profile.age ?? null,
@@ -99,6 +100,7 @@ function normalizeProfilePayload(studentId, profile = {}, extras = {}) {
     nationality: normalizeText(profile.nationality),
     fb_link: normalizeText(profile.fb_link),
     gmail_account: normalizeText(profile.gmail_account),
+    // Address Information
     house_number: normalizeText(profile.house_number),
     street: normalizeText(profile.street),
     barangay: normalizeText(profile.barangay),
@@ -106,12 +108,25 @@ function normalizeProfilePayload(studentId, profile = {}, extras = {}) {
     province: normalizeText(profile.province),
     zip_code: normalizeText(profile.zip_code),
     region: normalizeText(extras.region),
+    // Emergency and Education
     educational_attainment: normalizeText(extras.educational_attainment),
     emergency_contact_person: normalizeText(extras.emergency_contact_person),
     emergency_contact_number: normalizeText(extras.emergency_contact_number),
+    // LTO and Training
     lto_portal_account: normalizeText(extras.lto_portal_account),
     driving_school_tdc: normalizeText(extras.driving_school_tdc),
     year_completed_tdc: normalizeText(extras.year_completed_tdc),
+    // Enrollment-specific fields (persist to StudentProfile)
+    client_type: normalizeText(profile.client_type || enrollment.client_type || extras.client_type),
+    promo_offer_id: profile.promo_offer_id ? Number(profile.promo_offer_id) : (enrollment.promo_offer_id ? Number(enrollment.promo_offer_id) : (extras.promo_offer_id ? Number(extras.promo_offer_id) : null)),
+    enrolling_for: normalizeText(profile.enrolling_for || enrollment.enrolling_for || extras.enrolling_for),
+    pdc_category: normalizeText(profile.pdc_category || enrollment.pdc_category || extras.pdc_category),
+    tdc_source: normalizeText(profile.tdc_source || enrollment.tdc_source || extras.tdc_source),
+    training_method: normalizeText(profile.training_method || enrollment.training_method || extras.training_method),
+    is_already_driver: Boolean(profile.is_already_driver ?? enrollment.is_already_driver ?? extras.is_already_driver),
+    target_vehicle: normalizeText(profile.target_vehicle || enrollment.target_vehicle || extras.target_vehicle),
+    transmission_type: normalizeText(profile.transmission_type || enrollment.transmission_type || extras.transmission_type),
+    motorcycle_type: normalizeText(profile.motorcycle_type || enrollment.motorcycle_type || extras.motorcycle_type),
   };
 }
 
@@ -300,8 +315,8 @@ async function resolveStudent(studentPayload, transaction) {
   return repository.createStudent(normalizedStudent, transaction);
 }
 
-async function upsertStudentProfile(studentId, profilePayload, extrasPayload, transaction) {
-  const normalizedProfile = normalizeProfilePayload(studentId, profilePayload, extrasPayload);
+async function upsertStudentProfile(studentId, profilePayload, extrasPayload, enrollmentPayload, transaction) {
+  const normalizedProfile = normalizeProfilePayload(studentId, profilePayload, extrasPayload, enrollmentPayload);
   const existingProfile = await repository.findStudentProfileByStudentId(studentId, transaction);
 
   if (existingProfile) {
@@ -363,7 +378,7 @@ async function addEnrollment(payload) {
     }
 
     const student = await resolveStudent(payload.student, transaction);
-    await upsertStudentProfile(student.id, payload.profile, payload.extras, transaction);
+    await upsertStudentProfile(student.id, payload.profile, payload.extras, payload.enrollment, transaction);
     const dlCode = await resolveDlCode(payload.enrollment_type, transaction);
     const enrollment = await repository.createEnrollment(
       normalizeEnrollmentPayload(payload.enrollment, payload.extras, student.id, dlCode.id, payload.qrCodeId ?? payload.qr_code_id ?? null),
