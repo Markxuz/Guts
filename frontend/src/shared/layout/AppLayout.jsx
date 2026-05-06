@@ -230,6 +230,15 @@ export default function AppLayout() {
     <div className={`flex min-h-screen ${isDarkMode ? "bg-[radial-gradient(circle_at_15%_-10%,rgba(126,34,71,0.34),transparent_40%),radial-gradient(circle_at_90%_0%,rgba(30,64,175,0.22),transparent_36%),linear-gradient(180deg,#0d1019_0%,#111827_42%,#0b1220_100%)] text-[#dbe5f6]" : "bg-slate-100 text-slate-700"}`}>
       <div className={`fixed inset-0 z-50 bg-black/55 transition-opacity duration-300 md:hidden ${isMobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} aria-hidden="true" onClick={() => setIsMobileNavOpen(false)} />
 
+      <button
+        type="button"
+        onClick={() => setIsMobileNavOpen(true)}
+        aria-label="Open navigation menu"
+        className={`fixed left-4 top-4 z-[70] inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-lg md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4d57a]" : "border-slate-200 bg-white text-slate-700"}`}
+      >
+        <Menu size={18} />
+      </button>
+
       <aside className={`fixed left-0 top-0 z-40 hidden h-screen flex-col overflow-visible border-r border-white/10 bg-[#14121a] transition-all duration-300 print:hidden md:flex ${isCollapsed ? "w-20" : "w-64"}`}>
         <div className={`border-b border-white/10 py-4 ${isCollapsed ? "px-2" : "px-5"}`}>
           <div className={`flex ${isCollapsed ? "justify-center" : "items-start justify-between"}`}>
@@ -493,16 +502,7 @@ export default function AppLayout() {
       </aside>
 
       <div className={`flex min-h-screen min-w-0 flex-1 flex-col transition-all duration-300 print:ml-0 print:bg-white ${isCollapsed ? "md:ml-20" : "md:ml-64"} ${isDarkMode ? "bg-transparent text-[#dbe5f6]" : "bg-slate-200 text-slate-800"}`}>
-        <header className={`sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4f1ec]" : "border-slate-200 bg-white/95 text-slate-900"}`}>
-          <button
-            type="button"
-            onClick={() => setIsMobileNavOpen(true)}
-            aria-label="Open navigation menu"
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${isDarkMode ? "border-white/10 bg-white/5 text-[#f4d57a]" : "border-slate-200 bg-slate-50 text-slate-700"}`}
-          >
-            <Menu size={18} />
-          </button>
-
+        <header className={`sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 pl-16 md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4f1ec]" : "border-slate-200 bg-white/95 text-slate-900"}`}>
           <div className="min-w-0 flex-1 px-3 text-center">
             <p className="truncate text-sm font-semibold">Guardians Technical School INC.</p>
             <p className={`truncate text-[11px] tracking-wide ${isDarkMode ? "text-[#dfb95a]" : "text-[#800000]"}`}>Admin Dashboard</p>
