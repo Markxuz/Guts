@@ -23,6 +23,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
     },
     student: {
       first_name: "",
+      middle_name: "",
       last_name: "",
       phone: "",
     },
@@ -73,6 +74,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
         },
         student: {
           first_name: enrollment?.student?.first_name || "",
+          middle_name: enrollment?.student?.middle_name || "",
           last_name: enrollment?.student?.last_name || "",
           phone: enrollment?.student?.phone || "",
         },
@@ -102,6 +104,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
         },
         student: {
           first_name: form.student.first_name,
+          middle_name: form.student.middle_name,
           last_name: form.student.last_name,
           phone: form.student.phone,
         },
@@ -216,6 +219,15 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
                   />
                 </label>
                 <label className="flex flex-col gap-1">
+                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Middle Name</span>
+                  <input
+                    type="text"
+                    value={form.student.middle_name}
+                    onChange={(event) => handleFieldChange("student", "middle_name", event.target.value)}
+                    className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
                   <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Last Name *</span>
                   <input
                     type="text"
@@ -224,7 +236,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
                     className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
                   />
                 </label>
-                <label className="flex flex-col gap-1 md:col-span-2">
+                <label className="flex flex-col gap-1">
                   <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Contact Number</span>
                   <input
                     type="tel"

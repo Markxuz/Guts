@@ -234,7 +234,7 @@ export default function AppLayout() {
         type="button"
         onClick={() => setIsMobileNavOpen(true)}
         aria-label="Open navigation menu"
-        className={`fixed left-4 top-4 z-[70] inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-lg md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4d57a]" : "border-slate-200 bg-white text-slate-700"}`}
+        className={`fixed left-4 top-4 z-[80] inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-lg md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4d57a]" : "border-slate-200 bg-white text-slate-700"}`}
       >
         <Menu size={18} />
       </button>
@@ -502,7 +502,7 @@ export default function AppLayout() {
       </aside>
 
       <div className={`flex min-h-screen min-w-0 flex-1 flex-col transition-all duration-300 print:ml-0 print:bg-white ${isCollapsed ? "md:ml-20" : "md:ml-64"} ${isDarkMode ? "bg-transparent text-[#dbe5f6]" : "bg-slate-200 text-slate-800"}`}>
-        <header className={`sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 pl-16 md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4f1ec]" : "border-slate-200 bg-white/95 text-slate-900"}`}>
+        <header className={`sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 md:pl-16 pl-4 md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4f1ec]" : "border-slate-200 bg-white/95 text-slate-900"}`}>
           <div className="min-w-0 flex-1 px-3 text-center">
             <p className="truncate text-sm font-semibold">Guardians Technical School INC.</p>
             <p className={`truncate text-[11px] tracking-wide ${isDarkMode ? "text-[#dfb95a]" : "text-[#800000]"}`}>Admin Dashboard</p>

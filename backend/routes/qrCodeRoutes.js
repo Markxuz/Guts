@@ -107,14 +107,14 @@ router.delete("/qrcodes/:id", requireAdmin, async (req, res) => {
 // GET /enrollments/pending - list pending enrollments from QR
 router.get("/enrollments/pending", requireEnrollmentReviewAccess, async (req, res) => {
   try {
-    const { Enrollment, QRCode, Student, StudentProfile } = require("../models");
+    const { Enrollment, QRCode, Student, StudentProfile, Schedule } = require("../models");
     const enrollments = await Enrollment.findAll({
       where: { status: "pending", qrCodeId: { [Op.ne]: null } },
       include: [
         {
           model: Student,
           required: false,
-          attributes: ["id", "first_name", "last_name", "email", "phone"],
+          attributes: ["id", "first_name", "middle_name", "last_name", "email", "phone"],
           include: [
             {
               model: StudentProfile,
@@ -134,14 +134,52 @@ router.get("/enrollments/pending", requireEnrollmentReviewAccess, async (req, re
       limit: 50,
     });
 
-    const normalized = enrollments.map((entry) => {
+    const normalized = await Promise.all(enrollments.map(async (entry) => {
       const data = entry.toJSON();
+      const studentId = data.student?.id || data.Student?.id || data.student_id || null;
+
+      const fullStudent = studentId
+        ? await Student.findByPk(studentId, {
+            attributes: ["id", "first_name", "middle_name", "last_name", "email", "phone"],
+            include: [
+              {
+                model: StudentProfile,
+                required: false,
+                attributes: ["gmail_account"],
+              },
+            ],
+          })
+        : null;
+
+      const schedules = await Schedule.findAll({
+        where: { enrollment_id: data.id },
+        attributes: ["id", "schedule_date", "instructor_id", "care_of_instructor_id"],
+        order: [["id", "ASC"]],
+      });
+
+      const tdcSchedule = schedules[0] || null;
+      const pdcSchedule = schedules[1] || null;
+
+      const studentJson = fullStudent ? fullStudent.toJSON() : (data.student || data.Student || null);
+      const profileJson = studentJson?.StudentProfile || data.profile || data.Student?.StudentProfile || null;
+
       return {
         ...data,
-        student: data.student || data.Student || null,
-        profile: data.profile || data.Student?.StudentProfile || null,
+        student: studentJson,
+        profile: profileJson,
+        promo_schedule_tdc: tdcSchedule ? {
+          schedule_date: tdcSchedule.schedule_date,
+          instructor_id: tdcSchedule.instructor_id,
+          care_of_instructor_id: tdcSchedule.care_of_instructor_id,
+        } : null,
+        promo_schedule_pdc: pdcSchedule ? {
+          schedule_date: pdcSchedule.schedule_date,
+          instructor_id: pdcSchedule.instructor_id,
+          care_of_instructor_id: pdcSchedule.care_of_instructor_id,
+          enabled: true,
+        } : null,
       };
-    });
+    }));
 
     res.json(normalized);
   } catch (err) {
