@@ -33,8 +33,8 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
   const [errorMessage, setErrorMessage] = useState("");
   const [instructors, setInstructors] = useState([]);
 
+  // Fetch instructors on mount
   useEffect(() => {
-    // fetch instructor list for dropdowns
     let mounted = true;
     (async () => {
       try {
@@ -42,13 +42,18 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
         if (mounted && resp?.data) {
           setInstructors(resp.data.map((i) => ({ value: i.id, label: `${i.first_name} ${i.last_name}` })));
         }
-      } catch (e) {
+      } catch {
         // ignore - dropdown will remain empty
       }
     })();
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
+  // Load form data when modal opens
+  useEffect(() => {
     if (!isOpen || !enrollment) {
       return;
     }
