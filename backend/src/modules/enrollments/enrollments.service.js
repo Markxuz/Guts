@@ -524,66 +524,113 @@ async function editEnrollment(id, payload) {
   // Extract nested fields that require separate model updates
   const { student: studentPayload, profile: profilePayload, promo_schedule_tdc, promo_schedule_pdc, ...enrollmentPayload } = payload;
 
-  // Update student if provided
-  if (studentPayload && enrollment.student_id) {
-    const student = await repository.findStudentById(enrollment.student_id);
-    if (student && (studentPayload.first_name || studentPayload.last_name || studentPayload.phone)) {
-      const studentUpdates = {};
-      if (studentPayload.first_name) studentUpdates.first_name = studentPayload.first_name;
-      if (studentPayload.last_name) studentUpdates.last_name = studentPayload.last_name;
-      if (studentPayload.phone !== undefined) studentUpdates.phone = studentPayload.phone;
-      
-      if (Object.keys(studentUpdates).length > 0) {
-        await repository.updateStudent(student, studentUpdates);
-      }
-    }
-  }
+  const transaction = await sequelize.transaction();
 
-  // Update student profile if provided
-  if (profilePayload && enrollment.student_id) {
-    const profile = await repository.findStudentProfileByStudentId(enrollment.student_id);
-    if (profile) {
-      const profileUpdates = {};
-      
-      // Update all provided profile fields
-      const updateFields = [
-        'gmail_account', 'house_number', 'street', 'barangay', 'city', 'province',
-        'zip_code', 'birthdate', 'birthplace', 'age', 'gender', 'civil_status',
-        'nationality', 'fb_link', 'region', 'educational_attainment',
-        'emergency_contact_person', 'emergency_contact_number', 'lto_portal_account',
-        'driving_school_tdc', 'year_completed_tdc', 'client_type', 'enrolling_for',
-        'pdc_category', 'tdc_source', 'training_method', 'is_already_driver',
-        'target_vehicle', 'transmission_type', 'motorcycle_type', 'promo_offer_id'
-      ];
-      
-      updateFields.forEach(field => {
-        if (field in profilePayload) {
-          const value = profilePayload[field];
-          // Apply uppercase normalization for address fields
-          if (['house_number', 'street', 'barangay', 'city', 'province', 'first_name', 'last_name', 'middle_name'].includes(field)) {
-            profileUpdates[field] = normalizeUpperText(value);
-          } else {
-            profileUpdates[field] = value;
-          }
+  try {
+    // Update student if provided
+    if (studentPayload && enrollment.student_id) {
+      const student = await repository.findStudentById(enrollment.student_id);
+      if (student && (studentPayload.first_name || studentPayload.last_name || studentPayload.phone)) {
+        const studentUpdates = {};
+        if (studentPayload.first_name) studentUpdates.first_name = studentPayload.first_name;
+        if (studentPayload.last_name) studentUpdates.last_name = studentPayload.last_name;
+        if (studentPayload.phone !== undefined) studentUpdates.phone = studentPayload.phone;
+        
+        if (Object.keys(studentUpdates).length > 0) {
+          await repository.updateStudent(student, studentUpdates);
         }
-      });
-      
-      if (Object.keys(profileUpdates).length > 0) {
-        await repository.updateStudentProfile(profile, profileUpdates);
       }
     }
-  }
 
-  // Map promo schedule dates to enrollment date fields
-  if (promo_schedule_tdc?.schedule_date) {
-    enrollmentPayload.tdc_completion_deadline = promo_schedule_tdc.schedule_date;
-  }
-  if (promo_schedule_pdc?.schedule_date) {
-    enrollmentPayload.pdc_eligibility_date = promo_schedule_pdc.schedule_date;
-  }
+    // Update student profile if provided
+    if (profilePayload && enrollment.student_id) {
+      const profile = await repository.findStudentProfileByStudentId(enrollment.student_id);
+      if (profile) {
+        const profileUpdates = {};
+        
+        // Update all provided profile fields
+        const updateFields = [
+          'gmail_account', 'house_number', 'street', 'barangay', 'city', 'province',
+          'zip_code', 'birthdate', 'birthplace', 'age', 'gender', 'civil_status',
+          'nationality', 'fb_link', 'region', 'educational_attainment',
+          'emergency_contact_person', 'emergency_contact_number', 'lto_portal_account',
+          'driving_school_tdc', 'year_completed_tdc', 'client_type', 'enrolling_for',
+          'pdc_category', 'tdc_source', 'training_method', 'is_already_driver',
+          'target_vehicle', 'transmission_type', 'motorcycle_type', 'promo_offer_id'
+        ];
+        
+        updateFields.forEach(field => {
+          if (field in profilePayload) {
+            const value = profilePayload[field];
+            // Apply uppercase normalization for address fields
+            if (['house_number', 'street', 'barangay', 'city', 'province', 'first_name', 'last_name', 'middle_name'].includes(field)) {
+              profileUpdates[field] = normalizeUpperText(value);
+            } else {
+              profileUpdates[field] = value;
+            }
+          }
+        });
+        
+        if (Object.keys(profileUpdates).length > 0) {
+          await repository.updateStudentProfile(profile, profileUpdates);
+        }
+      }
+    }
 
-  // Update enrollment with mapped fields
-  return repository.updateEnrollment(enrollment, enrollmentPayload);
+    // Map promo schedule dates to enrollment date fields
+    if (promo_schedule_tdc?.schedule_date) {
+      enrollmentPayload.tdc_completion_deadline = promo_schedule_tdc.schedule_date;
+    }
+    if (promo_schedule_pdc?.schedule_date) {
+      enrollmentPayload.pdc_eligibility_date = promo_schedule_pdc.schedule_date;
+    }
+
+    // If payment data is being submitted with fee_amount, create Payment record and calculate balance
+    if (enrollmentPayload.fee_amount && enrollmentPayload.status === 'confirmed') {
+      const feeAmount = toCurrencyNumber(enrollmentPayload.fee_amount);
+      const discountAmount = toCurrencyNumber(enrollmentPayload.discount_amount ?? enrollment.discount_amount ?? 0);
+      const totalDue = Math.max(feeAmount - discountAmount, 0);
+
+      // Fetch existing payments for this enrollment to calculate totals
+      const Payment = require('../../../models').Payment;
+      const existingPayments = await Payment.findAll({ where: { enrollment_id: id }, transaction });
+      const totalPaidBefore = existingPayments.reduce((sum, p) => sum + toCurrencyNumber(p.amount), 0);
+      
+      // Calculate amount to record in this payment
+      // Use the new fee_amount as basis, minus what's already paid
+      const newAmountToPay = Math.max(totalDue - totalPaidBefore, 0);
+      
+      if (newAmountToPay > 0) {
+        // Create a Payment record to track this payment in Payment Ledger
+        await Payment.create({
+          enrollment_id: id,
+          amount: newAmountToPay,
+          payment_method: normalizeText(enrollmentPayload.payment_method) || 'cash',
+          payment_status: 'paid',
+          reference_number: enrollmentPayload.payment_reference_number || null,
+          account_number: null,
+        }, { transaction });
+      }
+
+      // Calculate new balance: total due minus all payments
+      const totalPaidAfter = totalPaidBefore + newAmountToPay;
+      const newBalance = Math.max(totalDue - totalPaidAfter, 0);
+      enrollmentPayload.balance = newBalance;
+      
+      // Update payment status on enrollment
+      if (enrollmentPayload.payment_terms) {
+        enrollmentPayload.payment_status = newBalance <= 0 ? 'paid' : 'partial';
+      }
+    }
+
+    // Update enrollment with mapped fields
+    const updated = await repository.updateEnrollment(enrollment, enrollmentPayload, transaction);
+    await transaction.commit();
+    return updated;
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 }
 
 async function removeEnrollment(id) {
