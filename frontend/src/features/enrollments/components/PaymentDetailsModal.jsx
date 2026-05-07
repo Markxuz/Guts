@@ -75,13 +75,17 @@ export default function PaymentDetailsModal({
   const promoOfferText =
     promoOfferLabel || enrollment?.promoOffer?.name || enrollment?.PromoOffer?.name || enrollment?.promo_offer_name || enrollment?.promo_offer_id || "None";
   const birthdateValue = derivedProfile?.birthdate || "N/A";
-  const addressValue = [
+  // Remove address tokens that look like phone numbers or long numeric sequences
+  const rawAddressParts = [
     derivedProfile?.house_number,
     derivedProfile?.street,
     derivedProfile?.barangay,
     derivedProfile?.city,
     derivedProfile?.province,
-  ].filter(Boolean).join(", ") || "N/A";
+  ].filter(Boolean).map((p) => String(p).trim());
+
+  const addressParts = rawAddressParts.filter((p) => !/^\d{6,}$/.test(p));
+  const addressValue = (addressParts.length ? addressParts.join(", ") : null) || "N/A";
   const emergencyContactValue = [
     derivedProfile?.emergency_contact_person,
     derivedProfile?.emergency_contact_number,

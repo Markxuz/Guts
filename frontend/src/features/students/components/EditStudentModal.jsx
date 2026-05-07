@@ -167,7 +167,7 @@ export default function EditStudentModal({ student, form, onChange, onClose, onS
 
         <form onSubmit={onSubmit} className="thin-scrollbar max-h-[75vh] overflow-y-auto px-5 py-4">
           <h4 className={sectionHeadingClass}>Personal Information</h4>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2">
             <input
               value={form.student.first_name}
               onChange={(event) => handleFieldChange("student", "first_name", event.target.value)}
@@ -186,16 +186,6 @@ export default function EditStudentModal({ student, form, onChange, onClose, onS
               onChange={(event) => handleFieldChange("student", "last_name", event.target.value)}
               placeholder="Last Name"
               required
-              className={inputClass}
-            />
-          </div>
-
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <input
-              value={form.student.email}
-              onChange={(event) => handleFieldChange("student", "email", event.target.value)}
-              placeholder="Email"
-              type="email"
               className={inputClass}
             />
             <input

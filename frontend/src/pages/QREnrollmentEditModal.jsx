@@ -31,8 +31,24 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
     },
   });
   const [errorMessage, setErrorMessage] = useState("");
+  const [instructors, setInstructors] = useState([]);
 
   useEffect(() => {
+    // fetch instructor list for dropdowns
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await api.get('/instructors');
+        if (mounted && resp?.data) {
+          setInstructors(resp.data.map((i) => ({ value: i.id, label: `${i.first_name} ${i.last_name}` })));
+        }
+      } catch (e) {
+        // ignore - dropdown will remain empty
+      }
+    })();
+
+    return () => { mounted = false; };
+
     if (!isOpen || !enrollment) {
       return;
     }
@@ -239,29 +255,29 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Instructor (Optional)</span>
-                  <input
-                    type="text"
-                    placeholder="Select instructor"
-                    value={form.promo_schedule_tdc.instructor_id ? `Instructor ${form.promo_schedule_tdc.instructor_id}` : ""}
-                    onChange={(event) => {
-                      const match = event.target.value.match(/\d+/);
-                      handleFieldChange("promo_schedule_tdc", "instructor_id", match ? parseInt(match[0]) : null);
-                    }}
+                  <select
+                    value={form.promo_schedule_tdc.instructor_id ?? ""}
+                    onChange={(e) => handleFieldChange("promo_schedule_tdc", "instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
                     className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                  />
+                  >
+                    <option value="">Select instructor</option>
+                    {instructors.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                 </label>
                 <label className="flex flex-col gap-1">
                   <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Care of Instructor (Optional)</span>
-                  <input
-                    type="text"
-                    placeholder="Select care-of instructor"
-                    value={form.promo_schedule_tdc.care_of_instructor_id ? `Instructor ${form.promo_schedule_tdc.care_of_instructor_id}` : ""}
-                    onChange={(event) => {
-                      const match = event.target.value.match(/\d+/);
-                      handleFieldChange("promo_schedule_tdc", "care_of_instructor_id", match ? parseInt(match[0]) : null);
-                    }}
+                  <select
+                    value={form.promo_schedule_tdc.care_of_instructor_id ?? ""}
+                    onChange={(e) => handleFieldChange("promo_schedule_tdc", "care_of_instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
                     className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                  />
+                  >
+                    <option value="">Select care-of instructor</option>
+                    {instructors.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                 </label>
               </div>
               <p className="mt-2 rounded-lg border border-[#d9c9a0] bg-white px-3 py-2 text-xs text-slate-600">
@@ -314,29 +330,29 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
                   <div className="grid gap-3 md:grid-cols-2">
                     <label className="flex flex-col gap-1">
                       <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Instructor (Optional)</span>
-                      <input
-                        type="text"
-                        placeholder="Select instructor"
-                        value={form.promo_schedule_pdc.instructor_id ? `Instructor ${form.promo_schedule_pdc.instructor_id}` : ""}
-                        onChange={(event) => {
-                          const match = event.target.value.match(/\d+/);
-                          handleFieldChange("promo_schedule_pdc", "instructor_id", match ? parseInt(match[0]) : null);
-                        }}
+                      <select
+                        value={form.promo_schedule_pdc.instructor_id ?? ""}
+                        onChange={(e) => handleFieldChange("promo_schedule_pdc", "instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
                         className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                      />
+                      >
+                        <option value="">Select instructor</option>
+                        {instructors.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Care of Instructor (Optional)</span>
-                      <input
-                        type="text"
-                        placeholder="Select care-of instructor"
-                        value={form.promo_schedule_pdc.care_of_instructor_id ? `Instructor ${form.promo_schedule_pdc.care_of_instructor_id}` : ""}
-                        onChange={(event) => {
-                          const match = event.target.value.match(/\d+/);
-                          handleFieldChange("promo_schedule_pdc", "care_of_instructor_id", match ? parseInt(match[0]) : null);
-                        }}
+                      <select
+                        value={form.promo_schedule_pdc.care_of_instructor_id ?? ""}
+                        onChange={(e) => handleFieldChange("promo_schedule_pdc", "care_of_instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
                         className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                      />
+                      >
+                        <option value="">Select care-of instructor</option>
+                        {instructors.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                     </label>
                   </div>
                 </div>

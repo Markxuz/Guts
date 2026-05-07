@@ -459,6 +459,20 @@ async function addEnrollment(payload) {
             },
       };
 
+      // Persist promo schedule dates onto the enrollment so the admin UI can show the
+      // desired date immediately without having to join schedules in the pending list.
+      const enrollmentDateUpdates = {};
+      if (promoTdc && promoTdc.item && promoTdc.item.schedule_date) {
+        enrollmentDateUpdates.tdc_completion_deadline = promoTdc.item.schedule_date;
+      }
+      if (promoPdc && promoPdc.item && promoPdc.item.schedule_date) {
+        enrollmentDateUpdates.pdc_eligibility_date = promoPdc.item.schedule_date;
+      }
+
+      if (Object.keys(enrollmentDateUpdates).length > 0) {
+        await repository.updateEnrollment(enrollment, enrollmentDateUpdates, transaction);
+      }
+
       schedule = promoPdc || promoTdc;
     } else if (payload.schedule?.enabled) {
       enrollment.Student = student;
