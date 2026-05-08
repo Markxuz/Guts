@@ -145,7 +145,17 @@ router.get("/enrollments/pending", requireEnrollmentReviewAccess, async (req, re
               {
                 model: StudentProfile,
                 required: false,
-                attributes: ["gmail_account"],
+                // include address and relevant profile fields so admin review shows full address
+                attributes: [
+                  "house_number",
+                  "street",
+                  "barangay",
+                  "city",
+                  "province",
+                  "zip_code",
+                  "region",
+                  "gmail_account",
+                ],
               },
             ],
           })

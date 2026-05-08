@@ -115,7 +115,7 @@ export default function PaymentLedgerPage() {
 
   return (
     <section className="space-y-4">
-      <div className="rounded-2xl border border-slate-300 bg-gradient-to-r from-white to-slate-100 p-5 shadow-sm">
+      <div className="rounded-2xl border border-slate-300 bg-gradient-to-r from-white to-slate-100 p-5 shadow-sm card-light">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Payment Ledger</h1>
@@ -132,15 +132,15 @@ export default function PaymentLedgerPage() {
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 card-light">
             <p className="text-xs font-semibold uppercase text-rose-700">With Balance</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">{totals.withBalance}</p>
           </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 card-light">
             <p className="text-xs font-semibold uppercase text-emerald-700">Completed Payments</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">{totals.completed}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 card-light">
             <p className="text-xs font-semibold uppercase text-slate-500">Current Filter</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {[
@@ -163,12 +163,16 @@ export default function PaymentLedgerPage() {
       </div>
 
       {banner ? (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        <div className={`rounded-lg px-4 py-3 text-sm ${
+          banner.toLowerCase().includes("failed") || banner.toLowerCase().includes("error")
+            ? "border border-rose-200 bg-rose-50 text-rose-700"
+            : "border border-emerald-200 bg-emerald-50 text-emerald-700"
+        }`}>
           {banner}
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm card-light">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-slate-900">Ledger Entries</p>
@@ -249,7 +253,9 @@ export default function PaymentLedgerPage() {
                     </td>
                     <td className="px-4 py-2.5 align-top">
                       <div className="flex flex-wrap gap-2">
-                        {row.summary.remainingBalance > 0 ? (
+                        {row.summary.remainingBalance > 0 && 
+                         (row.category.paymentTerms?.toLowerCase().includes("installment") || 
+                          row.category.paymentTerms?.toLowerCase().includes("downpayment")) ? (
                           <button
                             type="button"
                             onClick={() => setPaymentTarget(row)}

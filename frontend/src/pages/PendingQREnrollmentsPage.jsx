@@ -72,15 +72,15 @@ export default function PendingQREnrollmentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(128,0,0,0.08),_transparent_30%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_55%,_#faf5f3_100%)] px-4 py-8 text-slate-900">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(128,0,0,0.08),_transparent_30%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_55%,_#faf5f3_100%)] px-4 py-8 text-slate-900 card-light">
       <div className="mx-auto max-w-6xl space-y-6">
         {toastMsg && (
-          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-medium text-emerald-700 shadow-sm flex items-center gap-2">
+          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm font-medium text-emerald-700 shadow-sm flex items-center gap-2 card-light">
             <CheckCircle2 size={16} />
             {toastMsg}
           </div>
         )}
-        <header className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+        <header className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)] card-light">
           <p className="inline-flex items-center gap-2 rounded-full bg-[#800000]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-[#800000]">
             <ShieldCheck size={14} />
             QR Review Queue
@@ -93,17 +93,17 @@ export default function PendingQREnrollmentsPage() {
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:w-[360px]">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="card-light flex h-full min-h-[96px] flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Queued</p>
                 <p className="mt-2 text-2xl font-bold text-slate-950">{enrollments.length}</p>
               </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="card-light flex h-full min-h-[96px] flex-col justify-between overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Review</p>
                 <p className="mt-2 text-2xl font-bold text-slate-950">{enrollments.filter((item) => !item.reviewed_at).length}</p>
               </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <div className="card-light flex h-full min-h-[96px] flex-col justify-between overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Action</p>
-                <p className="mt-2 text-2xl font-bold text-slate-950">Approve</p>
+                <p className="mt-2 text-base font-bold leading-tight text-slate-950 sm:text-lg">Approve</p>
               </div>
             </div>
           </div>
@@ -114,14 +114,14 @@ export default function PendingQREnrollmentsPage() {
         ) : null}
 
         {loading ? (
-          <div className="flex items-center gap-3 rounded-[24px] border border-slate-200 bg-white px-5 py-5 text-sm text-slate-600 shadow-sm">
+          <div className="flex items-center gap-3 rounded-[24px] border border-slate-200 bg-white px-5 py-5 text-sm text-slate-600 shadow-sm card-light">
             <Loader2 size={16} className="animate-spin" />
             Loading pending QR enrollments...
           </div>
         ) : null}
 
         {!loading && !error && !enrollments.length ? (
-          <div className="rounded-[28px] border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm">
+          <div className="rounded-[28px] border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm card-light">
             <CheckCircle2 className="mx-auto text-emerald-600" size={32} />
             <h2 className="mt-4 text-2xl font-bold text-slate-950">No pending QR enrollments</h2>
             <p className="mt-2 text-sm text-slate-600">Once a public submission arrives, it will appear here for approval before payment.</p>
@@ -129,7 +129,7 @@ export default function PendingQREnrollmentsPage() {
         ) : null}
 
         {!loading && enrollments.length > 0 ? (
-          <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm card-light">
             <div className="border-b border-slate-200 px-5 py-4">
               <p className="text-sm font-semibold text-slate-900">Queue details</p>
               <p className="text-xs text-slate-500">The enrollment status changes to confirmed after approval.</p>

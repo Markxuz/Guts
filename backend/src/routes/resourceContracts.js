@@ -191,6 +191,28 @@ const fuelUpdateSchema = Joi.object({
   logged_at: Joi.date().iso().allow(null, ""),
 }).min(1);
 
+const vehicleUsageCreateSchema = Joi.object({
+  vehicle_id: Joi.number().integer().positive().required(),
+  instructor_id: Joi.number().integer().positive().allow(null),
+  start_odometer: Joi.number().min(0).required(),
+  end_odometer: Joi.number().min(0).allow(null),
+  start_date: Joi.date().iso().allow(null, ""),
+  end_date: Joi.date().iso().allow(null, ""),
+  notes: optionalText,
+  created_by: Joi.number().integer().positive().allow(null),
+});
+
+const vehicleUsageUpdateSchema = Joi.object({
+  vehicle_id: Joi.number().integer().positive(),
+  instructor_id: Joi.number().integer().positive().allow(null),
+  start_odometer: Joi.number().min(0),
+  end_odometer: Joi.number().min(0).allow(null),
+  start_date: Joi.date().iso().allow(null, ""),
+  end_date: Joi.date().iso().allow(null, ""),
+  notes: optionalText,
+  created_by: Joi.number().integer().positive().allow(null),
+}).min(1);
+
 const certificateCreateSchema = Joi.object({
   certificate_number: Joi.string().trim().required(),
   issue_date: Joi.date().iso().allow(null, ""),
@@ -239,6 +261,10 @@ module.exports = {
   fuelLogs: {
     createSchema: fuelCreateSchema,
     updateSchema: fuelUpdateSchema,
+  },
+  vehicleUsages: {
+    createSchema: vehicleUsageCreateSchema,
+    updateSchema: vehicleUsageUpdateSchema,
   },
   certificates: {
     createSchema: certificateCreateSchema,

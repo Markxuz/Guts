@@ -11,6 +11,7 @@ const {
   FuelLog,
   PromoOffer,
   Payment,
+  VehicleUsage,
 } = require("../../models");
 const createCrudRouter = require("../../routes/createCrudRouter");
 const authRoutes = require("../modules/auth/auth.routes");
@@ -152,6 +153,55 @@ function createApiRouter() {
           model: Vehicle,
           as: "vehicle",
           attributes: ["id", "vehicle_name", "plate_number", "vehicle_type"],
+          required: false,
+        },
+      ],
+    })
+  );
+  // Middleware to restrict vehicle usage modifications to admin/sub_admin/staff
+  const authorizeVehicleUsageModification = (req, res, next) => {
+    const allowedRoles = ["admin", "sub_admin", "staff"];
+    if (allowedRoles.includes(req.user?.role)) {
+      return next();
+    }
+    return res.status(403).json({ message: "Unauthorized: insufficient permissions for vehicle usage management" });
+  };
+
+  router.use(
+    "/vehicle-usages",
+    authenticateToken,
+    createCrudRouter(VehicleUsage, {
+      createRequiredFields: ["vehicle_id", "start_odometer"],
+      createSchema: resourceContracts.vehicleUsages.createSchema,
+      updateSchema: resourceContracts.vehicleUsages.updateSchema,
+      createMiddleware: [authorizeVehicleUsageModification],
+      updateMiddleware: [authorizeVehicleUsageModification],
+      deleteMiddleware: [authorizeVehicleUsageModification],
+      listInclude: [
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "vehicle_name", "plate_number", "vehicle_type"],
+          required: false,
+        },
+        {
+          model: Instructor,
+          as: "instructor",
+          attributes: ["id", "name"],
+          required: false,
+        },
+      ],
+      detailInclude: [
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "vehicle_name", "plate_number", "vehicle_type"],
+          required: false,
+        },
+        {
+          model: Instructor,
+          as: "instructor",
+          attributes: ["id", "name"],
           required: false,
         },
       ],

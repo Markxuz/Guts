@@ -243,7 +243,9 @@ function buildMonthlySeries(rows) {
     pdcExperience: 0,
   }));
 
-  rows.forEach((row) => {
+  const meaningfulRows = (rows || []).filter((r) => Boolean(r?.Student && (r.Student.first_name || r.Student.last_name)));
+
+  meaningfulRows.forEach((row) => {
     const date = new Date(row.created_at || row.createdAt || 0);
     if (Number.isNaN(date.valueOf())) return;
 
@@ -263,56 +265,6 @@ function toNumber(value) {
   return numeric;
 }
 
-function durationHours(startTime, endTime) {
-  if (!startTime || !endTime) return 0;
-
-  const [startHour = 0, startMinute = 0] = String(startTime).split(":").map((value) => Number(value));
-  const [endHour = 0, endMinute = 0] = String(endTime).split(":").map((value) => Number(value));
-
-  const startMinutes = startHour * 60 + startMinute;
-  const endMinutes = endHour * 60 + endMinute;
-
-  if (endMinutes <= startMinutes) return 0;
-  return (endMinutes - startMinutes) / 60;
-}
-
-function buildUsageByVehicle(rows) {
-  const bucket = new Map();
-
-  rows.forEach((row) => {
-    const membership = getCourseMembership(row);
-    const isPdcRecord = membership.has("pdc_beginner") || membership.has("pdc_experience");
-    if (!isPdcRecord) return;
-
-    const vehicle = row?.Schedule?.Vehicle;
-    const vehicleId = vehicle?.id;
-    if (!vehicleId) return;
-
-    const key = String(vehicleId);
-    if (!bucket.has(key)) {
-      bucket.set(key, {
-        vehicleId,
-        vehicleName: vehicle.vehicle_name || `Vehicle #${vehicleId}`,
-        vehicleType: vehicle.vehicle_type || "Vehicle",
-        plateNumber: vehicle.plate_number || "",
-        completedSessions: 0,
-        totalTrainingHours: 0,
-      });
-    }
-
-    const current = bucket.get(key);
-    current.completedSessions += 1;
-    current.totalTrainingHours += durationHours(row?.Schedule?.start_time, row?.Schedule?.end_time);
-  });
-
-  return Array.from(bucket.values())
-    .map((item) => ({
-      ...item,
-      totalTrainingHours: Number(item.totalTrainingHours.toFixed(2)),
-    }))
-    .sort((a, b) => b.totalTrainingHours - a.totalTrainingHours);
-}
-
 async function getDailyReports({ date, startDate, endDate, courseFilter = "overall", courseType, instructorId, vehicleId }) {
   const effectiveStartDate = date || startDate;
   const effectiveEndDate = date || endDate;
@@ -327,9 +279,12 @@ async function getDailyReports({ date, startDate, endDate, courseFilter = "overa
       : listSchedulesByRange(effectiveStartDate, effectiveEndDate),
   ]);
 
+  // Exclude enrollments without a student name (test data)
+  const meaningfulEnrollments = enrollments.filter((row) => Boolean(row?.Student && (row.Student.first_name || row.Student.last_name)));
+  
   const items = [
     ...(date ? schedules?.items || [] : schedules || []).map(mapScheduleReport),
-    ...enrollments.map(mapEnrollmentReportWithDate),
+    ...meaningfulEnrollments.map(mapEnrollmentReportWithDate),
   ]
     .filter((item) => includeDailyItemByCourse(item, courseFilter))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -354,12 +309,14 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
   const end = new Date(`${endDate}T00:00:00.000Z`);
   end.setUTCDate(end.getUTCDate() + 1);
 
-  const [enrollments, activityLogs, maintenanceLogs, fuelLogs, completedWithVehicle] = await Promise.all([
+  const [enrollments, activityLogs, maintenanceLogs, fuelLogs, , payments, instructorCount] = await Promise.all([
     repository.findEnrollmentsByDateRange(start, end),
     repository.findActivityLogsByDateRange(start, end, 30),
     repository.findMaintenanceLogsByDateRange(start, end),
     repository.findFuelLogsByDateRange(start, end),
     repository.findCompletedEnrollmentsWithVehicleByDateRange(start, end),
+    repository.findPaymentsByDateRange(start, end),
+    repository.countActiveInstructors(),
   ]);
 
   const normalizedFilter = String(courseFilter || "overall").toLowerCase();
@@ -372,9 +329,11 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
   };
 
   const filteredEnrollments = enrollments.filter((row) => includeByCourse(row));
+  // Exclude enrollments without a student name (test data)
+  const meaningfulEnrollments = filteredEnrollments.filter((row) => Boolean(row?.Student && (row.Student.first_name || row.Student.last_name)));
 
   const transactions = [
-    ...filteredEnrollments.map(mapEnrollmentReport),
+    ...meaningfulEnrollments.map(mapEnrollmentReport),
   ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const activities = activityLogs
@@ -382,14 +341,14 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     .slice(0, 30);
 
-  const currentlyEnrolled = filteredEnrollments.filter(
+  const currentlyEnrolled = meaningfulEnrollments.filter(
     (item) => item.status === "pending" || item.status === "confirmed"
   ).length;
-  const completed = filteredEnrollments.filter((item) => item.status === "completed").length;
-  const pdcBeginner = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_beginner").length;
-  const pdcExperience = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_experience").length;
+  const completed = meaningfulEnrollments.filter((item) => item.status === "completed").length;
+  const pdcBeginner = meaningfulEnrollments.filter((item) => classifyCourseType(item) === "pdc_beginner").length;
+  const pdcExperience = meaningfulEnrollments.filter((item) => classifyCourseType(item) === "pdc_experience").length;
 
-  const totalStudentsForFilter = new Set(filteredEnrollments.map((row) => row.student_id).filter(Boolean)).size;
+  const totalStudentsForFilter = new Set(meaningfulEnrollments.map((row) => row.student_id).filter(Boolean)).size;
   const todayIso = new Date().toISOString().slice(0, 10);
 
   const maintenanceSummary = {
@@ -409,7 +368,76 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
     totalExpense: Number(fuelLogs.reduce((sum, log) => sum + toNumber(log.amount_spent), 0).toFixed(2)),
   };
 
-  const usageByVehicle = buildUsageByVehicle(completedWithVehicle);
+  const revenueSummary = {
+    totalPayments: Array.isArray(payments) ? payments.length : 0,
+    totalRevenue: Number(
+      (Array.isArray(payments) ? payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) : 0).toFixed(2)
+    ),
+  };
+
+  // Build vehicle usage aggregates from vehicle usages and fuel logs
+  const vehicleUsageRows = await repository.findVehicleUsagesByDateRange(start, end);
+
+  const usageBucket = new Map();
+  vehicleUsageRows.forEach((u) => {
+    const vid = u.vehicle?.id || u.vehicle_id;
+    if (!vid) return;
+    const key = String(vid);
+    if (!usageBucket.has(key)) {
+      usageBucket.set(key, {
+        vehicleId: vid,
+        vehicleName: u.vehicle?.vehicle_name || `Vehicle #${vid}`,
+        vehicleType: u.vehicle?.vehicle_type || "Vehicle",
+        plateNumber: u.vehicle?.plate_number || "",
+        totalDistance: 0,
+        totalLiters: 0,
+        totalFuelCost: 0,
+        completedUsages: 0,
+      });
+    }
+
+    const current = usageBucket.get(key);
+    const startOdo = toNumber(u.start_odometer);
+    const endOdo = toNumber(u.end_odometer);
+    const distance = endOdo > startOdo ? Number((endOdo - startOdo).toFixed(2)) : 0;
+    if (distance > 0) {
+      current.totalDistance += distance;
+      current.completedUsages += 1;
+    }
+  });
+
+  // attach fuel info per vehicle
+  fuelLogs.forEach((f) => {
+    const vid = f.vehicle?.id || f.vehicle_id;
+    if (!vid) return;
+    const key = String(vid);
+    if (!usageBucket.has(key)) {
+      usageBucket.set(key, {
+        vehicleId: vid,
+        vehicleName: f.vehicle?.vehicle_name || `Vehicle #${vid}`,
+        vehicleType: f.vehicle?.vehicle_type || "Vehicle",
+        plateNumber: f.vehicle?.plate_number || "",
+        totalDistance: 0,
+        totalLiters: 0,
+        totalFuelCost: 0,
+        completedUsages: 0,
+      });
+    }
+    const current = usageBucket.get(key);
+    current.totalLiters += toNumber(f.liters);
+    current.totalFuelCost += toNumber(f.amount_spent);
+  });
+
+  const usageByVehicle = Array.from(usageBucket.values()).map((item) => {
+    const avgLitersPer100km = item.totalDistance > 0 ? Number(((item.totalLiters / item.totalDistance) * 100).toFixed(2)) : null;
+    return {
+      ...item,
+      totalDistance: Number((item.totalDistance || 0).toFixed(2)),
+      totalLiters: Number((item.totalLiters || 0).toFixed(2)),
+      totalFuelCost: Number((item.totalFuelCost || 0).toFixed(2)),
+      avgLitersPer100km,
+    };
+  }).sort((a,b)=>b.totalDistance - a.totalDistance);
 
   return {
     reportRange: {
@@ -420,12 +448,12 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
       totalStudents: totalStudentsForFilter,
       currentlyEnrolled,
       completed,
-      thisMonth: filteredEnrollments.length,
+      thisMonth: meaningfulEnrollments.length,
       pdcBeginner,
       pdcExperience,
     },
-    monthlyEnrollment: buildMonthlySeries(filteredEnrollments),
-    activityDates: filteredEnrollments
+    monthlyEnrollment: buildMonthlySeries(meaningfulEnrollments),
+    activityDates: meaningfulEnrollments
       .map((item) => item.created_at || item.createdAt)
       .filter(Boolean),
     dailyTransactions: transactions,
@@ -433,6 +461,8 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
     maintenanceSummary,
     fuelSummary,
     usageByVehicle,
+    revenueSummary,
+    instructorsActive: Number(instructorCount || 0),
   };
 }
 

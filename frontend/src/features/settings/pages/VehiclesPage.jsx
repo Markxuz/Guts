@@ -260,6 +260,14 @@ export default function VehiclesPage() {
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState("");
   const [usageRows, setUsageRows] = useState([]);
+  const [activeUsages, setActiveUsages] = useState([]);
+  const [instructors, setInstructors] = useState([]);
+  const [isLogUsageOpen, setIsLogUsageOpen] = useState(false);
+  const [logUsageForm, setLogUsageForm] = useState(() => ({ vehicle_id: "", instructor_id: "", start_odometer: "", start_date: new Date().toISOString().slice(0,10), liters: "", amount_spent: "", odometer_reading: "", notes: "" }));
+  const [logUsageSaving, setLogUsageSaving] = useState(false);
+  const [isEndUsageOpen, setIsEndUsageOpen] = useState(false);
+  const [endUsageForm, setEndUsageForm] = useState(() => ({ id: "", end_odometer: "", end_date: new Date().toISOString().slice(0,10) }));
+  const [endUsageSaving, setEndUsageSaving] = useState(false);
   const [vehicleActionLoadingId, setVehicleActionLoadingId] = useState(null);
 
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -283,12 +291,16 @@ export default function VehiclesPage() {
     setError("");
 
     try {
-      const [vehicles, logs, fuelEntries, daySchedules] = await Promise.all([
+      const [vehicles, logs, fuelEntries, daySchedules, instructorList] = await Promise.all([
         resourceServices.vehicles.list(),
         resourceServices.maintenanceLogs.list(),
         resourceServices.fuelLogs.list(),
         fetchScheduleDay(normalizeDateInput(statusDate)),
+        resourceServices.instructors.list(),
       ]);
+      // also fetch active usages
+      const usages = await resourceServices.vehicleUsages.list();
+      const openUsages = (usages || []).filter((u) => u && (u.end_odometer === null || u.end_odometer === undefined || u.end_odometer === ""));
       const latestMaintenanceByVehicle = buildLatestMaintenanceByVehicle(logs || []);
       const mapped = (vehicles || []).map((item, index) => {
         const type = normalizeVehicleType(item.vehicle_type, item.vehicle_name);
@@ -311,6 +323,8 @@ export default function VehiclesPage() {
       setMaintenanceLogs(logs || []);
       setFuelLogs(fuelEntries || []);
       setScheduleRows(daySchedules || []);
+      setActiveUsages(openUsages);
+      setInstructors(instructorList || []);
     } catch (loadError) {
       setError(loadError?.message || "Failed to load vehicles.");
     } finally {
@@ -418,7 +432,7 @@ export default function VehiclesPage() {
   async function submitMaintenance(event) {
     event.preventDefault();
 
-    if (!maintenanceForm.vehicle_id || !maintenanceForm.service_type || !maintenanceForm.date_of_service || !maintenanceForm.next_schedule_date) {
+    if (!maintenanceForm.vehicle_id || !maintenanceForm.service_type || !maintenanceForm.date_of_service || !maintenanceForm.next_schedule_date || maintenanceForm.maintenance_cost === "") {
       window.alert("Please complete all required maintenance fields.");
       return;
     }
@@ -430,7 +444,7 @@ export default function VehiclesPage() {
         service_type: maintenanceForm.service_type.trim(),
         date_of_service: maintenanceForm.date_of_service,
         next_schedule_date: maintenanceForm.next_schedule_date,
-        maintenance_cost: maintenanceForm.maintenance_cost ? Number(maintenanceForm.maintenance_cost) : 0,
+        maintenance_cost: Number(maintenanceForm.maintenance_cost),
         remarks: maintenanceForm.remarks.trim() || null,
       });
       setIsMaintenanceOpen(false);
@@ -500,14 +514,6 @@ export default function VehiclesPage() {
     setIsMaintenanceOpen(true);
   }
 
-  function openFuelForVehicle(vehicle) {
-    if (!vehicle || vehicle.status === "Archived") return;
-
-    setFuelForm(buildVehicleFormValue(vehicle, emptyFuelForm()));
-    setFuelVehicle(vehicle);
-    setIsFuelOpen(true);
-  }
-
   function openReportForVehicle(vehicle) {
     if (!vehicle) return;
 
@@ -522,15 +528,6 @@ export default function VehiclesPage() {
       vehicle_id: activeVehicleOptions[0]?.id ? String(activeVehicleOptions[0].id) : "",
     }));
     setIsMaintenanceOpen(true);
-  }
-
-  function openQuickFuel() {
-    setFuelVehicle(null);
-    setFuelForm((current) => ({
-      ...current,
-      vehicle_id: activeVehicleOptions[0]?.id ? String(activeVehicleOptions[0].id) : "",
-    }));
-    setIsFuelOpen(true);
   }
 
   async function archiveVehicle(row) {
@@ -753,7 +750,7 @@ export default function VehiclesPage() {
                     const TypeIcon = isBike ? Bike : Car;
 
                     return (
-                      <article key={row.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                      <article key={row.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm card-light">
                         <div className="flex items-start justify-between gap-2">
                           <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#800000]/10 text-[#800000]">
                             <TypeIcon size={18} />
@@ -800,14 +797,38 @@ export default function VehiclesPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => openFuelForVehicle(row)}
+                            onClick={() => {
+                              setIsLogUsageOpen(true);
+                              setLogUsageForm((current) => ({ ...current, vehicle_id: String(row.id) }));
+                            }}
                             disabled={row.status === "Archived"}
-                            title={row.status === "Archived" ? "Restore this vehicle before logging fuel." : "Log fuel expense for this vehicle."}
-                            className="inline-flex items-center justify-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            title={row.status === "Archived" ? "Restore this vehicle before logging usage." : "Log vehicle usage and fuel expense."}
+                            className="inline-flex items-center justify-center gap-1 rounded-md border border-blue-300 bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            <Fuel size={12} />
-                            Log Fuel Expense
+                            <Clock3 size={12} />
+                            Log Vehicle Usage
                           </button>
+                          {activeUsages.some((u) => Number(u.vehicle_id) === Number(row.id)) ? (
+                            <div className="flex items-center gap-1">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700">
+                                <Clock3 size={12} />
+                                Active
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const active = activeUsages.find((u) => Number(u.vehicle_id) === Number(row.id));
+                                  if (!active) return;
+                                  setEndUsageForm({ id: active.id, end_odometer: "", end_date: new Date().toISOString().slice(0,10) });
+                                  setIsEndUsageOpen(true);
+                                }}
+                                className="inline-flex items-center justify-center gap-1 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <X size={12} />
+                                End Usage
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
 
                         <button
@@ -908,19 +929,22 @@ export default function VehiclesPage() {
             </button>
             <button
               type="button"
-              onClick={openQuickFuel}
-              className="inline-flex w-full items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <Fuel size={14} className="text-[#800000]" />
-              Log Fuel Expense
-            </button>
-            <button
-              type="button"
               onClick={openUsageModal}
               className="inline-flex w-full items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               <Clock3 size={14} className="text-[#800000]" />
               View Vehicle Usage Reports
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsLogUsageOpen(true);
+                setLogUsageForm((current) => ({ ...current, vehicle_id: activeVehicleOptions[0]?.id ? String(activeVehicleOptions[0].id) : "" }));
+              }}
+              className="inline-flex w-full items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Clock3 size={14} className="text-[#800000]" />
+              Log Vehicle Usage
             </button>
           </div>
         </aside>
@@ -1024,6 +1048,295 @@ export default function VehiclesPage() {
         </div>
       ) : null}
 
+      {isLogUsageOpen ? (
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/30 p-4"
+        >
+          <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">Log Vehicle Usage</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!logUsageSaving) {
+                    setIsLogUsageOpen(false);
+                    setLogUsageForm({ vehicle_id: "", instructor_id: "", start_odometer: "", start_date: new Date().toISOString().slice(0,10), liters: "", amount_spent: "", odometer_reading: "", notes: "" });
+                  }
+                }}
+                className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form
+              className="mt-4 space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!logUsageForm.vehicle_id || !logUsageForm.start_odometer) {
+                  window.alert("Please select vehicle and enter start odometer.");
+                  return;
+                }
+
+                setLogUsageSaving(true);
+                try {
+                  // Create vehicle usage
+                  await resourceServices.vehicleUsages.create({
+                    vehicle_id: Number(logUsageForm.vehicle_id),
+                    instructor_id: logUsageForm.instructor_id ? Number(logUsageForm.instructor_id) : null,
+                    start_odometer: Number(logUsageForm.start_odometer),
+                    start_date: logUsageForm.start_date,
+                    notes: logUsageForm.notes || null,
+                  });
+
+                  // Create fuel log if fuel fields are filled
+                  if (logUsageForm.liters || logUsageForm.amount_spent) {
+                    await resourceServices.fuelLogs.create({
+                      vehicle_id: Number(logUsageForm.vehicle_id),
+                      liters: logUsageForm.liters ? Number(logUsageForm.liters) : null,
+                      amount_spent: logUsageForm.amount_spent ? Number(logUsageForm.amount_spent) : null,
+                      odometer_reading: logUsageForm.odometer_reading ? Number(logUsageForm.odometer_reading) : null,
+                      logged_at: logUsageForm.start_date,
+                    });
+                  }
+
+                  setIsLogUsageOpen(false);
+                  setLogUsageForm({ vehicle_id: "", instructor_id: "", start_odometer: "", start_date: new Date().toISOString().slice(0,10), liters: "", amount_spent: "", odometer_reading: "", notes: "" });
+                  await loadVehicles();
+                  window.alert("Vehicle usage logged successfully.");
+                } catch (saveError) {
+                  window.alert(saveError?.message || "Failed to log usage.");
+                } finally {
+                  setLogUsageSaving(false);
+                }
+              }}
+            >
+              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                Vehicle
+                <select
+                  value={logUsageForm.vehicle_id}
+                  onChange={(ev) => setLogUsageForm((c) => ({ ...c, vehicle_id: ev.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                  required
+                >
+                  <option value="">Select vehicle...</option>
+                  {activeVehicleOptions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.nickname} - {v.plateNumber}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                Instructor (Optional)
+                <select
+                  value={logUsageForm.instructor_id}
+                  onChange={(ev) => setLogUsageForm((c) => ({ ...c, instructor_id: ev.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                >
+                  <option value="">Select instructor...</option>
+                  {instructors.map((instr) => (
+                    <option key={instr.id} value={instr.id}>
+                      {instr.name || instr.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                  Start Odometer
+                  <input
+                    value={logUsageForm.start_odometer}
+                    onChange={(ev) => setLogUsageForm((c) => ({ ...c, start_odometer: ev.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                    placeholder="e.g. 12345.6"
+                    required
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                  Date Loaded
+                  <input
+                    type="date"
+                    value={logUsageForm.start_date}
+                    onChange={(ev) => setLogUsageForm((c) => ({ ...c, start_date: ev.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                    required
+                  />
+                </label>
+              </div>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase text-amber-900">Fuel Expenses (Optional)</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                    Liters
+                    <input
+                      value={logUsageForm.liters}
+                      onChange={(ev) => setLogUsageForm((c) => ({ ...c, liters: ev.target.value }))}
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                      placeholder="e.g. 25.5"
+                      type="number"
+                      step="0.01"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                    Amount Spent
+                    <input
+                      value={logUsageForm.amount_spent}
+                      onChange={(ev) => setLogUsageForm((c) => ({ ...c, amount_spent: ev.target.value }))}
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                      placeholder="e.g. 1250.00"
+                      type="number"
+                      step="0.01"
+                    />
+                  </label>
+                </div>
+                <label className="mt-2 flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                  Odometer Reading (Fuel Fill-up)
+                  <input
+                    value={logUsageForm.odometer_reading}
+                    onChange={(ev) => setLogUsageForm((c) => ({ ...c, odometer_reading: ev.target.value }))}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                    placeholder="e.g. 12345.6"
+                    type="number"
+                    step="0.01"
+                  />
+                </label>
+              </div>
+
+              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                Notes (Optional)
+                <textarea
+                  value={logUsageForm.notes}
+                  onChange={(ev) => setLogUsageForm((c) => ({ ...c, notes: ev.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                  placeholder="Additional notes..."
+                  rows="2"
+                />
+              </label>
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLogUsageOpen(false);
+                    setLogUsageForm({ vehicle_id: "", instructor_id: "", start_odometer: "", start_date: new Date().toISOString().slice(0,10), liters: "", amount_spent: "", odometer_reading: "", notes: "" });
+                  }}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={logUsageSaving}
+                  className="rounded-md bg-[#800000] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  {logUsageSaving ? "Saving..." : "Start Usage"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {isEndUsageOpen ? (
+        <div
+          style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
+          className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-900/30 p-4"
+        >
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-900">End Vehicle Usage</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!endUsageSaving) {
+                    setIsEndUsageOpen(false);
+                    setEndUsageForm({ id: "", end_odometer: "", end_date: new Date().toISOString().slice(0,10) });
+                  }
+                }}
+                className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form
+              className="mt-4 space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!endUsageForm.id || !endUsageForm.end_odometer) {
+                  window.alert("Please enter end odometer.");
+                  return;
+                }
+
+                setEndUsageSaving(true);
+                try {
+                  await resourceServices.vehicleUsages.update(endUsageForm.id, {
+                    end_odometer: Number(endUsageForm.end_odometer),
+                    end_date: endUsageForm.end_date,
+                  });
+                  setIsEndUsageOpen(false);
+                  setEndUsageForm({ id: "", end_odometer: "", end_date: new Date().toISOString().slice(0,10) });
+                  await loadVehicles();
+                  window.alert("Vehicle usage completed.");
+                } catch (saveError) {
+                  window.alert(saveError?.message || "Failed to complete usage.");
+                } finally {
+                  setEndUsageSaving(false);
+                }
+              }}
+            >
+              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                End Odometer
+                <input
+                  value={endUsageForm.end_odometer}
+                  onChange={(ev) => setEndUsageForm((c) => ({ ...c, end_odometer: ev.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                  placeholder="e.g. 12355.8"
+                  required
+                />
+              </label>
+
+              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 uppercase">
+                End Date
+                <input
+                  type="date"
+                  value={endUsageForm.end_date}
+                  onChange={(ev) => setEndUsageForm((c) => ({ ...c, end_date: ev.target.value }))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-[#800000]"
+                  required
+                />
+              </label>
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEndUsageOpen(false);
+                    setEndUsageForm({ id: "", end_odometer: "", end_date: new Date().toISOString().slice(0,10) });
+                  }}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={endUsageSaving}
+                  className="rounded-md bg-[#800000] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  {endUsageSaving ? "Saving..." : "Complete Usage"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
       {isMaintenanceOpen ? (
         <div
           style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
@@ -1108,7 +1421,7 @@ export default function VehiclesPage() {
               </div>
 
               <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
-                Maintenance Cost (optional)
+                Maintenance Cost
                 <input
                   type="number"
                   min="0"
@@ -1117,6 +1430,7 @@ export default function VehiclesPage() {
                   onChange={(event) => setMaintenanceForm((current) => ({ ...current, maintenance_cost: event.target.value }))}
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#800000]"
                   placeholder="0.00"
+                  required
                 />
               </label>
 

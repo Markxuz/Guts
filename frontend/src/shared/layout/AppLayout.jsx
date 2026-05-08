@@ -234,7 +234,7 @@ export default function AppLayout() {
         type="button"
         onClick={() => setIsMobileNavOpen(true)}
         aria-label="Open navigation menu"
-        className={`fixed left-4 top-4 z-[80] inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-lg md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4d57a]" : "border-slate-200 bg-white text-slate-700"}`}
+        className={`fixed left-4 top-4 z-[9999] inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-lg md:hidden pointer-events-auto ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4d57a]" : "border-slate-200 bg-white text-slate-700"}`}
       >
         <Menu size={18} />
       </button>
@@ -532,7 +532,7 @@ export default function AppLayout() {
                 type="button"
                 onClick={() => setIsMobileNavOpen(false)}
                 aria-label="Close navigation menu"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[#f4f1ec]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[#f4f1ec] z-[9999] pointer-events-auto"
               >
                 <X size={18} />
               </button>

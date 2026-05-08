@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock3, Fuel, Printer, Wrench } from "lucide-react";
+import { Calendar, Clock3, Fuel, Printer, Wrench } from "lucide-react";
 import MonthlyEnrollmentCard from "../components/MonthlyEnrollmentCard";
 import StatsGrid from "../components/StatsGrid";
 import TopControls from "../components/TopControls";
@@ -19,10 +19,26 @@ export default function ReportsPage() {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState("overall");
   const [search, setSearch] = useState("");
+  const [useCustomDateRange, setUseCustomDateRange] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  
   const monthRange = useMemo(() => currentMonthRange(), []);
-  const { data: summary, isLoading, isError } = useReportOverview({
-    startDate: monthRange.startDate,
-    endDate: monthRange.endDate,
+  
+  // Determine effective date range
+  const effectiveDateRange = useMemo(() => {
+    if (useCustomDateRange && customStartDate && customEndDate) {
+      return {
+        startDate: customStartDate,
+        endDate: customEndDate,
+      };
+    }
+    return monthRange;
+  }, [useCustomDateRange, customStartDate, customEndDate, monthRange]);
+  
+  const { data: summary, isLoading, isError, refetch } = useReportOverview({
+    startDate: effectiveDateRange.startDate,
+    endDate: effectiveDateRange.endDate,
     course: activeFilter,
   });
 
@@ -72,11 +88,89 @@ export default function ReportsPage() {
         />
       </div>
 
-      {isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          Failed to load reports data.
+      {/* Date Range Filter for Vehicle Usage / Fuel Reports */}
+      <div className="print:hidden rounded-xl border-t-2 border-t-[#D4AF37] border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-slate-700 uppercase">Date Range:</label>
+            <button
+              type="button"
+              onClick={() => {
+                setUseCustomDateRange(false);
+                setCustomStartDate("");
+                setCustomEndDate("");
+              }}
+              className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                !useCustomDateRange
+                  ? "border-[#D4AF37] bg-[#D4AF37]/10 text-[#800000]"
+                  : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <Calendar size={14} />
+              This Month
+            </button>
+            <button
+              type="button"
+              onClick={() => setUseCustomDateRange(!useCustomDateRange)}
+              className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                useCustomDateRange
+                  ? "border-[#D4AF37] bg-[#D4AF37]/10 text-[#800000]"
+                  : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <Clock3 size={14} />
+              Custom Range
+            </button>
+          </div>
+
+          {useCustomDateRange && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-slate-600">Start:</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-slate-600">End:</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700"
+                />
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs text-slate-500">
+            {effectiveDateRange.startDate} to {effectiveDateRange.endDate}
+          </p>
         </div>
-      ) : null}
+      </div>
+
+          {isError ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+              <div className="w-full max-w-md rounded-xl border border-red-200 bg-white p-6 shadow-lg">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-lg font-bold text-red-700">Failed to load reports</p>
+                    <p className="mt-2 text-sm text-slate-600">There was a problem fetching the reports data. Please check your connection and try again.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { refetch(); }}
+                    className="rounded-md bg-[#800000] px-3 py-1.5 text-xs font-semibold text-white"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
       <div className="print:hidden">
         <StatsGrid stats={stats} loading={isLoading} />
@@ -111,7 +205,7 @@ export default function ReportsPage() {
       <div className="rounded-xl border-t-2 border-t-[#D4AF37] border-slate-200 bg-white p-4 shadow-sm">
         <p className="text-sm font-bold text-slate-900">Vehicle Operations Summary (Monthly Performance)</p>
         <p className="mt-1 text-xs text-slate-500">
-          {monthRange.startDate} to {monthRange.endDate}
+          {effectiveDateRange.startDate} to {effectiveDateRange.endDate}
         </p>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

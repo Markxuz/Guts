@@ -18,6 +18,7 @@ const Certificate = require("./Certificate")(sequelize);
 const ActivityLog = require("./ActivityLog")(sequelize);
 const MaintenanceLog = require("./MaintenanceLog")(sequelize);
 const FuelLog = require("./FuelLog")(sequelize);
+const VehicleUsage = require("./VehicleUsage")(sequelize);
 const PromoPackage = require("./PromoPackage")(sequelize);
 const PromoEntitlement = require("./PromoEntitlement")(sequelize);
 const PromoOffer = require("./PromoOffer")(sequelize);
@@ -54,6 +55,12 @@ MaintenanceLog.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
 
 Vehicle.hasMany(FuelLog, { foreignKey: "vehicle_id", as: "fuelLogs" });
 FuelLog.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
+
+Vehicle.hasMany(VehicleUsage, { foreignKey: "vehicle_id", as: "usageLogs" });
+VehicleUsage.belongsTo(Vehicle, { foreignKey: "vehicle_id", as: "vehicle" });
+
+Instructor.hasMany(VehicleUsage, { foreignKey: "instructor_id", as: "vehicleUsages" });
+VehicleUsage.belongsTo(Instructor, { foreignKey: "instructor_id", as: "instructor" });
 
 Schedule.hasMany(Enrollment, { foreignKey: "schedule_id" });
 Enrollment.belongsTo(Schedule, { foreignKey: "schedule_id" });
@@ -150,6 +157,7 @@ module.exports = {
   NotificationRead,
   MaintenanceLog,
   FuelLog,
+  VehicleUsage,
   PromoPackage,
   PromoEntitlement,
   PromoOffer,

@@ -87,7 +87,13 @@ function buildMonthlySeries(rows) {
     pdcExperience: 0,
   }));
 
-  rows.forEach((row) => {
+  // Exclude rows that do not have a Student name (likely placeholder/test data)
+  const meaningfulRows = (rows || []).filter((r) => {
+    const hasStudent = Boolean(r?.Student && (r.Student.first_name || r.Student.last_name));
+    return hasStudent;
+  });
+
+  meaningfulRows.forEach((row) => {
     // Only count paid enrollments (confirmed or completed)
     if (row.status !== "confirmed" && row.status !== "completed") return;
 
@@ -130,26 +136,29 @@ async function getSummary(courseFilter = "overall") {
           return membership.has(normalizedFilter);
         });
 
+  // Also ignore enrollments that do not have an associated student name (test or incomplete data)
+  const meaningfulEnrollments = filteredEnrollments.filter((e) => Boolean(e?.Student && (e.Student.first_name || e.Student.last_name)));
+
   // Only count "confirmed" and "completed" as currently enrolled (exclude unpaid "pending" with qrCodeId)
-  const currentlyEnrolled = filteredEnrollments.filter(
+  const currentlyEnrolled = meaningfulEnrollments.filter(
     (item) => item.status === "confirmed" || item.status === "completed"
   ).length;
-  const completed = filteredEnrollments.filter((item) => item.status === "completed").length;
+  const completed = meaningfulEnrollments.filter((item) => item.status === "completed").length;
 
-  const thisMonth = filteredEnrollments.filter((item) => {
+  const thisMonth = meaningfulEnrollments.filter((item) => {
     const date = getCreatedDate(item);
     // Only count "confirmed" and "completed" for monthly stats
     const isPaidEnrollment = item.status === "confirmed" || item.status === "completed";
     return isPaidEnrollment && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   }).length;
 
-  const pdcBeginner = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_beginner" && (item.status === "confirmed" || item.status === "completed")).length;
-  const pdcExperience = filteredEnrollments.filter((item) => classifyCourseType(item) === "pdc_experience" && (item.status === "confirmed" || item.status === "completed")).length;
-  const tdc = filteredEnrollments.filter((item) => classifyCourseType(item) === "tdc" && (item.status === "confirmed" || item.status === "completed")).length;
+  const pdcBeginner = meaningfulEnrollments.filter((item) => classifyCourseType(item) === "pdc_beginner" && (item.status === "confirmed" || item.status === "completed")).length;
+  const pdcExperience = meaningfulEnrollments.filter((item) => classifyCourseType(item) === "pdc_experience" && (item.status === "confirmed" || item.status === "completed")).length;
+  const tdc = meaningfulEnrollments.filter((item) => classifyCourseType(item) === "tdc" && (item.status === "confirmed" || item.status === "completed")).length;
 
   // Only count students with paid (confirmed/completed) enrollments
   const totalStudentsForFilter = new Set(
-    filteredEnrollments
+    meaningfulEnrollments
       .filter((item) => item.status === "confirmed" || item.status === "completed")
       .map((item) => item.student_id)
       .filter(Boolean)
@@ -165,8 +174,8 @@ async function getSummary(courseFilter = "overall") {
       pdcBeginner,
       pdcExperience,
     },
-    monthlyEnrollment: buildMonthlySeries(filteredEnrollments),
-    activityDates: enrollments
+    monthlyEnrollment: buildMonthlySeries(meaningfulEnrollments),
+    activityDates: meaningfulEnrollments
       .map((item) => item.created_at || item.createdAt)
       .filter(Boolean),
   };
@@ -178,7 +187,7 @@ async function getLogsByDate(isoDate) {
   end.setUTCDate(end.getUTCDate() + 1);
 
   const rows = await repository.findEnrollmentsByDateRange(start, end);
-  const logs = rows.map(mapLog);
+  const logs = rows.map(mapLog).filter((l) => Boolean(l.studentName && String(l.studentName).trim()));
 
   return {
     date: isoDate,

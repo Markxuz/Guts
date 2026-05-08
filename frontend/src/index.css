@@ -115,6 +115,25 @@ html[data-theme="light"] body {
 	color: #0f172a;
 }
 
+/* Make certain card containers transparent in dark mode to avoid clashing
+   with page-level backgrounds and improve text readability. Add the
+   `card-light` class to card containers that should be neutral in dark mode. */
+html[data-theme="dark"] .card-light {
+	background: transparent !important;
+	background-image: none !important;
+	box-shadow: none !important;
+	border-color: rgba(255,255,255,0.06) !important;
+}
+
+/* Improve readability for maroon-accented text in dark mode by giving
+   it a subtle translucent background and small padding. Target elements
+   that use the Tailwind class `text-[#800000]` (matches via class attr). */
+html[data-theme="dark"] [class*="text-[#800000]"] {
+	background-color: rgba(255,255,255,0.04);
+	padding: 0.0625rem 0.375rem;
+	border-radius: 0.375rem;
+}
+
 button,
 a,
 input,

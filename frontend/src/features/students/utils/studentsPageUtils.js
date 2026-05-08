@@ -81,18 +81,53 @@ export function getCourseCode(student) {
   return "N/A";
 }
 
+import {
+  getRegionLabel,
+  getProvinceLabel,
+  getCityLabel,
+  getBarangayLabel,
+  getZipCodeByAddressCodes,
+} from "../../enrollments/utils/phLocations";
+
 export function buildAddress(profile) {
   if (!profile) return "No address available";
 
-  const parts = [
-    profile.house_number,
-    profile.street,
-    profile.barangay,
-    profile.city,
-    profile.province,
-    profile.zip_code,
-  ].filter(Boolean);
+  // Convert PSGC code values to human-friendly labels when possible
+  let house = profile.house_number || "";
+  let street = profile.street || "";
+  let region = profile.region || "";
+  let barangay = profile.barangay || "";
+  let city = profile.city || "";
+  let province = profile.province || "";
+  let zip = profile.zip_code || "";
 
+  const looksLikeCode = (v) => typeof v === "string" && /^\d+$/.test(v.trim());
+
+  try {
+    if (looksLikeCode(profile.region)) {
+      region = getRegionLabel(profile.region) || region;
+    }
+    if (looksLikeCode(city)) {
+      city = getCityLabel(profile.region || "", province || "", city) || city;
+    }
+    if (looksLikeCode(province)) {
+      province = getProvinceLabel(profile.region || "", province) || province;
+    }
+    if (looksLikeCode(barangay)) {
+      // getBarangayLabel needs the city code; pass original code if present
+      barangay = getBarangayLabel(profile.city || "", barangay) || barangay;
+    }
+
+    // If zip missing, attempt to auto-fill from address codes
+    if (!zip) {
+      const auto = getZipCodeByAddressCodes(profile.region, profile.province, profile.city);
+      zip = auto || zip;
+    }
+  } catch {
+    // If location helpers fail for any reason, fall back to raw values
+  }
+
+  const parts = [house, street, barangay, city, province, region, zip].filter(Boolean);
   return parts.length ? parts.join(", ") : "No address available";
 }
 

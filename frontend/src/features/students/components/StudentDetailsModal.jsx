@@ -6,6 +6,7 @@ import {
   getStudentScheduleRemarks,
   toTitleCase,
 } from "../utils/studentsPageUtils";
+import { getRegionLabel } from "../../enrollments/utils/phLocations";
 
 export default function StudentDetailsModal({ student, onClose }) {
   if (!student) return null;
@@ -94,7 +95,7 @@ export default function StudentDetailsModal({ student, onClose }) {
             </div>
             <div>
               <p className="text-xs font-semibold uppercase text-slate-500">Region</p>
-              <p className="mt-1 text-sm text-slate-900">{profile.region || "N/A"}</p>
+              <p className="mt-1 text-sm text-slate-900">{getRegionLabel(profile.region) || "N/A"}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase text-slate-500">Educational Attainment</p>

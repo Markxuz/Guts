@@ -1,7 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, AlertCircle } from "lucide-react";
+import { useAuth } from "../features/auth/hooks/useAuth";
 import { api } from "../services/api";
+import { getEnrollmentPaymentSummary, buildAddress } from "../features/students/utils/studentsPageUtils";
+
+// Use shared address builder which converts PSGC codes to labels when possible
+// and composes a readable address string.
 
 function normalizeBooleanValue(value) {
   return value === true || value === "true" || value === "Schedule Now";
@@ -9,6 +14,7 @@ function normalizeBooleanValue(value) {
 
 export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onSaveComplete }) {
   const queryClient = useQueryClient();
+  const { role } = useAuth();
   const [form, setForm] = useState({
     promo_schedule_tdc: {
       schedule_date: "",
@@ -30,6 +36,11 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
     profile: {
       gmail_account: "",
     },
+    enrollment: {
+      fee_amount: null,
+      discount_amount: null,
+      payment_terms: "",
+    },
   });
   const [errorMessage, setErrorMessage] = useState("");
   const [instructors, setInstructors] = useState([]);
@@ -40,9 +51,17 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
     (async () => {
       try {
         const resp = await api.get('/instructors');
-        if (mounted && resp?.data) {
-          setInstructors(resp.data.map((i) => ({ value: i.id, label: `${i.first_name} ${i.last_name}` })));
-        }
+        if (!mounted) return;
+        // backend may return { value: [...] } or { data: [...] } or an array
+        const list = Array.isArray(resp)
+          ? resp
+          : Array.isArray(resp?.data)
+          ? resp.data
+          : Array.isArray(resp?.value)
+          ? resp.value
+          : [];
+
+        setInstructors(list.map((i) => ({ value: i.id, label: i.name || `${i.first_name || ''} ${i.last_name || ''}`.trim() })));
       } catch {
         // ignore - dropdown will remain empty
       }
@@ -81,10 +100,20 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
         profile: {
           gmail_account: enrollment?.profile?.gmail_account || enrollment?.Student?.StudentProfile?.gmail_account || "",
         },
+        enrollment: {
+          fee_amount: enrollment?.fee_amount || null,
+          discount_amount: enrollment?.discount_amount || null,
+          payment_terms: enrollment?.payment_terms || "",
+        },
       });
       setErrorMessage("");
     });
   }, [isOpen, enrollment]);
+
+  // Calculate payment summary (keep hooks stable by declaring before early returns)
+  const paymentSummary = useMemo(() => {
+    return getEnrollmentPaymentSummary(enrollment || {});
+  }, [enrollment]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -110,6 +139,11 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
         },
         profile: {
           gmail_account: form.profile.gmail_account,
+        },
+        enrollment: {
+          fee_amount: form.enrollment.fee_amount || null,
+          discount_amount: form.enrollment.discount_amount || null,
+          payment_terms: form.enrollment.payment_terms || null,
         },
       };
 
@@ -180,7 +214,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
       style={{ left: "var(--app-sidebar-width, 0px)", width: "calc(100vw - var(--app-sidebar-width, 0px))" }}
       className="fixed inset-y-0 right-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"
     >
-      <div className="flex h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#d9c9a0] bg-[#fff9ef] shadow-2xl">
+      <div className="flex h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#d9c9a0] bg-[#fff9ef] shadow-2xl card-light">
         <div className="flex items-start justify-between border-b border-[#e6d7b6] bg-[#800000] px-6 py-5 text-white">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#f0d78a]">QR Enrollment</p>
@@ -208,6 +242,13 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
             {/* Student Information Section */}
             <section>
               <h3 className="mb-4 text-sm font-semibold text-slate-900">Student Information</h3>
+              {/* Address display (read-only) */}
+              <div className="mb-3">
+                <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Address</p>
+                <p className="mt-2 rounded-lg border border-[#d9c9a0] bg-white px-3 py-2 text-sm text-slate-800">
+                  {buildAddress(enrollment?.profile || enrollment?.Student?.StudentProfile || {}) || "(No address provided)"}
+                </p>
+              </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="flex flex-col gap-1">
                   <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">First Name *</span>
@@ -256,6 +297,95 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
                 </label>
               </div>
             </section>
+
+            {/* Payment Information Section */}
+            <section>
+              <h3 className="mb-4 text-sm font-semibold text-slate-900">Payment Status & Balance</h3>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold text-slate-600 uppercase">Payment Status</p>
+                  <p className="mt-2 text-lg font-bold text-slate-900">
+                    {paymentSummary.paymentStatus === "completed_payment"
+                      ? "Completed Payments"
+                      : paymentSummary.paymentStatus === "partial_payment"
+                      ? "Partial Payment"
+                      : paymentSummary.paymentStatus === "with_balance"
+                      ? "With Balance"
+                      : "Not Set"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold text-slate-600 uppercase">Total Due</p>
+                  <p className="mt-2 text-lg font-bold text-slate-900">PHP {paymentSummary.totalDue.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold text-slate-600 uppercase">Total Paid</p>
+                  <p className="mt-2 text-lg font-bold text-slate-900">PHP {paymentSummary.totalPaid.toFixed(2)}</p>
+                </div>
+                <div className={`rounded-lg border px-4 py-3 ${
+                  paymentSummary.remainingBalance > 0 
+                    ? "border-rose-200 bg-rose-50"
+                    : "border-emerald-200 bg-emerald-50"
+                }`}>
+                  <p className={`text-xs font-semibold uppercase ${
+                    paymentSummary.remainingBalance > 0 
+                      ? "text-rose-600"
+                      : "text-emerald-600"
+                  }`}>Balance</p>
+                  <p className={`mt-2 text-lg font-bold ${
+                    paymentSummary.remainingBalance > 0 
+                      ? "text-rose-900"
+                      : "text-emerald-900"
+                  }`}>PHP {paymentSummary.remainingBalance.toFixed(2)}</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Fee & Payment Terms Section - Admin/Sub-Admin Only */}
+            {(role === "admin" || role === "sub_admin") && (
+              <section>
+                <h3 className="mb-4 text-sm font-semibold text-slate-900">Fee & Payment Terms</h3>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Fee Amount</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.enrollment.fee_amount || ""}
+                      onChange={(event) => handleFieldChange("enrollment", "fee_amount", event.target.value ? parseFloat(event.target.value) : null)}
+                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                      placeholder="e.g., 1500"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Discount Amount (Optional)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.enrollment.discount_amount || ""}
+                      onChange={(event) => handleFieldChange("enrollment", "discount_amount", event.target.value ? parseFloat(event.target.value) : null)}
+                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                      placeholder="e.g., 200"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 md:col-span-2">
+                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Payment Terms</span>
+                    <select
+                      value={form.enrollment.payment_terms || ""}
+                      onChange={(event) => handleFieldChange("enrollment", "payment_terms", event.target.value)}
+                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                    >
+                      <option value="">Select payment terms</option>
+                      <option value="Full Payment">Full Payment</option>
+                      <option value="Installment">Installment</option>
+                      <option value="Downpayment">Downpayment</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+            )}
 
             {/* TDC Schedule Section */}
             <section>

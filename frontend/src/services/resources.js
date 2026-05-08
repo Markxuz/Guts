@@ -16,6 +16,7 @@ export const resourceServices = {
   vehicles: createCrudService("/vehicles"),
   maintenanceLogs: createCrudService("/maintenance-logs"),
   fuelLogs: createCrudService("/fuel-logs"),
+  vehicleUsages: createCrudService("/vehicle-usages"),
   schedules: createCrudService("/schedules"),
   packages: createCrudService("/packages"),
   promoOffers: createCrudService("/promo-offers"),

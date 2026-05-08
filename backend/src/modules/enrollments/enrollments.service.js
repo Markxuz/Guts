@@ -1,6 +1,99 @@
 const { sequelize } = require("../../../models");
 const repository = require("./enrollments.repository");
 const schedulesService = require("../schedules/schedules.service");
+// Address helpers for converting PSGC codes to readable labels
+const {
+  getRegions,
+  getProvincesByRegion,
+  getCitiesAndMunsByProvince,
+  getBarangaysByCityOrMun,
+} = require("latest-ph-address-thanks-to-anehan");
+
+function looksLikeCode(v) {
+  return typeof v === "string" && /^\d+$/.test(v.trim());
+}
+
+function getProvinceLabelGlobal(provinceCode) {
+  if (!provinceCode) return provinceCode || "";
+  const regions = getRegions();
+  for (const r of regions) {
+    const provinces = getProvincesByRegion(r.psgc);
+    if (!Array.isArray(provinces)) continue;
+    const match = provinces.find((item) => item.psgc === provinceCode);
+    if (match) return match.name;
+  }
+  return provinceCode;
+}
+
+function getCityLabelGlobal(provinceCode, cityCode) {
+  if (!cityCode) return cityCode || "";
+  if (provinceCode) {
+    try {
+      const cities = getCitiesAndMunsByProvince(provinceCode);
+      if (Array.isArray(cities)) {
+        const match = cities.find((item) => item.psgc === cityCode);
+        if (match) return match.name;
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-empty
+    }
+  }
+  const regions = getRegions();
+  for (const r of regions) {
+    const provinces = getProvincesByRegion(r.psgc);
+    if (!Array.isArray(provinces)) continue;
+    for (const p of provinces) {
+      try {
+        const cities = getCitiesAndMunsByProvince(p.psgc);
+        if (!Array.isArray(cities)) continue;
+        const match = cities.find((item) => item.psgc === cityCode);
+        if (match) return match.name;
+      } catch (e) {
+        // eslint-disable-next-line no-empty
+      }
+    }
+  }
+  return cityCode;
+}
+
+function getBarangayLabelGlobal(cityCode, barangayCode) {
+  if (!barangayCode) return barangayCode || "";
+  if (cityCode) {
+    try {
+      const barangays = getBarangaysByCityOrMun(cityCode);
+      if (Array.isArray(barangays)) {
+        const match = barangays.find((item) => item.psgc === barangayCode);
+        if (match) return match.name;
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-empty
+    }
+  }
+  const regions = getRegions();
+  for (const r of regions) {
+    const provinces = getProvincesByRegion(r.psgc);
+    if (!Array.isArray(provinces)) continue;
+    for (const p of provinces) {
+      try {
+        const cities = getCitiesAndMunsByProvince(p.psgc);
+        if (!Array.isArray(cities)) continue;
+        for (const c of cities) {
+          try {
+            const barangays = getBarangaysByCityOrMun(c.psgc);
+            if (!Array.isArray(barangays)) continue;
+            const match = barangays.find((item) => item.psgc === barangayCode);
+            if (match) return match.name;
+          } catch (e) {
+            // eslint-disable-next-line no-empty
+          }
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-empty
+      }
+    }
+  }
+  return barangayCode;
+}
 
 const ENROLLMENT_TYPE_MAP = {
   TDC: {
@@ -111,6 +204,7 @@ function normalizeProfilePayload(studentId, profile = {}, extras = {}, enrollmen
     // Store address parts uppercase for consistency
     house_number: normalizeUpperText(profile.house_number),
     street: normalizeUpperText(profile.street),
+    // Some QR submissions save PSGC numeric codes in barangay/city/province — convert to readable labels when possible
     barangay: normalizeUpperText(profile.barangay),
     city: normalizeUpperText(profile.city),
     province: normalizeUpperText(profile.province),
@@ -327,11 +421,123 @@ async function upsertStudentProfile(studentId, profilePayload, extrasPayload, en
   const normalizedProfile = normalizeProfilePayload(studentId, profilePayload, extrasPayload, enrollmentPayload);
   const existingProfile = await repository.findStudentProfileByStudentId(studentId, transaction);
 
-  if (existingProfile) {
-    return repository.updateStudentProfile(existingProfile, normalizedProfile, transaction);
+  // Helper: detect numeric PSGC-like codes
+  function looksLikeCode(v) {
+    return typeof v === "string" && /^\d+$/.test(v.trim());
   }
 
-  return repository.createStudentProfile(normalizedProfile, transaction);
+  // Convert PSGC codes to readable labels when possible using latest-ph-address-thanks-to-anehan
+  function getProvinceLabel(regionCode, provinceCode) {
+    if (!provinceCode) return provinceCode || "";
+    // Try direct lookup by iterating regions if regionCode not provided or lookup fails
+    const regions = getRegions();
+    for (const r of regions) {
+      const provinces = getProvincesByRegion(r.psgc);
+      if (!Array.isArray(provinces)) continue;
+      const match = provinces.find((item) => item.psgc === provinceCode);
+      if (match) return match.name;
+    }
+    return provinceCode;
+  }
+
+  function getCityLabel(regionCode, provinceCode, cityCode) {
+    if (!cityCode) return cityCode || "";
+    // Try province-scoped lookup first if provinceCode provided
+    if (provinceCode) {
+      try {
+        const cities = getCitiesAndMunsByProvince(provinceCode);
+        if (Array.isArray(cities)) {
+          const match = cities.find((item) => item.psgc === cityCode);
+          if (match) return match.name;
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-empty
+      }
+    }
+
+    // Fallback: iterate all regions/provinces to find the city code
+    const regions = getRegions();
+    for (const r of regions) {
+      const provinces = getProvincesByRegion(r.psgc);
+      if (!Array.isArray(provinces)) continue;
+      for (const p of provinces) {
+        try {
+          const cities = getCitiesAndMunsByProvince(p.psgc);
+          if (!Array.isArray(cities)) continue;
+          const match = cities.find((item) => item.psgc === cityCode);
+          if (match) return match.name;
+        } catch (e) {
+          // eslint-disable-next-line no-empty
+        }
+      }
+    }
+
+    return cityCode;
+  }
+
+  function getBarangayLabel(cityCode, barangayCode) {
+    if (!barangayCode) return barangayCode || "";
+    // If cityCode provided, try direct lookup
+    if (cityCode) {
+      try {
+        const barangays = getBarangaysByCityOrMun(cityCode);
+        if (Array.isArray(barangays)) {
+          const match = barangays.find((item) => item.psgc === barangayCode);
+          if (match) return match.name;
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-empty
+      }
+    }
+
+    // Fallback: search across all cities
+    const regions = getRegions();
+    for (const r of regions) {
+      const provinces = getProvincesByRegion(r.psgc);
+      if (!Array.isArray(provinces)) continue;
+      for (const p of provinces) {
+        try {
+          const cities = getCitiesAndMunsByProvince(p.psgc);
+          if (!Array.isArray(cities)) continue;
+          for (const c of cities) {
+            try {
+              const barangays = getBarangaysByCityOrMun(c.psgc);
+              if (!Array.isArray(barangays)) continue;
+              const match = barangays.find((item) => item.psgc === barangayCode);
+              if (match) return match.name;
+            } catch (e) {
+              // eslint-disable-next-line no-empty
+            }
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-empty
+        }
+      }
+    }
+
+    return barangayCode;
+  }
+
+  const converted = { ...normalizedProfile };
+  try {
+    if (looksLikeCode(normalizedProfile.city)) {
+      converted.city = getCityLabel(normalizedProfile.region, normalizedProfile.province, normalizedProfile.city) || normalizedProfile.city;
+    }
+    if (looksLikeCode(normalizedProfile.province)) {
+      converted.province = getProvinceLabel(normalizedProfile.region, normalizedProfile.province) || normalizedProfile.province;
+    }
+    if (looksLikeCode(normalizedProfile.barangay)) {
+      converted.barangay = getBarangayLabel(normalizedProfile.city || converted.city, normalizedProfile.barangay) || normalizedProfile.barangay;
+    }
+  } catch (e) {
+    // If conversion fails, fall back to original values
+  }
+
+  if (existingProfile) {
+    return repository.updateStudentProfile(existingProfile, converted, transaction);
+  }
+
+  return repository.createStudentProfile(converted, transaction);
 }
 
 async function resolveDlCode(enrollmentType, transaction) {
@@ -561,8 +767,22 @@ async function editEnrollment(id, payload) {
         
         updateFields.forEach(field => {
           if (field in profilePayload) {
-            const value = profilePayload[field];
-            // Apply uppercase normalization for address fields
+            let value = profilePayload[field];
+
+            // Convert numeric PSGC codes to labels for certain address fields
+            if (field === 'city' && looksLikeCode(String(value))) {
+              value = getCityLabelGlobal(profilePayload.province || profile.province || '', String(value));
+            }
+            if (field === 'province' && looksLikeCode(String(value))) {
+              value = getProvinceLabelGlobal(String(value));
+            }
+            if (field === 'barangay' && looksLikeCode(String(value))) {
+              // use provided city code if available, else fallback to profile.city
+              const cityCode = profilePayload.city || profile.city || '';
+              value = getBarangayLabelGlobal(cityCode, String(value));
+            }
+
+            // Apply uppercase normalization for address fields and names
             if (['house_number', 'street', 'barangay', 'city', 'province', 'first_name', 'last_name', 'middle_name'].includes(field)) {
               profileUpdates[field] = normalizeUpperText(value);
             } else {
@@ -577,12 +797,165 @@ async function editEnrollment(id, payload) {
       }
     }
 
-    // Map promo schedule dates to enrollment date fields
-    if (promo_schedule_tdc?.schedule_date) {
-      enrollmentPayload.tdc_completion_deadline = promo_schedule_tdc.schedule_date;
+    // Handle TDC schedule (create or update)
+    if (promo_schedule_tdc) {
+      if (promo_schedule_tdc.schedule_date) {
+        enrollmentPayload.tdc_completion_deadline = promo_schedule_tdc.schedule_date;
+      }
+
+      // Find or create Schedule record for TDC with course_type indicator
+      const Schedule = require('../../../models').Schedule;
+      let tdcSchedules = await Schedule.findAll({
+        where: { enrollment_id: id },
+        limit: 10,
+        transaction,
+      });
+
+      // Try to find an existing TDC schedule (assuming first schedule is TDC if no distinct marking exists)
+      // If multiple, take the first one
+      let tdcSchedule = tdcSchedules.length > 0 ? tdcSchedules[0] : null;
+
+      // Require Instructor model for validation checks
+      const Instructor = require('../../../models').Instructor;
+
+      if (tdcSchedule) {
+          // Normalize possible instructor object payloads and coerce to integer
+          const normalizedTdcInstructorId = promo_schedule_tdc.instructor_id || (promo_schedule_tdc.instructor && promo_schedule_tdc.instructor.id) || null;
+          const normalizedTdcCareOfInstructorId = promo_schedule_tdc.care_of_instructor_id || (promo_schedule_tdc.care_of_instructor && promo_schedule_tdc.care_of_instructor.id) || null;
+          const tdcInstructorId = normalizedTdcInstructorId ? Number(normalizedTdcInstructorId) : null;
+          const tdcCareOfInstructorId = normalizedTdcCareOfInstructorId ? Number(normalizedTdcCareOfInstructorId) : null;
+          if (tdcInstructorId) {
+            const inst = await Instructor.findByPk(tdcInstructorId, { transaction });
+          if (!inst) {
+            const error = new Error('Instructor not found');
+            error.status = 400;
+            throw error;
+          }
+        }
+          if (tdcCareOfInstructorId) {
+            const careInst = await Instructor.findByPk(tdcCareOfInstructorId, { transaction });
+          if (!careInst) {
+            const error = new Error('Care-of instructor not found');
+            error.status = 400;
+            throw error;
+          }
+        }
+
+        // Update existing schedule
+        await tdcSchedule.update({
+          schedule_date: promo_schedule_tdc.schedule_date || tdcSchedule.schedule_date,
+          instructor_id: tdcInstructorId || null,
+          care_of_instructor_id: tdcCareOfInstructorId || null,
+        }, { transaction });
+      } else if (promo_schedule_tdc.schedule_date || promo_schedule_tdc.instructor_id || promo_schedule_tdc.care_of_instructor_id) {
+        // Normalize and validate instructor ids before create
+        const normalizedCreateTdcInstructorId = promo_schedule_tdc.instructor_id || (promo_schedule_tdc.instructor && promo_schedule_tdc.instructor.id) || null;
+        const normalizedCreateTdcCareOfInstructorId = promo_schedule_tdc.care_of_instructor_id || (promo_schedule_tdc.care_of_instructor && promo_schedule_tdc.care_of_instructor.id) || null;
+        const createTdcInstructorId = normalizedCreateTdcInstructorId ? Number(normalizedCreateTdcInstructorId) : null;
+        const createTdcCareOfInstructorId = normalizedCreateTdcCareOfInstructorId ? Number(normalizedCreateTdcCareOfInstructorId) : null;
+        if (createTdcInstructorId) {
+          const inst = await Instructor.findByPk(createTdcInstructorId, { transaction });
+          if (!inst) {
+            const error = new Error('Instructor not found');
+            error.status = 400;
+            throw error;
+          }
+        }
+        if (createTdcCareOfInstructorId) {
+          const careInst = await Instructor.findByPk(createTdcCareOfInstructorId, { transaction });
+          if (!careInst) {
+            const error = new Error('Care-of instructor not found');
+            error.status = 400;
+            throw error;
+          }
+        }
+        // Create new schedule only if there's at least one value to save
+        await Schedule.create({
+          enrollment_id: id,
+          student_id: enrollment.student_id,
+          schedule_date: promo_schedule_tdc.schedule_date || null,
+          instructor_id: createTdcInstructorId || null,
+          care_of_instructor_id: createTdcCareOfInstructorId || null,
+          course_id: null,
+          vehicle_id: null,
+        }, { transaction });
+      }
     }
-    if (promo_schedule_pdc?.schedule_date) {
-      enrollmentPayload.pdc_eligibility_date = promo_schedule_pdc.schedule_date;
+
+    // Handle PDC schedule (create or update)
+    if (promo_schedule_pdc) {
+      if (promo_schedule_pdc.schedule_date) {
+        enrollmentPayload.pdc_eligibility_date = promo_schedule_pdc.schedule_date;
+      }
+
+      // Find or create Schedule record for PDC
+      // For now, if there are multiple schedules, use the second one for PDC, or create a new one
+      const Schedule = require('../../../models').Schedule;
+      let allSchedules = await Schedule.findAll({
+        where: { enrollment_id: id },
+        limit: 10,
+        transaction,
+      });
+
+      // Try to find a PDC schedule (if there are 2+, take the second; otherwise create new)
+      let pdcSchedule = allSchedules.length > 1 ? allSchedules[1] : null;
+
+      if (pdcSchedule) {
+        // Validate instructor ids if provided
+        const Instructor = require('../../../models').Instructor;
+        if (promo_schedule_pdc.instructor_id) {
+          const inst = await Instructor.findByPk(promo_schedule_pdc.instructor_id, { transaction });
+          if (!inst) {
+            const error = new Error('Instructor not found');
+            error.status = 400;
+            throw error;
+          }
+        }
+        if (promo_schedule_pdc.care_of_instructor_id) {
+          const careInst = await Instructor.findByPk(promo_schedule_pdc.care_of_instructor_id, { transaction });
+          if (!careInst) {
+            const error = new Error('Care-of instructor not found');
+            error.status = 400;
+            throw error;
+          }
+        }
+
+        // Update existing schedule
+        await pdcSchedule.update({
+          schedule_date: promo_schedule_pdc.schedule_date || pdcSchedule.schedule_date,
+          instructor_id: promo_schedule_pdc.instructor_id || null,
+          care_of_instructor_id: promo_schedule_pdc.care_of_instructor_id || null,
+        }, { transaction });
+      } else if (promo_schedule_pdc.schedule_date || promo_schedule_pdc.instructor_id || promo_schedule_pdc.care_of_instructor_id) {
+        // Validate instructor ids before create
+        const Instructor = require('../../../models').Instructor;
+        if (promo_schedule_pdc.instructor_id) {
+          const inst = await Instructor.findByPk(promo_schedule_pdc.instructor_id, { transaction });
+          if (!inst) {
+            const error = new Error('Instructor not found');
+            error.status = 400;
+            throw error;
+          }
+        }
+        if (promo_schedule_pdc.care_of_instructor_id) {
+          const careInst = await Instructor.findByPk(promo_schedule_pdc.care_of_instructor_id, { transaction });
+          if (!careInst) {
+            const error = new Error('Care-of instructor not found');
+            error.status = 400;
+            throw error;
+          }
+        }
+        // Create new schedule only if there's at least one value to save
+        await Schedule.create({
+          enrollment_id: id,
+          student_id: enrollment.student_id,
+          schedule_date: promo_schedule_pdc.schedule_date || null,
+          instructor_id: promo_schedule_pdc.instructor_id || null,
+          care_of_instructor_id: promo_schedule_pdc.care_of_instructor_id || null,
+          course_id: null,
+          vehicle_id: null,
+        }, { transaction });
+      }
     }
 
     // If payment data is being submitted with fee_amount, create Payment record and calculate balance

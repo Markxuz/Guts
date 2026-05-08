@@ -10,6 +10,7 @@ const {
   Instructor,
   MaintenanceLog,
   FuelLog,
+  VehicleUsage,
 } = require("../../../models");
 
 async function findStudentsByDateRange(start, end) {
@@ -128,6 +129,32 @@ async function findFuelLogsByDateRange(start, end) {
   });
 }
 
+async function findVehicleUsagesByDateRange(start, end) {
+  return VehicleUsage.findAll({
+    where: {
+      start_date: {
+        [Op.gte]: start,
+        [Op.lt]: end,
+      },
+    },
+    include: [
+      {
+        model: Vehicle,
+        as: "vehicle",
+        attributes: ["id", "vehicle_name", "vehicle_type", "plate_number"],
+        required: false,
+      },
+      {
+        model: Instructor,
+        as: "instructor",
+        attributes: ["id", "name"],
+        required: false,
+      },
+    ],
+    order: [["start_date", "DESC"], ["id", "DESC"]],
+  });
+}
+
 async function findCompletedEnrollmentsWithVehicleByDateRange(start, end) {
   return Enrollment.findAll({
     where: {
@@ -165,5 +192,30 @@ module.exports = {
   findActivityLogsByDateRange,
   findMaintenanceLogsByDateRange,
   findFuelLogsByDateRange,
+  findVehicleUsagesByDateRange,
   findCompletedEnrollmentsWithVehicleByDateRange,
+  async findPaymentsByDateRange(start, end) {
+    const { Payment, Enrollment } = require("../../../models");
+    return Payment.findAll({
+      where: {
+        created_at: {
+          [Op.gte]: start,
+          [Op.lt]: end,
+        },
+        payment_status: "paid",
+      },
+      include: [
+        {
+          model: Enrollment,
+          attributes: ["id"],
+          required: false,
+        },
+      ],
+      order: [["created_at", "DESC"], ["id", "DESC"]],
+    });
+  },
+  async countActiveInstructors() {
+    const { Instructor } = require("../../../models");
+    return Instructor.count({ where: { status: "Active" } });
+  },
 };

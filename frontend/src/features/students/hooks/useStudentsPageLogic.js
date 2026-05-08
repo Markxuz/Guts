@@ -132,7 +132,7 @@ function getCompletionFlags(student) {
 
 function matchesCourseFilter(student, filter) {
   if (filter === "all") {
-    return !getCompletionFlags(student).isCompletedOrPassed;
+    return true;
   }
 
   if (filter === "passed") {

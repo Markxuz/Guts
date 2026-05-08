@@ -96,7 +96,7 @@ export default function QREnrollmentPaymentPage() {
   if (loading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center px-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm">
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm card-light">
           <Loader2 size={16} className="animate-spin" />
           Loading QR payment page...
         </div>
@@ -107,7 +107,7 @@ export default function QREnrollmentPaymentPage() {
   if (!enrollment) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-2xl items-center justify-center px-4">
-        <div className="w-full rounded-[28px] border border-rose-200 bg-rose-50 p-8 text-center">
+        <div className="w-full rounded-[28px] border border-rose-200 bg-rose-50 p-8 text-center card-light">
           <h1 className="text-2xl font-bold text-slate-950">Enrollment not found</h1>
           <p className="mt-2 text-sm text-slate-600">The QR approval page could not load the requested enrollment.</p>
         </div>
@@ -121,7 +121,7 @@ export default function QREnrollmentPaymentPage() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(128,0,0,0.08),_transparent_30%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_55%,_#faf5f3_100%)] px-4 py-8 text-slate-900">
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+        <header className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)] card-light">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="inline-flex items-center gap-2 rounded-full bg-[#800000]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-[#800000]">
@@ -148,14 +148,14 @@ export default function QREnrollmentPaymentPage() {
         </header>
 
         {status ? (
-          <div className={`rounded-2xl border px-4 py-3 text-sm ${status.includes("saved") ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+          <div className={`rounded-2xl border px-4 py-3 text-sm ${status.includes("saved") ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"} card-light`}>
             {status.includes("saved") ? <CheckCircle2 size={16} className="mr-2 inline-block" /> : null}
             {status}
           </div>
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm card-light">
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Status</p>
@@ -189,7 +189,7 @@ export default function QREnrollmentPaymentPage() {
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm card-light">
             <h2 className="text-xl font-bold text-slate-950">Record payment</h2>
             <p className="mt-2 text-sm text-slate-600">This records the first transaction and updates the enrollment status to completed when the balance reaches zero.</p>
 

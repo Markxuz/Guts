@@ -398,6 +398,11 @@ export default function PublicEnrollPage() {
 
     const payload = {
       ...formData,
+      // Map gmail_account to student email so enrollment creates student with email
+      student: {
+        ...formData.student,
+        email: formData.student?.email || formData.profile?.gmail_account || "",
+      },
       enrollment_type: template?.enrollment_type || formData.enrollment_type,
       enrollment: {
         ...(formData.enrollment || {}),
@@ -501,7 +506,7 @@ export default function PublicEnrollPage() {
   if (!token) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4">
-        <div className="w-full rounded-[28px] border border-rose-200 bg-rose-50 p-8 text-center shadow-sm">
+        <div className="w-full rounded-[28px] border border-rose-200 bg-rose-50 p-8 text-center shadow-sm card-light">
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-rose-700">QR Enrollment</p>
           <h1 className="mt-3 text-3xl font-bold text-slate-900">Missing QR token</h1>
           <p className="mt-2 text-sm text-slate-600">Open the public enrollment link from the QR code or ask the admin for the correct token.</p>
@@ -513,7 +518,7 @@ export default function PublicEnrollPage() {
   if (!loading && loadError) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4">
-        <div className="w-full rounded-[28px] border border-rose-200 bg-rose-50 p-8 text-center shadow-sm">
+        <div className="w-full rounded-[28px] border border-rose-200 bg-rose-50 p-8 text-center shadow-sm card-light">
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-rose-700">QR Enrollment</p>
           <h1 className="mt-3 text-3xl font-bold text-slate-900">Unable to open form</h1>
           <p className="mt-2 text-sm text-slate-600">{loadError}</p>
@@ -525,7 +530,7 @@ export default function PublicEnrollPage() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(128,0,0,0.08),_transparent_28%),linear-gradient(180deg,_#faf7f5_0%,_#ffffff_42%,_#f8fafc_100%)] px-4 py-10 text-slate-900">
       <div className="mx-auto flex flex-col-reverse gap-6 lg:grid lg:max-w-6xl lg:grid-cols-[1.15fr_0.85fr]">
-        <section className="rounded-[32px] border border-slate-200 bg-white/95 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur lg:order-1">
+        <section className="rounded-[32px] border border-slate-200 bg-white/95 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur lg:order-1 card-light">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="inline-flex items-center gap-2 rounded-full bg-[#800000]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-[#800000]">
@@ -547,7 +552,7 @@ export default function PublicEnrollPage() {
           </div>
 
           {loading ? (
-            <div className="mt-8 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+            <div className="mt-8 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 card-light">
               <Loader2 size={16} className="animate-spin" />
               Loading QR template...
             </div>
@@ -567,7 +572,7 @@ export default function PublicEnrollPage() {
                 
                 return (
                 <div key={section.title}>
-                  <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+                  <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5 card-light">
                     <div className="flex flex-col gap-1 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
                       <div>
                         <h2 className="text-lg font-bold text-slate-950">{section.title}</h2>
@@ -600,7 +605,7 @@ export default function PublicEnrollPage() {
 
                   {/* Show message when Schedule Later is selected in PROMO forms */}
                   {template?.enrollment_type === "PROMO" && section.title === "PDC Start Option" && formData.promo_schedule_pdc?.enabled === "false" && (
-                    <div className="mt-4 rounded-2xl border border-[#d9c9a0] bg-white px-4 py-3 text-sm text-slate-600">
+                    <div className="mt-4 rounded-2xl border border-[#d9c9a0] bg-white px-4 py-3 text-sm text-slate-600 card-light">
                       PDC is set to Schedule Later. PDC course information and schedule fields are hidden for now and can be filled once Schedule PDC Now is selected.
                     </div>
                   )}
@@ -609,7 +614,7 @@ export default function PublicEnrollPage() {
               })}
 
               {status ? (
-                <div className={`rounded-2xl border px-4 py-3 text-sm ${submitState === "done" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+                <div className={`rounded-2xl border px-4 py-3 text-sm ${submitState === "done" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-700"} card-light`}>
                   {submitState === "done" ? <CheckCircle2 className="mr-2 inline-block" size={16} /> : null}
                   {status}
                 </div>
@@ -642,7 +647,7 @@ export default function PublicEnrollPage() {
             </ol>
           </div>
 
-          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm card-light">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">What happens next</p>
             <div className="mt-4 space-y-4 text-sm text-slate-600">
               <div>
