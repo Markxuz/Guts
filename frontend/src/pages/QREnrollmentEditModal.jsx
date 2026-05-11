@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, AlertCircle } from "lucide-react";
-import { useAuth } from "../features/auth/hooks/useAuth";
 import { api } from "../services/api";
-import { getEnrollmentPaymentSummary, buildAddress } from "../features/students/utils/studentsPageUtils";
+import { buildAddress } from "../features/students/utils/studentsPageUtils";
 
 // Use shared address builder which converts PSGC codes to labels when possible
 // and composes a readable address string.
@@ -14,7 +13,6 @@ function normalizeBooleanValue(value) {
 
 export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onSaveComplete }) {
   const queryClient = useQueryClient();
-  const { role } = useAuth();
   const [form, setForm] = useState({
     promo_schedule_tdc: {
       schedule_date: "",
@@ -36,15 +34,9 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
     profile: {
       gmail_account: "",
     },
-    enrollment: {
-      fee_amount: null,
-      discount_amount: null,
-      payment_terms: "",
-    },
   });
   const [errorMessage, setErrorMessage] = useState("");
   const [instructors, setInstructors] = useState([]);
-  const [promoOffers, setPromoOffers] = useState([]);
 
   // Fetch instructors on mount
   useEffect(() => {
@@ -65,33 +57,6 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
         setInstructors(list.map((i) => ({ value: i.id, label: i.name || `${i.first_name || ''} ${i.last_name || ''}`.trim() })));
       } catch {
         // ignore - dropdown will remain empty
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        const response = await api.get("/promo-offers");
-        if (!mounted) return;
-
-        const offers = Array.isArray(response)
-          ? response
-          : Array.isArray(response?.data)
-            ? response.data
-            : [];
-
-        setPromoOffers(offers.filter((offer) => offer?.status === "active"));
-      } catch {
-        if (mounted) {
-          setPromoOffers([]);
-        }
       }
     })();
 
@@ -128,34 +93,14 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
         profile: {
           gmail_account: enrollment?.profile?.gmail_account || enrollment?.Student?.StudentProfile?.gmail_account || "",
         },
-        enrollment: {
-          fee_amount: enrollment?.fee_amount || null,
-          discount_amount: enrollment?.discount_amount || null,
-          payment_terms: enrollment?.payment_terms || "",
-          additional_promo_offer_ids: Array.isArray(enrollment?.additional_promo_offer_ids)
-            ? enrollment.additional_promo_offer_ids
-            : [],
-          additional_promos_amount: enrollment?.additional_promos_amount || 0,
-        },
       });
       setErrorMessage("");
     });
   }, [isOpen, enrollment]);
 
-  // Calculate payment summary (keep hooks stable by declaring before early returns)
-  const paymentSummary = useMemo(() => {
-    return getEnrollmentPaymentSummary(enrollment || {});
-  }, [enrollment]);
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
-        fee_amount: form.enrollment.fee_amount || null,
-        discount_amount: form.enrollment.discount_amount || null,
-        payment_terms: form.enrollment.payment_terms || null,
-        additional_promo_offer_ids: Array.isArray(form.enrollment.additional_promo_offer_ids)
-          ? form.enrollment.additional_promo_offer_ids
-          : [],
         promo_schedule_tdc: {
           schedule_date: form.promo_schedule_tdc.schedule_date || null,
           instructor_id: form.promo_schedule_tdc.instructor_id || null,
@@ -241,22 +186,6 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
 
   const studentName = enrollment.student?.first_name || enrollment.Student?.first_name || "Student";
   const schedulePdcNow = normalizeBooleanValue(form.promo_schedule_pdc.enabled);
-  const selectedAdditionalPromoIds = Array.isArray(form.enrollment.additional_promo_offer_ids)
-    ? form.enrollment.additional_promo_offer_ids.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0)
-    : [];
-
-  const selectedAdditionalPromosAmount = selectedAdditionalPromoIds.reduce((sum, promoId) => {
-    const offer = promoOffers.find((item) => Number(item?.id) === promoId);
-    if (!offer) return sum;
-
-    const discounted = Number(offer.discounted_price);
-    const fixed = Number(offer.fixed_price);
-    const price = Number.isFinite(discounted) && discounted > 0
-      ? discounted
-      : (Number.isFinite(fixed) && fixed > 0 ? fixed : 0);
-
-    return sum + price;
-  }, 0);
 
   return (
     <div
@@ -348,139 +277,6 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
                 </label>
               </div>
             </section>
-
-            {/* Payment Information Section */}
-            <section>
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">Payment Status & Balance</h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-semibold text-slate-600 uppercase">Payment Status</p>
-                  <p className="mt-2 text-lg font-bold text-slate-900">
-                    {paymentSummary.paymentStatus === "completed_payment"
-                      ? "Completed Payments"
-                      : paymentSummary.paymentStatus === "partial_payment"
-                      ? "Partial Payment"
-                      : paymentSummary.paymentStatus === "with_balance"
-                      ? "With Balance"
-                      : "Not Set"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-semibold text-slate-600 uppercase">Total Due</p>
-                  <p className="mt-2 text-lg font-bold text-slate-900">PHP {paymentSummary.totalDue.toFixed(2)}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-semibold text-slate-600 uppercase">Total Paid</p>
-                  <p className="mt-2 text-lg font-bold text-slate-900">PHP {paymentSummary.totalPaid.toFixed(2)}</p>
-                </div>
-                <div className={`rounded-lg border px-4 py-3 ${
-                  paymentSummary.remainingBalance > 0 
-                    ? "border-rose-200 bg-rose-50"
-                    : "border-emerald-200 bg-emerald-50"
-                }`}>
-                  <p className={`text-xs font-semibold uppercase ${
-                    paymentSummary.remainingBalance > 0 
-                      ? "text-rose-600"
-                      : "text-emerald-600"
-                  }`}>Balance</p>
-                  <p className={`mt-2 text-lg font-bold ${
-                    paymentSummary.remainingBalance > 0 
-                      ? "text-rose-900"
-                      : "text-emerald-900"
-                  }`}>PHP {paymentSummary.remainingBalance.toFixed(2)}</p>
-                </div>
-              </div>
-            </section>
-
-            {/* Fee & Payment Terms Section - Admin/Sub-Admin Only */}
-            {(role === "admin" || role === "sub_admin" || role === "staff") && (
-              <section>
-                <h3 className="mb-4 text-sm font-semibold text-slate-900">Fee & Payment Terms</h3>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Fee Amount</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.enrollment.fee_amount || ""}
-                      onChange={(event) => handleFieldChange("enrollment", "fee_amount", event.target.value ? parseFloat(event.target.value) : null)}
-                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                      placeholder="e.g., 1500"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Discount Amount (Optional)</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.enrollment.discount_amount || ""}
-                      onChange={(event) => handleFieldChange("enrollment", "discount_amount", event.target.value ? parseFloat(event.target.value) : null)}
-                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                      placeholder="e.g., 200"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 md:col-span-2">
-                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Payment Terms</span>
-                    <select
-                      value={form.enrollment.payment_terms || ""}
-                      onChange={(event) => handleFieldChange("enrollment", "payment_terms", event.target.value)}
-                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                    >
-                      <option value="">Select payment terms</option>
-                      <option value="Full Payment">Full Payment</option>
-                      <option value="Installment">Installment</option>
-                      <option value="Downpayment">Downpayment</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div className="mt-4 rounded-xl border border-[#d9c9a0] bg-white p-4">
-                  <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Additional Promo Add-ons</p>
-                  <p className="mt-1 text-xs text-slate-600">Select optional add-on promos for this enrollment.</p>
-
-                  <div className="mt-3 grid gap-2">
-                    {promoOffers.length === 0 ? (
-                      <p className="text-xs text-slate-500">No active promo offers available.</p>
-                    ) : (
-                      promoOffers.map((offer) => {
-                        const offerId = Number(offer.id);
-                        const isChecked = selectedAdditionalPromoIds.includes(offerId);
-                        const price = Number(offer.discounted_price) > 0 ? Number(offer.discounted_price) : (Number(offer.fixed_price) > 0 ? Number(offer.fixed_price) : 0);
-
-                        return (
-                          <label key={offer.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(event) => {
-                                  const checked = event.target.checked;
-                                  handleFieldChange(
-                                    "enrollment",
-                                    "additional_promo_offer_ids",
-                                    checked
-                                      ? [...selectedAdditionalPromoIds, offerId]
-                                      : selectedAdditionalPromoIds.filter((id) => id !== offerId)
-                                  );
-                                }}
-                              />
-                              <span className="text-slate-800">{offer.name}</span>
-                            </div>
-                            <span className="text-xs font-semibold text-slate-600">PHP {price.toFixed(2)}</span>
-                          </label>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                    Computed add-on amount: <span className="font-semibold">PHP {selectedAdditionalPromosAmount.toFixed(2)}</span>
-                  </div>
-                </div>
-              </section>
-            )}
 
             {/* TDC Schedule Section */}
             <section>
