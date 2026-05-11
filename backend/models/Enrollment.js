@@ -106,6 +106,16 @@ module.exports = (sequelize) => {
 			type: DataTypes.DECIMAL(10, 2),
 			allowNull: true,
 		},
+		additional_promos_amount: {
+			type: DataTypes.DECIMAL(10, 2),
+			allowNull: true,
+			defaultValue: 0,
+		},
+		additional_promo_offer_ids: {
+			type: DataTypes.JSON,
+			allowNull: true,
+			defaultValue: null,
+		},
 		payment_terms: {
 			type: DataTypes.STRING,
 			allowNull: true,

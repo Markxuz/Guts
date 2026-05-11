@@ -236,7 +236,10 @@ export default function DashboardPage() {
     const rows = Array.isArray(promoOffersData) ? promoOffersData : promoOffersData?.items || promoOffersData?.data || [];
     return rows.map((offer) => ({
       value: offer.id,
-      label: `${offer.name} - ₱${offer.fixed_price || 0}`,
+      label: `${offer.name} - ₱${Number(offer.discounted_price || offer.fixed_price || 0).toFixed(2)}`,
+      discounted_price: offer.discounted_price,
+      fixed_price: offer.fixed_price,
+      name: offer.name,
     }));
   }, [promoOffersData]);
 
@@ -508,6 +511,7 @@ export default function DashboardPage() {
             onSubmit={(paymentData) => approveEnrollmentWithPaymentMutation.mutate({ row: selectedEnrollmentForPayment, paymentData })}
             onCancel={() => setSelectedEnrollmentForPayment(null)}
             isPending={approveEnrollmentWithPaymentMutation.isPending}
+            userRole={auth?.user?.role}
           />
         ) : null}
       </Suspense>

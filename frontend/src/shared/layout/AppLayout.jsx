@@ -77,6 +77,7 @@ export default function AppLayout() {
   });
   const reportsContainerRef = useRef(null);
   const settingsContainerRef = useRef(null);
+  const previousPathnameRef = useRef(pathname);
   const isDarkMode = theme === "dark";
 
   const navItems = buildNavItems(role || "staff");
@@ -151,14 +152,12 @@ export default function AppLayout() {
   }, [theme]);
 
   useEffect(() => {
-    if (!isMobileNavOpen) {
-      return;
-    }
-
-    Promise.resolve().then(() => {
+    const previousPathname = previousPathnameRef.current;
+    if (previousPathname !== pathname) {
       setIsMobileNavOpen(false);
-    });
-  }, [pathname, isMobileNavOpen]);
+      previousPathnameRef.current = pathname;
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -228,16 +227,7 @@ export default function AppLayout() {
 
   return (
     <div className={`flex min-h-screen ${isDarkMode ? "bg-[radial-gradient(circle_at_15%_-10%,rgba(126,34,71,0.34),transparent_40%),radial-gradient(circle_at_90%_0%,rgba(30,64,175,0.22),transparent_36%),linear-gradient(180deg,#0d1019_0%,#111827_42%,#0b1220_100%)] text-[#dbe5f6]" : "bg-slate-100 text-slate-700"}`}>
-      <div className={`fixed inset-0 z-50 bg-black/55 transition-opacity duration-300 md:hidden ${isMobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} aria-hidden="true" onClick={() => setIsMobileNavOpen(false)} />
-
-      <button
-        type="button"
-        onClick={() => setIsMobileNavOpen(true)}
-        aria-label="Open navigation menu"
-        className={`fixed left-4 top-4 z-[9999] inline-flex h-11 w-11 items-center justify-center rounded-2xl border shadow-lg md:hidden pointer-events-auto ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4d57a]" : "border-slate-200 bg-white text-slate-700"}`}
-      >
-        <Menu size={18} />
-      </button>
+      <div className={`fixed inset-0 z-[80] bg-black/55 transition-opacity duration-300 md:hidden ${isMobileNavOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} aria-hidden="true" onClick={() => setIsMobileNavOpen(false)} />
 
       <aside className={`fixed left-0 top-0 z-40 hidden h-screen flex-col overflow-visible border-r border-white/10 bg-[#14121a] transition-all duration-300 print:hidden md:flex ${isCollapsed ? "w-20" : "w-64"}`}>
         <div className={`border-b border-white/10 py-4 ${isCollapsed ? "px-2" : "px-5"}`}>
@@ -502,9 +492,18 @@ export default function AppLayout() {
       </aside>
 
       <div className={`flex min-h-screen min-w-0 flex-1 flex-col transition-all duration-300 print:ml-0 print:bg-white ${isCollapsed ? "md:ml-20" : "md:ml-64"} ${isDarkMode ? "bg-transparent text-[#dbe5f6]" : "bg-slate-200 text-slate-800"}`}>
-        <header className={`sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 md:pl-16 pl-4 md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/95 text-[#f4f1ec]" : "border-slate-200 bg-white/95 text-slate-900"}`}>
-          <div className="min-w-0 flex-1 px-3 text-center">
-            <p className="truncate text-sm font-semibold">Guardians Technical School INC.</p>
+        <header className={`fixed left-0 right-0 top-0 z-[70] flex items-center gap-2 border-b px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] shadow-sm backdrop-blur md:hidden ${isDarkMode ? "border-white/10 bg-[#14121a]/90 text-[#f4f1ec]" : "border-slate-200 bg-white/90 text-slate-900"}`}>
+          <button
+            type="button"
+            onClick={() => setIsMobileNavOpen(true)}
+            aria-label="Open navigation menu"
+            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm transition active:scale-95 ${isDarkMode ? "border-white/10 bg-white/5 text-[#f4d57a]" : "border-slate-200 bg-white text-slate-700"}`}
+          >
+            <Menu size={18} />
+          </button>
+
+          <div className="min-w-0 flex-1 px-1 text-center leading-tight">
+            <p className="truncate text-[13px] font-semibold sm:text-sm">Guardians Technical School INC.</p>
             <p className={`truncate text-[11px] tracking-wide ${isDarkMode ? "text-[#dfb95a]" : "text-[#800000]"}`}>Admin Dashboard</p>
           </div>
 
@@ -512,13 +511,13 @@ export default function AppLayout() {
             type="button"
             onClick={() => setTheme((currentTheme) => (currentTheme === "dark" ? "light" : "dark"))}
             aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border ${isDarkMode ? "border-white/10 bg-white/5 text-[#f4f1ec]" : "border-slate-200 bg-slate-50 text-slate-700"}`}
+            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${isDarkMode ? "border-white/10 bg-white/5 text-[#f4f1ec]" : "border-slate-200 bg-slate-50 text-slate-700"}`}
           >
             {isDarkMode ? <SunMedium size={18} /> : <MoonStar size={18} />}
           </button>
         </header>
 
-        <div className={`fixed inset-y-0 left-0 z-50 w-[84vw] max-w-sm transform border-r border-white/10 bg-[#14121a] shadow-2xl transition-transform duration-300 md:hidden ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className={`fixed inset-y-0 left-0 z-[90] w-[84vw] max-w-sm transform border-r border-white/10 bg-[#14121a] shadow-2xl transition-transform duration-300 md:hidden ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"}`}>
           <div className="flex h-full flex-col">
             <div className="flex items-start justify-between border-b border-white/10 px-4 py-4">
               <div className="flex items-center gap-3">
@@ -641,7 +640,7 @@ export default function AppLayout() {
           </div>
         </div>
 
-        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pt-6 scroll-smooth md:p-6 print:overflow-visible print:p-0">
+        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pt-[calc(5rem+env(safe-area-inset-top))] scroll-smooth md:p-6 md:pt-6 print:overflow-visible print:p-0">
           <div className="mx-auto min-w-0 w-full max-w-full">
             <div key={pathname} className="route-fade-enter min-w-0">
               <Outlet />

@@ -17,6 +17,7 @@ const tdcTrainingMethodSchema = optionalText;
 const pdcTrainingMethodSchema = optionalText;
 const scheduleSlotSchema = Joi.string().valid("morning", "afternoon");
 const financialAmountSchema = Joi.number().precision(2).min(0).allow(null);
+const additionalPromoIdsSchema = Joi.array().items(Joi.number().integer().positive()).max(20).allow(null);
 
 const schedulePayloadSchema = Joi.object({
   enabled: Joi.boolean().default(false),
@@ -71,6 +72,8 @@ const enrollmentCreateSchema = Joi.object({
     schedule_id: Joi.number().integer().allow(null),
     package_id: Joi.number().integer().allow(null),
     promo_offer_id: Joi.number().integer().allow(null),
+    additional_promo_offer_ids: additionalPromoIdsSchema,
+    additional_promos_amount: financialAmountSchema,
     client_type: optionalText,
     fee_amount: financialAmountSchema,
     discount_amount: financialAmountSchema,
@@ -241,6 +244,8 @@ const enrollmentUpdateSchema = Joi.object({
   schedule_id: Joi.number().integer(),
   package_id: Joi.number().integer(),
   promo_offer_id: Joi.number().integer().allow(null),
+  additional_promo_offer_ids: additionalPromoIdsSchema,
+  additional_promos_amount: financialAmountSchema,
   dl_code_id: Joi.number().integer(),
   client_type: optionalText,
   enrollment_channel: Joi.string().valid("walk_in", "saferoads", "otdc", "partner").allow("", null),

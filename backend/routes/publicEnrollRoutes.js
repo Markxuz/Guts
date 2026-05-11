@@ -2,7 +2,6 @@ const express = require("express");
 const { QRCode, PromoOffer } = require("../models");
 const rateLimit = require("express-rate-limit");
 const enrollmentsService = require("../src/modules/enrollments/enrollments.service");
-const { Op } = require("sequelize");
 
 const router = express.Router();
 
@@ -64,21 +63,23 @@ router.get("/enroll/promo-offers", async (req, res) => {
     const qr = await QRCode.findOne({ where: { token, revoked: false } });
     if (!qr) return res.status(404).json({ error: "QR code not found or revoked" });
 
-    const enrollmentType = resolveEnrollmentType(qr.template);
-    const appliesToFilter = enrollmentType ? ["ALL", enrollmentType] : ["ALL", "TDC", "PDC", "PROMO"];
-
     const offers = await PromoOffer.findAll({
       where: {
         status: "active",
-        applies_to: {
-          [Op.in]: appliesToFilter,
-        },
       },
       attributes: ["id", "name", "description", "fixed_price", "discounted_price", "applies_to"],
       order: [["id", "DESC"]],
     });
 
-    res.json(offers);
+    const enrollmentType = resolveEnrollmentType(qr.template);
+    const normalizedEnrollmentType = String(enrollmentType || "").toUpperCase();
+
+    res.json(
+      offers.map((offer) => ({
+        ...offer.toJSON(),
+        is_applicable: !offer.applies_to || offer.applies_to === "ALL" || offer.applies_to === normalizedEnrollmentType,
+      }))
+    );
   } catch (err) {
     res.status(500).json({ error: err.message || "Failed to load promo offers" });
   }

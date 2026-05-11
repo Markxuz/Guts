@@ -90,6 +90,10 @@ function buildStatRows(report) {
     ? Math.round((Number(report.stats.completed || 0) / Number(report.stats.thisMonth || 1)) * 100)
     : 0;
 
+  const totalRevenue = Number(report?.revenueSummary?.totalRevenue || 0);
+  const pendingCollections = Number(report?.revenueSummary?.pendingCollections || 0);
+  const netProfit = Number((totalRevenue - operatingExpense).toFixed(2));
+
   return [
     ["Total Students", formatNumber(report.stats.totalStudents), "students"],
     ["Currently Enrolled", formatNumber(report.stats.currentlyEnrolled), "students"],
@@ -98,7 +102,10 @@ function buildStatRows(report) {
     ["PDC Beginner", formatNumber(report.stats.pdcBeginner), "students"],
     ["PDC Experience", formatNumber(report.stats.pdcExperience), "students"],
     ["Completion Rate", formatPercent(completionRate), ""],
-    ["Operating Expense", formatMoney(operatingExpense), ""],
+    ["Total Revenue", formatMoney(totalRevenue), "PHP"],
+    ["Pending Collections", formatMoney(pendingCollections), "PHP"],
+    ["Operating Expense", formatMoney(operatingExpense), "PHP"],
+    ["Net Profit/Loss", formatMoney(netProfit), "PHP"],
   ];
 }
 
@@ -150,10 +157,10 @@ function buildDashboardSections(report) {
       title: "Financial Summary",
       accent: "#d4af37",
       rows: [
-        ["Total Revenue", 0, "PHP"],
-        ["Pending Collections", 0, "PHP"],
-        ["Operating Expenses", formatNumber(maintenanceCost + fuelExpense), "PHP"],
-        ["Net Profit/Loss", 0, "PHP"],
+        ["Total Revenue", formatMoney(report?.revenueSummary?.totalRevenue || 0), "PHP"],
+        ["Pending Collections", formatMoney(report?.revenueSummary?.pendingCollections || 0), "PHP"],
+        ["Operating Expenses", formatMoney(maintenanceCost + fuelExpense), "PHP"],
+        ["Net Profit/Loss", formatMoney(Number((report?.revenueSummary?.totalRevenue || 0) - (maintenanceCost + fuelExpense)).toFixed(2)), "PHP"],
       ],
     },
     {
@@ -865,3 +872,7 @@ module.exports = {
   dispatchDueReportSchedules,
   sendReportEmailNow,
 };
+
+// Export helpers for internal previews/tests
+module.exports.buildAttachment = buildAttachment;
+module.exports.buildPdfBuffer = buildPdfBuffer;

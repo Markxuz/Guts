@@ -44,6 +44,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
   });
   const [errorMessage, setErrorMessage] = useState("");
   const [instructors, setInstructors] = useState([]);
+  const [promoOffers, setPromoOffers] = useState([]);
 
   // Fetch instructors on mount
   useEffect(() => {
@@ -64,6 +65,33 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
         setInstructors(list.map((i) => ({ value: i.id, label: i.name || `${i.first_name || ''} ${i.last_name || ''}`.trim() })));
       } catch {
         // ignore - dropdown will remain empty
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const response = await api.get("/promo-offers");
+        if (!mounted) return;
+
+        const offers = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.data)
+            ? response.data
+            : [];
+
+        setPromoOffers(offers.filter((offer) => offer?.status === "active"));
+      } catch {
+        if (mounted) {
+          setPromoOffers([]);
+        }
       }
     })();
 
@@ -104,6 +132,10 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
           fee_amount: enrollment?.fee_amount || null,
           discount_amount: enrollment?.discount_amount || null,
           payment_terms: enrollment?.payment_terms || "",
+          additional_promo_offer_ids: Array.isArray(enrollment?.additional_promo_offer_ids)
+            ? enrollment.additional_promo_offer_ids
+            : [],
+          additional_promos_amount: enrollment?.additional_promos_amount || 0,
         },
       });
       setErrorMessage("");
@@ -118,6 +150,12 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
+        fee_amount: form.enrollment.fee_amount || null,
+        discount_amount: form.enrollment.discount_amount || null,
+        payment_terms: form.enrollment.payment_terms || null,
+        additional_promo_offer_ids: Array.isArray(form.enrollment.additional_promo_offer_ids)
+          ? form.enrollment.additional_promo_offer_ids
+          : [],
         promo_schedule_tdc: {
           schedule_date: form.promo_schedule_tdc.schedule_date || null,
           instructor_id: form.promo_schedule_tdc.instructor_id || null,
@@ -139,11 +177,6 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
         },
         profile: {
           gmail_account: form.profile.gmail_account,
-        },
-        enrollment: {
-          fee_amount: form.enrollment.fee_amount || null,
-          discount_amount: form.enrollment.discount_amount || null,
-          payment_terms: form.enrollment.payment_terms || null,
         },
       };
 
@@ -208,6 +241,22 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
 
   const studentName = enrollment.student?.first_name || enrollment.Student?.first_name || "Student";
   const schedulePdcNow = normalizeBooleanValue(form.promo_schedule_pdc.enabled);
+  const selectedAdditionalPromoIds = Array.isArray(form.enrollment.additional_promo_offer_ids)
+    ? form.enrollment.additional_promo_offer_ids.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0)
+    : [];
+
+  const selectedAdditionalPromosAmount = selectedAdditionalPromoIds.reduce((sum, promoId) => {
+    const offer = promoOffers.find((item) => Number(item?.id) === promoId);
+    if (!offer) return sum;
+
+    const discounted = Number(offer.discounted_price);
+    const fixed = Number(offer.fixed_price);
+    const price = Number.isFinite(discounted) && discounted > 0
+      ? discounted
+      : (Number.isFinite(fixed) && fixed > 0 ? fixed : 0);
+
+    return sum + price;
+  }, 0);
 
   return (
     <div
@@ -281,8 +330,10 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
                   <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Contact Number</span>
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={11}
                     value={form.student.phone}
-                    onChange={(event) => handleFieldChange("student", "phone", event.target.value)}
+                    onChange={(event) => handleFieldChange("student", "phone", event.target.value.replace(/\D/g, "").slice(0, 11))}
                     className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
                   />
                 </label>
@@ -342,7 +393,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
             </section>
 
             {/* Fee & Payment Terms Section - Admin/Sub-Admin Only */}
-            {(role === "admin" || role === "sub_admin") && (
+            {(role === "admin" || role === "sub_admin" || role === "staff") && (
               <section>
                 <h3 className="mb-4 text-sm font-semibold text-slate-900">Fee & Payment Terms</h3>
                 <div className="grid gap-3 md:grid-cols-2">
@@ -383,6 +434,50 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
                       <option value="Downpayment">Downpayment</option>
                     </select>
                   </label>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-[#d9c9a0] bg-white p-4">
+                  <p className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Additional Promo Add-ons</p>
+                  <p className="mt-1 text-xs text-slate-600">Select optional add-on promos for this enrollment.</p>
+
+                  <div className="mt-3 grid gap-2">
+                    {promoOffers.length === 0 ? (
+                      <p className="text-xs text-slate-500">No active promo offers available.</p>
+                    ) : (
+                      promoOffers.map((offer) => {
+                        const offerId = Number(offer.id);
+                        const isChecked = selectedAdditionalPromoIds.includes(offerId);
+                        const price = Number(offer.discounted_price) > 0 ? Number(offer.discounted_price) : (Number(offer.fixed_price) > 0 ? Number(offer.fixed_price) : 0);
+
+                        return (
+                          <label key={offer.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(event) => {
+                                  const checked = event.target.checked;
+                                  handleFieldChange(
+                                    "enrollment",
+                                    "additional_promo_offer_ids",
+                                    checked
+                                      ? [...selectedAdditionalPromoIds, offerId]
+                                      : selectedAdditionalPromoIds.filter((id) => id !== offerId)
+                                  );
+                                }}
+                              />
+                              <span className="text-slate-800">{offer.name}</span>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-600">PHP {price.toFixed(2)}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                    Computed add-on amount: <span className="font-semibold">PHP {selectedAdditionalPromosAmount.toFixed(2)}</span>
+                  </div>
                 </div>
               </section>
             )}

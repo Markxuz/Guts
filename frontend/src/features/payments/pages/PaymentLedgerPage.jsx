@@ -9,6 +9,7 @@ import {
   getLatestEnrollment,
   getCourseCode,
 } from "../../students/utils/studentsPageUtils";
+import AddPromoModal from "../components/AddPromoModal";
 import RecordPaymentModal from "../components/RecordPaymentModal";
 
 function money(value) {
@@ -32,12 +33,26 @@ export default function PaymentLedgerPage() {
   const queryClient = useQueryClient();
   const [paymentFilter, setPaymentFilter] = useState("with_balance");
   const [paymentTarget, setPaymentTarget] = useState(null);
+  const [promoTarget, setPromoTarget] = useState(null);
   const [banner, setBanner] = useState("");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["students", "payment-ledger"],
     queryFn: () => resourceServices.students.list(),
   });
+
+  const { data: promoOffersData = [] } = useQuery({
+    queryKey: ["promo-offers", "payment-ledger"],
+    queryFn: async () => {
+      const response = await resourceServices.promoOffers.list();
+      return Array.isArray(response) ? response : response?.data || [];
+    },
+  });
+
+  const promoOffers = useMemo(
+    () => (Array.isArray(promoOffersData) ? promoOffersData : []).filter((offer) => String(offer?.status || "").toLowerCase() === "active"),
+    [promoOffersData]
+  );
 
   const students = useMemo(() => (Array.isArray(data) ? data : data?.data || []), [data]);
 
@@ -110,6 +125,51 @@ export default function PaymentLedgerPage() {
     },
     onError: (error) => {
       setBanner(error?.message || "Failed to save payment.");
+    },
+  });
+
+  const addPromoMutation = useMutation({
+    mutationFn: async ({ row, promoOffer, promoPrice }) => {
+      setBanner("");
+      const existingIds = Array.isArray(row?.enrollment?.additional_promo_offer_ids)
+        ? row.enrollment.additional_promo_offer_ids.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0)
+        : [];
+      const nextIds = Array.from(new Set([...existingIds, Number(promoOffer.id)]));
+      const delta = nextIds.length > existingIds.length ? Number(promoPrice || 0) : 0;
+
+      await resourceServices.enrollments.update(row.enrollment.id, {
+        additional_promo_offer_ids: nextIds,
+      });
+
+      return {
+        row,
+        promoOffer,
+        promoPrice: delta,
+        nextRemainingBalance: Number(row.summary.remainingBalance || 0) + delta,
+        nextTotalDue: Number(row.summary.totalDue || 0) + delta,
+      };
+    },
+    onSuccess: async ({ row, promoOffer, promoPrice, nextRemainingBalance, nextTotalDue }) => {
+      setBanner(`Promo added successfully: ${promoOffer.name}`);
+      setPromoTarget(null);
+      await queryClient.invalidateQueries({ queryKey: ["students"] });
+      await queryClient.invalidateQueries({ queryKey: ["students", "payment-ledger"] });
+
+      setPaymentTarget({
+        ...row,
+        summary: {
+          ...row.summary,
+          remainingBalance: nextRemainingBalance,
+          totalDue: nextTotalDue,
+        },
+      });
+
+      if (promoPrice > 0) {
+        setBanner(`Promo added successfully. Continue with payment for PHP ${promoPrice.toFixed(2)}.`);
+      }
+    },
+    onError: (error) => {
+      setBanner(error?.message || "Failed to add promo.");
     },
   });
 
@@ -253,9 +313,7 @@ export default function PaymentLedgerPage() {
                     </td>
                     <td className="px-4 py-2.5 align-top">
                       <div className="flex flex-wrap gap-2">
-                        {row.summary.remainingBalance > 0 && 
-                         (row.category.paymentTerms?.toLowerCase().includes("installment") || 
-                          row.category.paymentTerms?.toLowerCase().includes("downpayment")) ? (
+                        {row.summary.remainingBalance > 0 ? (
                           <button
                             type="button"
                             onClick={() => setPaymentTarget(row)}
@@ -263,7 +321,15 @@ export default function PaymentLedgerPage() {
                           >
                             Add Payment
                           </button>
-                        ) : null}
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setPromoTarget(row)}
+                            className="rounded-md border border-[#800000] bg-white px-3 py-1.5 text-xs font-semibold text-[#800000] hover:bg-[#800000]/5"
+                          >
+                            Add Promo
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => navigate(`/students?focusStudentId=${row.student.id}`)}
@@ -280,6 +346,16 @@ export default function PaymentLedgerPage() {
           </table>
         </div>
       </div>
+
+      {promoTarget ? (
+        <AddPromoModal
+          studentName={[promoTarget.student.first_name, promoTarget.student.middle_name, promoTarget.student.last_name].filter(Boolean).join(" ")}
+          promoOffers={promoOffers}
+          onSubmit={(selection) => addPromoMutation.mutate({ row: promoTarget, ...selection })}
+          onCancel={() => setPromoTarget(null)}
+          isPending={addPromoMutation.isPending}
+        />
+      ) : null}
 
       {paymentTarget ? (
         <RecordPaymentModal

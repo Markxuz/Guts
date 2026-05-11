@@ -28,6 +28,14 @@ async function getTestClient() {
         type: DataTypes.INTEGER,
         allowNull: true,
       });
+      await ensureTableColumn("Enrollments", "additional_promo_offer_ids", {
+        type: DataTypes.JSON,
+        allowNull: true,
+      });
+      await ensureTableColumn("Enrollments", "additional_promos_amount", {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true,
+      });
 
       // Keep contract tests resilient even if local test DB missed recent migrations.
       await ensureTableColumn("student_profiles", "client_type", {

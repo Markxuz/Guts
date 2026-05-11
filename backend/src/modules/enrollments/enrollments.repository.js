@@ -39,6 +39,15 @@ const enrollmentIncludes = [
     model: Payment,
     as: "payments",
     required: false,
+    attributes: [
+      "id",
+      "amount",
+      "payment_method",
+      "payment_status",
+      "reference_number",
+      "account_number",
+      "created_at",
+    ],
   },
 ];
 

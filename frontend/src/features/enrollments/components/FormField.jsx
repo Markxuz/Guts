@@ -11,11 +11,21 @@ export function FormField({
   className = "",
   inputClassName = "",
   shouldUppercase = true,
+  maxLength,
+  readOnly = false,
 }) {
+  const isContactNumberField = String(name || "").includes("phone") || String(name || "").includes("contact_number");
+  const effectiveType = isContactNumberField ? "tel" : type;
+  const effectiveInputMode = isContactNumberField ? "numeric" : undefined;
+  const effectiveMaxLength = isContactNumberField ? 11 : maxLength;
+
   const handleChange = (e) => {
     let val = e.target.value;
+    if (isContactNumberField) {
+      val = String(val).replace(/\D/g, "").slice(0, 11);
+    }
     // Convert to uppercase for text inputs (for encoder data entry like names, addresses)
-    if (shouldUppercase && (type === "text" || type === "email")) {
+    if (shouldUppercase && (effectiveType === "text" || effectiveType === "email")) {
       val = val.toUpperCase();
     }
     onChange({ ...e, target: { ...e.target, value: val } });
@@ -31,9 +41,12 @@ export function FormField({
         name={name}
         value={value ?? ""}
         onChange={handleChange}
-        type={type}
+        type={effectiveType}
         placeholder={placeholder}
         required={required}
+        inputMode={effectiveInputMode}
+        maxLength={effectiveMaxLength}
+        readOnly={readOnly}
         className={`${baseFieldClassName} ${inputClassName}`.trim()}
       />
     </label>

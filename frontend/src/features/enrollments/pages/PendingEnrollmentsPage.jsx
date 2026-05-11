@@ -40,7 +40,10 @@ export default function PendingEnrollmentsPage() {
   const promoOfferOptions = useMemo(() => {
     return (promoOffers || []).map((po) => ({
       value: po.id,
-      label: `${po.name} - ₱${po.fixed_price || 0}`,
+      label: `${po.name} - ₱${Number(po.discounted_price || po.fixed_price || 0).toFixed(2)}`,
+      discounted_price: po.discounted_price,
+      fixed_price: po.fixed_price,
+      name: po.name,
     }));
   }, [promoOffers]);
 

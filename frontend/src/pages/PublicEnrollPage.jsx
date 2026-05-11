@@ -72,6 +72,10 @@ function getAddressOptions(fieldName, formData) {
 
 function FieldControl({ field, value, onChange, formData }) {
   const baseClasses = "mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#800000] focus:ring-2 focus:ring-[#800000]/10";
+  const isContactNumberField = String(field?.name || "").includes("phone") || String(field?.name || "").includes("contact_number");
+  const contactInputProps = isContactNumberField
+    ? { inputMode: "numeric", maxLength: 11, pattern: "[0-9]*" }
+    : {};
 
    if (field.type === "note") {
      return (
@@ -170,11 +174,12 @@ function FieldControl({ field, value, onChange, formData }) {
   return (
     <input
       name={field.name}
-      type={field.type || "text"}
+        type={isContactNumberField ? "tel" : (field.type || "text")}
       value={value ?? ""}
       onChange={onChange}
       required={field.required}
       readOnly={field.readOnly}
+        {...contactInputProps}
       className={baseClasses}
     />
   );
@@ -308,6 +313,10 @@ export default function PublicEnrollPage() {
   const [loading, setLoading] = useState(Boolean(token));
   const [submitState, setSubmitState] = useState("idle");
   const [promoOptions, setPromoOptions] = useState([]);
+  const [showPromoPrompt, setShowPromoPrompt] = useState(false);
+  const [wantsPromo, setWantsPromo] = useState(null); // null = unanswered, true/false
+  const [selectedPromos, setSelectedPromos] = useState([]);
+  const [promoConfirmed, setPromoConfirmed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -365,8 +374,11 @@ export default function PublicEnrollPage() {
 
   function handleChange(event) {
     const { name, value } = event.target;
+    const normalizedValue = String(name || "").includes("phone") || String(name || "").includes("contact_number")
+      ? value.replace(/\D/g, "").slice(0, 11)
+      : value;
     setFormData((current) => {
-      let next = createNestedValue(current, name, value);
+      let next = createNestedValue(current, name, normalizedValue);
       next = clearDependentAddressFields(name, next);
 
       if (name === "extras.region" || name === "profile.province" || name === "profile.city" || name === "profile.barangay") {
@@ -374,8 +386,8 @@ export default function PublicEnrollPage() {
       }
 
       // Auto-calculate age from birthdate
-      if (name === "profile.birthdate" && value) {
-        const birthDate = new Date(value);
+      if (name === "profile.birthdate" && normalizedValue) {
+        const birthDate = new Date(normalizedValue);
         const today = new Date();
         let age = today.getFullYear() - birthDate.getFullYear();
         const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -391,6 +403,14 @@ export default function PublicEnrollPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    // If we have promo offers and the user hasn't been prompted yet,
+    // show the promo prompt modal instead of immediately submitting.
+    if (Array.isArray(promoOptions) && promoOptions.length > 0 && !promoConfirmed) {
+      setShowPromoPrompt(true);
+      return;
+    }
+
     setSubmitState("submitting");
     setStatus("Submitting your enrollment...");
 
@@ -407,6 +427,8 @@ export default function PublicEnrollPage() {
       enrollment: {
         ...(formData.enrollment || {}),
         promo_offer_id: formData.enrollment?.promo_offer_id ? Number(formData.enrollment.promo_offer_id) : null,
+        // Include any additional promos selected from the post-submit modal
+        additional_promo_offer_ids: Array.isArray(selectedPromos) && selectedPromos.length > 0 ? [Number(selectedPromos[0])] : undefined,
         is_already_driver: normalizeBooleanValue(formData.enrollment?.is_already_driver),
         enrollment_channel: "qr_public",
       },
@@ -634,6 +656,83 @@ export default function PublicEnrollPage() {
                 </button>
               </div>
             </form>
+          ) : null}
+
+          {/* Promo confirmation modal shown when user hits submit */}
+          {showPromoPrompt ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/40" onClick={() => { setShowPromoPrompt(false); setWantsPromo(null); }} />
+              <div className="relative mx-4 w-full max-w-2xl rounded-2xl bg-white p-6 shadow-lg">
+                <h3 className="text-lg font-bold">Would you like to add an additional promo?</h3>
+                <p className="mt-2 text-sm text-slate-600">Choose one promo from the website list, including promos that apply to this enrollment type.</p>
+
+                <div className="mt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setWantsPromo(true); }}
+                    className={`rounded-lg px-4 py-2 ${wantsPromo === true ? "bg-[#800000] text-white" : "border bg-white text-slate-700"}`}
+                  >Yes</button>
+                  <button
+                    type="button"
+                    onClick={() => { setWantsPromo(false); setSelectedPromos([]); }}
+                    className={`rounded-lg px-4 py-2 ${wantsPromo === false ? "bg-[#800000] text-white" : "border bg-white text-slate-700"}`}
+                  >No</button>
+                </div>
+
+                {wantsPromo ? (
+                  <div className="mt-4 max-h-[60vh] overflow-auto pr-1">
+                    <div className="text-sm text-slate-700">Select a promo to add:</div>
+                    <div className="mt-2 grid gap-2">
+                      {promoOptions.map((opt) => {
+                        const isSelected = selectedPromos.includes(opt.value);
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setSelectedPromos([opt.value])}
+                            className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition ${isSelected ? "border-[#800000] bg-[#800000]/5" : "border-slate-200 bg-white hover:bg-slate-50"}`}
+                          >
+                            <div>
+                              <div className="text-sm font-semibold text-slate-900">{opt.label}</div>
+                              <div className="text-xs text-slate-500">{opt.is_applicable ? "Applicable to this form" : "Selectable as an additional promo"}</div>
+                            </div>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${opt.is_applicable ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                              {isSelected ? "Selected" : "Choose"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="mt-6 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setShowPromoPrompt(false); setWantsPromo(null); }}
+                    className="rounded-lg border bg-white px-4 py-2 text-sm text-slate-700"
+                  >Cancel</button>
+                  <button
+                    type="button"
+                    disabled={wantsPromo && selectedPromos.length === 0}
+                    onClick={() => {
+                      // Confirm choice and proceed to submit
+                      setPromoConfirmed(true);
+                      setShowPromoPrompt(false);
+                      setStatus("");
+                      // If user said no, clear selected promos
+                      if (!wantsPromo) setSelectedPromos([]);
+                      // programmatically submit the form by calling handleSubmit again
+                      // We simulate by invoking submission flow: create a new submit event
+                      const fakeEvent = { preventDefault: () => {} };
+                      // small timeout to allow modal to close visually
+                      setTimeout(() => handleSubmit(fakeEvent), 50);
+                    }}
+                    className="rounded-lg bg-[#800000] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >Continue</button>
+                </div>
+              </div>
+            </div>
           ) : null}
         </section>
 

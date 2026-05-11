@@ -153,6 +153,9 @@ function mapEnrollmentReport(row) {
 }
 
 function mapScheduleReport(row, index) {
+  const isExplicitScheduleRow = String(row?.remarks || "").toLowerCase().includes("schedule row");
+  const courseType = isExplicitScheduleRow ? "schedule" : classifyCourseType(row);
+
   return {
     id: row.id || `schedule-${index}`,
     time: row.slotLabel || "Scheduled",
@@ -166,7 +169,7 @@ function mapScheduleReport(row, index) {
     remarks: row.studentRemarks || row.remarks || row.slotLabel || "Scheduled session",
     studentRemarks: row.studentRemarks || row.remarks || "",
     instructorRemarks: row.instructorRemarks || "",
-    courseType: "schedule",
+    courseType,
     description: `${row.course || "Course"} with ${row.instructor || "Instructor"}`,
     createdAt: `${row.scheduleDate}T00:00:00.000Z`,
   };
@@ -179,12 +182,6 @@ function classifyDailyItemCourseType(item) {
   }
 
   const normalizedCourse = String(item?.course || "").toLowerCase();
-  if (normalizedCourse.includes("tdc") && normalizedCourse.includes("promo")) {
-    return "promo";
-  }
-  if (normalizedCourse.includes("tdc") && normalizedCourse.includes("pdc")) {
-    return "promo";
-  }
   if (normalizedCourse.includes("pdc") && normalizedCourse.includes("beginner")) {
     return "pdc_beginner";
   }
@@ -196,6 +193,13 @@ function classifyDailyItemCourseType(item) {
   }
   if (normalizedCourse.includes("pdc")) {
     return "pdc_experience";
+  }
+
+  if (normalizedCourse.includes("tdc") && normalizedCourse.includes("promo")) {
+    return "promo";
+  }
+  if (normalizedCourse.includes("tdc") && normalizedCourse.includes("pdc")) {
+    return "promo";
   }
 
   return "unknown";
@@ -374,6 +378,20 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
       (Array.isArray(payments) ? payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) : 0).toFixed(2)
     ),
   };
+
+  // Compute total enrollments expected revenue (include additional promos and subtract discounts)
+  const totalEnrollmentAmount = meaningfulEnrollments.reduce((sum, r) => {
+    const fee = Number(r.fee_amount || 0);
+    const additional = Number(r.additional_promos_amount || 0);
+    const discount = Number(r.discount_amount || 0);
+    return sum + fee + additional - discount;
+  }, 0);
+
+  const pendingCollections = Number(Math.max(0, totalEnrollmentAmount - (revenueSummary.totalRevenue || 0)).toFixed(2));
+
+  // Attach pending collections and net profit/loss to revenue summary (net = revenue - operating expense)
+  revenueSummary.pendingCollections = pendingCollections;
+  // operating expense will be computed by callers (maintenance + fuel); leave netProfitLoss computed later by consumers
 
   // Build vehicle usage aggregates from vehicle usages and fuel logs
   const vehicleUsageRows = await repository.findVehicleUsagesByDateRange(start, end);

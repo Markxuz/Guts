@@ -139,6 +139,61 @@ function toCurrencyNumber(value) {
   return numeric === null ? 0 : numeric;
 }
 
+function resolvePromoPrice(offer) {
+  const discounted = normalizeAmount(offer?.discounted_price);
+  if (discounted !== null && discounted > 0) {
+    return discounted;
+  }
+
+  const fixed = normalizeAmount(offer?.fixed_price);
+  if (fixed !== null && fixed > 0) {
+    return fixed;
+  }
+
+  return 0;
+}
+
+async function validateAndComputeAdditionalPromos({ primaryPromoOfferId, additionalPromoIds, transaction }) {
+  const ids = Array.isArray(additionalPromoIds)
+    ? [...new Set(additionalPromoIds.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))]
+    : [];
+
+  if (ids.length === 0) {
+    return {
+      normalizedIds: [],
+      additionalPromosAmount: 0,
+    };
+  }
+
+  const primaryId = Number(primaryPromoOfferId);
+  if (Number.isInteger(primaryId) && primaryId > 0 && ids.includes(primaryId)) {
+    const error = new Error("additional promo list must not include the selected primary promo");
+    error.status = 400;
+    throw error;
+  }
+
+  const { PromoOffer } = require("../../../models");
+  const offers = await PromoOffer.findAll({
+    where: { id: ids, status: "active" },
+    transaction,
+  });
+
+  if (offers.length !== ids.length) {
+    const foundIds = new Set(offers.map((item) => Number(item.id)));
+    const missing = ids.filter((id) => !foundIds.has(id));
+    const error = new Error(`Invalid or inactive additional promos: ${missing.join(", ")}`);
+    error.status = 400;
+    throw error;
+  }
+
+  const additionalPromosAmount = offers.reduce((sum, offer) => sum + resolvePromoPrice(offer), 0);
+
+  return {
+    normalizedIds: ids,
+    additionalPromosAmount: Number(additionalPromosAmount.toFixed(2)),
+  };
+}
+
 function attachPaymentSummary(enrollment) {
   if (!enrollment) {
     return enrollment;
@@ -175,6 +230,13 @@ function normalizePdcType(rawType, rawCategory) {
   }
 
   return normalizedCategory.toLowerCase() === "experience" ? "experience" : "beginner";
+}
+
+function enrollmentTypeFromDlCodeCode(dlCodeRaw) {
+  const code = String(dlCodeRaw || "").toUpperCase();
+  if (code.includes("PROMO")) return "PROMO";
+  if (code === "PDC") return "PDC";
+  return "TDC";
 }
 
 function normalizeStudentPayload(student = {}) {
@@ -263,6 +325,10 @@ function normalizeEnrollmentPayload(enrollment = {}, extras = {}, studentId, dlC
     enrollment_channel: channel,
     external_application_ref: normalizeText(enrollment.external_application_ref),
     pdc_start_mode: startMode,
+    // allow multiple additional promo offer ids (from public enroll modal)
+    additional_promo_offer_ids: Array.isArray(enrollment.additional_promo_offer_ids)
+      ? enrollment.additional_promo_offer_ids.map((v) => (v === null || v === undefined ? null : Number(v)))
+      : null,
     enrollment_state: "active",
     status: enrollment.status || "pending",
     created_at: enrollment.created_at || new Date(),
@@ -594,10 +660,24 @@ async function addEnrollment(payload) {
     const student = await resolveStudent(payload.student, transaction);
     await upsertStudentProfile(student.id, payload.profile, payload.extras, payload.enrollment, transaction);
     const dlCode = await resolveDlCode(payload.enrollment_type, transaction);
-    const enrollment = await repository.createEnrollment(
-      normalizeEnrollmentPayload(payload.enrollment, payload.extras, student.id, dlCode.id, payload.qrCodeId ?? payload.qr_code_id ?? null),
-      transaction
-    );
+      const additionalPromoComputation = await validateAndComputeAdditionalPromos({
+        enrollmentType: payload.enrollment_type,
+        primaryPromoOfferId: payload.enrollment?.promo_offer_id,
+        additionalPromoIds: payload.enrollment?.additional_promo_offer_ids,
+        transaction,
+      });
+
+      // Attach computed additional promos amount into enrollment payload so it's persisted
+      const normalizedEnrollment = normalizeEnrollmentPayload(payload.enrollment, payload.extras, student.id, dlCode.id, payload.qrCodeId ?? payload.qr_code_id ?? null);
+      normalizedEnrollment.additional_promo_offer_ids = additionalPromoComputation.normalizedIds;
+      if (!normalizedEnrollment.fee_amount) normalizedEnrollment.fee_amount = 0;
+      normalizedEnrollment.additional_promos_amount = additionalPromoComputation.additionalPromosAmount;
+      normalizedEnrollment.fee_amount = Number((Number(normalizedEnrollment.fee_amount || 0) + additionalPromoComputation.additionalPromosAmount).toFixed(2));
+
+      const enrollment = await repository.createEnrollment(
+        normalizedEnrollment,
+        transaction
+      );
 
     if (payload.enrollment_type === "PROMO") {
       await initializePromoLifecycle({ payload, enrollment, student, transaction });
@@ -714,7 +794,13 @@ async function addEnrollment(payload) {
       promo_schedule: promoSchedule,
     };
   } catch (error) {
-    await transaction.rollback();
+    try {
+      if (transaction && !transaction.finished) {
+        await transaction.rollback();
+      }
+    } catch (rbErr) {
+      // ignore rollback errors when transaction already finished
+    }
     throw error;
   }
 }
@@ -728,7 +814,20 @@ async function editEnrollment(id, payload) {
   }
 
   // Extract nested fields that require separate model updates
-  const { student: studentPayload, profile: profilePayload, promo_schedule_tdc, promo_schedule_pdc, ...enrollmentPayload } = payload;
+  const {
+    student: studentPayload,
+    profile: profilePayload,
+    enrollment: nestedEnrollmentPayload,
+    promo_schedule_tdc,
+    promo_schedule_pdc,
+    ...topLevelEnrollmentPayload
+  } = payload;
+
+  // Accept both legacy flat payload and nested enrollment payload from QR edit modal.
+  const enrollmentPayload = {
+    ...(nestedEnrollmentPayload && typeof nestedEnrollmentPayload === "object" ? nestedEnrollmentPayload : {}),
+    ...topLevelEnrollmentPayload,
+  };
 
   const transaction = await sequelize.transaction();
 
@@ -958,6 +1057,41 @@ async function editEnrollment(id, payload) {
       }
     }
 
+    if (Object.prototype.hasOwnProperty.call(enrollmentPayload, "additional_promo_offer_ids")) {
+      const additionalPromoComputation = await validateAndComputeAdditionalPromos({
+        enrollmentType: enrollmentTypeFromDlCodeCode(enrollment?.DLCode?.code),
+        primaryPromoOfferId: enrollmentPayload.promo_offer_id ?? enrollment.promo_offer_id,
+        additionalPromoIds: enrollmentPayload.additional_promo_offer_ids,
+        transaction,
+      });
+
+      const currentFeeAmount = toCurrencyNumber(
+        Object.prototype.hasOwnProperty.call(enrollmentPayload, "fee_amount")
+          ? enrollmentPayload.fee_amount
+          : enrollment.fee_amount
+      );
+      const previousAdditionalAmount = toCurrencyNumber(enrollment.additional_promos_amount);
+      const baseFeeAmount = Math.max(currentFeeAmount - previousAdditionalAmount, 0);
+
+      enrollmentPayload.additional_promo_offer_ids = additionalPromoComputation.normalizedIds;
+      enrollmentPayload.additional_promos_amount = additionalPromoComputation.additionalPromosAmount;
+      enrollmentPayload.fee_amount = Number((baseFeeAmount + additionalPromoComputation.additionalPromosAmount).toFixed(2));
+    }
+
+    if (Object.prototype.hasOwnProperty.call(enrollmentPayload, "additional_promos_amount")) {
+      const currentFeeAmount = toCurrencyNumber(
+        Object.prototype.hasOwnProperty.call(enrollmentPayload, "fee_amount")
+          ? enrollmentPayload.fee_amount
+          : enrollment.fee_amount
+      );
+      const previousAdditionalAmount = toCurrencyNumber(enrollment.additional_promos_amount);
+      const nextAdditionalAmount = toCurrencyNumber(enrollmentPayload.additional_promos_amount);
+      const baseFeeAmount = Math.max(currentFeeAmount - previousAdditionalAmount, 0);
+
+      enrollmentPayload.additional_promos_amount = nextAdditionalAmount;
+      enrollmentPayload.fee_amount = Number((baseFeeAmount + nextAdditionalAmount).toFixed(2));
+    }
+
     // If payment data is being submitted with fee_amount, create Payment record and calculate balance
     if (enrollmentPayload.fee_amount && enrollmentPayload.status === 'confirmed') {
       const feeAmount = toCurrencyNumber(enrollmentPayload.fee_amount);
@@ -1001,7 +1135,13 @@ async function editEnrollment(id, payload) {
     await transaction.commit();
     return updated;
   } catch (error) {
-    await transaction.rollback();
+    try {
+      if (transaction && !transaction.finished) {
+        await transaction.rollback();
+      }
+    } catch (rbErr) {
+      // ignore rollback errors when transaction already finished
+    }
     throw error;
   }
 }

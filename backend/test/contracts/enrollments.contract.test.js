@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { Enrollment, Student, StudentProfile, Instructor, Vehicle, Schedule } = require("../../models");
+const { Enrollment, Student, StudentProfile, Instructor, Vehicle, Schedule, PromoOffer } = require("../../models");
 const { getTestClient, loginAsAdmin } = require("../helpers/appTestHarness");
 
 function uniqueEmail() {
@@ -38,6 +38,7 @@ test.describe("Enrollments API contract", () => {
     instructorIds: [],
     vehicleIds: [],
     scheduleIds: [],
+    promoOfferIds: [],
   };
 
   test.before(async () => {
@@ -53,6 +54,11 @@ test.describe("Enrollments API contract", () => {
       );
       await Schedule.destroy({ where: { id: cleanup.scheduleIds } });
       cleanup.scheduleIds = [];
+    }
+
+    if (cleanup.promoOfferIds.length) {
+      await PromoOffer.destroy({ where: { id: cleanup.promoOfferIds } });
+      cleanup.promoOfferIds = [];
     }
 
     if (cleanup.enrollmentIds.length) {
@@ -282,5 +288,139 @@ test.describe("Enrollments API contract", () => {
     cleanup.enrollmentIds.push(response.body.id);
     cleanup.studentIds.push(response.body.Student.id);
     cleanup.scheduleIds.push(...response.body.schedule.createdItems.map((item) => item.id));
+  });
+
+  test("POST /api/enrollments applies valid additional promo add-ons", async () => {
+    const email = uniqueEmail();
+
+    const addOnPromo = await PromoOffer.create({
+      name: uniqueLabel("Addon Promo"),
+      status: "active",
+      applies_to: "TDC",
+      fixed_price: 500,
+      discounted_price: null,
+      description: "TDC add-on",
+    });
+    cleanup.promoOfferIds.push(addOnPromo.id);
+
+    const response = await client
+      .post("/api/enrollments")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        enrollment_type: "TDC",
+        student: {
+          first_name: "Addon",
+          last_name: "Student",
+          email,
+          phone: "09170000041",
+        },
+        profile: {},
+        extras: {},
+        enrollment: {
+          status: "pending",
+          fee_amount: 1000,
+          additional_promo_offer_ids: [addOnPromo.id],
+        },
+      });
+
+    assert.equal(response.status, 201, JSON.stringify(response.body));
+    assert.equal(Number(response.body.additional_promos_amount), 500);
+    assert.deepEqual(response.body.additional_promo_offer_ids, [addOnPromo.id]);
+    assert.equal(Number(response.body.fee_amount), 1500);
+
+    cleanup.enrollmentIds.push(response.body.id);
+    cleanup.studentIds.push(response.body.Student.id);
+  });
+
+  test("PUT /api/enrollments/:id recalculates add-on amount when additional promos change", async () => {
+    const email = uniqueEmail();
+
+    const addOnPromo1 = await PromoOffer.create({
+      name: uniqueLabel("Addon A"),
+      status: "active",
+      applies_to: "TDC",
+      fixed_price: 300,
+      discounted_price: null,
+      description: "A",
+    });
+    const addOnPromo2 = await PromoOffer.create({
+      name: uniqueLabel("Addon B"),
+      status: "active",
+      applies_to: "TDC",
+      fixed_price: 700,
+      discounted_price: null,
+      description: "B",
+    });
+    cleanup.promoOfferIds.push(addOnPromo1.id, addOnPromo2.id);
+
+    const created = await client
+      .post("/api/enrollments")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        enrollment_type: "TDC",
+        student: {
+          first_name: "Override",
+          last_name: "Student",
+          email,
+        },
+        profile: {},
+        extras: {},
+        enrollment: {
+          status: "pending",
+          fee_amount: 1000,
+          additional_promo_offer_ids: [addOnPromo1.id],
+        },
+      });
+
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+    cleanup.enrollmentIds.push(created.body.id);
+    cleanup.studentIds.push(created.body.Student.id);
+
+    const updated = await client
+      .put(`/api/enrollments/${created.body.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        additional_promo_offer_ids: [addOnPromo2.id],
+      });
+
+    assert.equal(updated.status, 200, JSON.stringify(updated.body));
+    assert.equal(Number(updated.body.additional_promos_amount), 700);
+    assert.deepEqual(updated.body.additional_promo_offer_ids, [addOnPromo2.id]);
+    assert.equal(Number(updated.body.fee_amount), 1700);
+  });
+
+  test("POST /api/enrollments rejects invalid additional promos for the enrollment type", async () => {
+    const email = uniqueEmail();
+
+    const pdcOnlyPromo = await PromoOffer.create({
+      name: uniqueLabel("PDC Only"),
+      status: "active",
+      applies_to: "PDC",
+      fixed_price: 400,
+      discounted_price: null,
+      description: "PDC only",
+    });
+    cleanup.promoOfferIds.push(pdcOnlyPromo.id);
+
+    const response = await client
+      .post("/api/enrollments")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        enrollment_type: "TDC",
+        student: {
+          first_name: "Invalid",
+          last_name: "Addon",
+          email,
+        },
+        profile: {},
+        extras: {},
+        enrollment: {
+          status: "pending",
+          additional_promo_offer_ids: [pdcOnlyPromo.id],
+        },
+      });
+
+    assert.equal(response.status, 400);
+    assert.match(String(response.body?.message || ""), /not applicable/i);
   });
 });

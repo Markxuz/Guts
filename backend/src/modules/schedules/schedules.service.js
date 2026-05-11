@@ -367,7 +367,11 @@ async function validateSchedulePlanResources({
       continue;
     }
 
-    const qualifiedInstructorCount = await repository.countQualifiedInstructors(courseType);
+    let qualifiedInstructorCount = await repository.countQualifiedInstructors(courseType);
+    const totalInstructorCount = await repository.countInstructors();
+    if (!qualifiedInstructorCount && totalInstructorCount) {
+      qualifiedInstructorCount = totalInstructorCount;
+    }
     const vehicleCount = await repository.countVehicles();
     const capacity = capacityByCategory(courseType, qualifiedInstructorCount, vehicleCount);
     const categoryBookingsInSlot = inSameSlot.filter((row) => matchesCourseType(row, courseType));
