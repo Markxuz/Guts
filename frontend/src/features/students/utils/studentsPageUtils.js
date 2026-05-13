@@ -71,8 +71,8 @@ export function getEnrollmentPaymentSummary(enrollment, student) {
 
   if (isFixedPaymentImport) {
     return {
-      totalDue: 999,
-      totalPaid: 999,
+      totalDue: 599,
+      totalPaid: 599,
       remainingBalance: 0,
       paymentStatus: "completed_payment",
     };
@@ -81,17 +81,17 @@ export function getEnrollmentPaymentSummary(enrollment, student) {
   if (isImportedTdc && totalPaid <= 0) {
     if (lifecycleStatus === "completed") {
       return {
-        totalDue: 999,
-        totalPaid: 999,
+        totalDue: 599,
+        totalPaid: 599,
         remainingBalance: 0,
         paymentStatus: "completed_payment",
       };
     }
 
     return {
-      totalDue: 999,
+      totalDue: 599,
       totalPaid: 0,
-      remainingBalance: 999,
+      remainingBalance: 599,
       paymentStatus: "with_balance",
     };
   }

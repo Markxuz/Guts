@@ -21,6 +21,7 @@ import { useToast } from "../../../shared/utils/toast";
  * Special case:
  * - Imported SafeRoads/OTDC records use their source start/completion dates to decide if the row is pending or completed
  * - Completed imports are treated as TDC with a fixed 999 PHP payment record
+ * - Completed imports are treated as TDC with a fixed 599 PHP payment record
  */
 export default function OnlineTdcImportModal({
   isOpen,

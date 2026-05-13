@@ -354,7 +354,7 @@ async function ensureImportedTdcEnrollment(studentId, mappedRow, source, transac
   // For imported students, always mark as completed since they're imported from an external source system
   const existingDlCode = await enrollmentRepository.findDlCodeByCode("TDC", transaction);
   const dlCode = existingDlCode || await enrollmentRepository.createDlCode({ code: "TDC", description: "TDC" }, transaction);
-  const feeAmount = 999;
+  const feeAmount = 599;
   const referenceNumber = mappedRow?.external_ref || null;
   const paymentMethod = source === "otdc" ? "bank_transfer" : "cash";
 
