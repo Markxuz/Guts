@@ -92,7 +92,7 @@ export default function AppRouter() {
           <Route
             path="/settings"
             element={
-              <RoleRoute allowedRoles={["admin", "sub_admin"]}>
+              <RoleRoute allowedRoles={["admin", "sub_admin", "staff"]}>
                 <Navigate to="/settings/instructors" replace />
               </RoleRoute>
             }
@@ -100,7 +100,7 @@ export default function AppRouter() {
           <Route
             path="/settings/instructors"
             element={
-              <RoleRoute allowedRoles={["admin", "sub_admin"]}>
+              <RoleRoute allowedRoles={["admin", "sub_admin", "staff"]}>
                 <InstructorsPage />
               </RoleRoute>
             }
@@ -116,7 +116,7 @@ export default function AppRouter() {
           <Route
             path="/settings/vehicles"
             element={
-              <RoleRoute allowedRoles={["admin", "sub_admin"]}>
+              <RoleRoute allowedRoles={["admin", "sub_admin", "staff"]}>
                 <VehiclesPage />
               </RoleRoute>
             }
