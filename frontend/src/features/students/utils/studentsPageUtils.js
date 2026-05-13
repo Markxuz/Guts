@@ -6,14 +6,40 @@ export function toTitleCase(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+export function getStudentFullName(student) {
+  return [student?.first_name, student?.middle_name, student?.last_name].filter(Boolean).join(" ") || "N/A";
+}
+
 export function getLatestEnrollment(student) {
   return student?.Enrollments?.[0] || null;
 }
 
-export function getEnrollmentLifecycleStatus(enrollment) {
+export function getStudentSourceLabel(student) {
+  const source = String(student?.source_channel || student?.external_source || student?.StudentProfile?.tdc_source || "").toLowerCase();
+
+  if (source === "saferoads") return "SafeRoads.ph";
+  if (source === "otdc") return "OTDC.ph";
+  if (source && source !== "walk_in") return "Online TDC";
+  return "Walk-in";
+}
+
+export function getEnrollmentLifecycleStatus(enrollment, student) {
   const normalizedState = String(enrollment?.enrollment_state || "").toLowerCase();
   if (normalizedState === "cancelled") {
     return "cancelled";
+  }
+
+  const studentRecord = student || enrollment?.Student;
+  const sourceLabel = getStudentSourceLabel(studentRecord);
+  const courseCode = getCourseCode(studentRecord);
+  const isImportedTdc = sourceLabel === "SafeRoads.ph" || sourceLabel === "OTDC.ph";
+
+  if (isImportedTdc && (courseCode === "TDC" || courseCode === "N/A")) {
+    return "completed";
+  }
+
+  if (!enrollment) {
+    return sourceLabel === "Walk-in" ? "pending" : "completed";
   }
 
   const normalizedStatus = String(enrollment?.status || "").toLowerCase();
@@ -25,10 +51,51 @@ function toNumber(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-export function getEnrollmentPaymentSummary(enrollment) {
+function formatImportedDate(value) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString("en-CA");
+}
+
+export function getEnrollmentPaymentSummary(enrollment, student) {
+  const studentRecord = student || enrollment?.Student;
+  const sourceLabel = getStudentSourceLabel(studentRecord);
+  const courseCode = getCourseCode(studentRecord);
+  const isImportedTdc = sourceLabel !== "Walk-in" && (courseCode === "TDC" || courseCode === "N/A");
+  const isFixedPaymentImport = isImportedTdc && (sourceLabel === "SafeRoads.ph" || sourceLabel === "OTDC.ph");
   const payments = Array.isArray(enrollment?.payments) ? enrollment.payments : [];
   const totalDue = Math.max(toNumber(enrollment?.fee_amount) - toNumber(enrollment?.discount_amount), 0);
   const totalPaid = payments.reduce((sum, payment) => sum + toNumber(payment?.amount), 0);
+  const lifecycleStatus = String(enrollment?.status || "").toLowerCase();
+
+  if (isFixedPaymentImport) {
+    return {
+      totalDue: 999,
+      totalPaid: 999,
+      remainingBalance: 0,
+      paymentStatus: "completed_payment",
+    };
+  }
+
+  if (isImportedTdc && totalPaid <= 0) {
+    if (lifecycleStatus === "completed") {
+      return {
+        totalDue: 999,
+        totalPaid: 999,
+        remainingBalance: 0,
+        paymentStatus: "completed_payment",
+      };
+    }
+
+    return {
+      totalDue: 999,
+      totalPaid: 0,
+      remainingBalance: 999,
+      paymentStatus: "with_balance",
+    };
+  }
+
   const remainingBalance = Math.max(totalDue - totalPaid, 0);
 
   let paymentStatus = "not_set";
@@ -48,6 +115,20 @@ export function getEnrollmentPaymentSummary(enrollment) {
     remainingBalance: Number(remainingBalance.toFixed(2)),
     paymentStatus,
   };
+}
+
+export function hasPromoStatusContext(student) {
+  const latestEnrollment = getLatestEnrollment(student);
+
+  if (!latestEnrollment) {
+    return false;
+  }
+
+  const hasPromoOffer = Boolean(latestEnrollment.promo_offer_id || latestEnrollment.promoOffer?.id || latestEnrollment.promoPackage?.id);
+  const hasAdditionalPromos = Array.isArray(latestEnrollment.additional_promo_offer_ids) && latestEnrollment.additional_promo_offer_ids.length > 0;
+  const profilePromoOffer = Boolean(student?.StudentProfile?.promo_offer_id);
+
+  return hasPromoOffer || hasAdditionalPromos || profilePromoOffer;
 }
 
 export function getPaymentCategoryLabel(enrollment) {
@@ -78,7 +159,56 @@ export function getCourseCode(student) {
   if (normalizedCode.includes("PROMO")) return "PROMO";
   if (normalizedCode.includes("PDC")) return "PDC";
   if (normalizedCode.includes("TDC")) return "TDC";
+
+  if (getStudentSourceLabel(student) !== "Walk-in") {
+    return "TDC";
+  }
+
   return "N/A";
+}
+
+export function getImportedTdcDates(student) {
+  const enrollment = getLatestEnrollment(student);
+  const source = getStudentSourceLabel(student);
+
+  if (source === "Walk-in" || !enrollment) {
+    return {
+      startedAt: null,
+      completedAt: null,
+    };
+  }
+
+  return {
+    startedAt: formatImportedDate(enrollment.created_at || enrollment.createdAt),
+    completedAt: formatImportedDate(enrollment.completed_at || enrollment.completedAt || student?.StudentProfile?.year_completed_tdc),
+  };
+}
+
+export function getEnrollmentTimelineDates(enrollment, student) {
+  const studentRecord = student || enrollment?.Student;
+  const sourceLabel = getStudentSourceLabel(studentRecord);
+  const courseCode = getCourseCode(studentRecord);
+  const isImportedTdc = sourceLabel !== "Walk-in" && (courseCode === "TDC" || courseCode === "N/A");
+
+  if (isImportedTdc) {
+    return getImportedTdcDates(studentRecord);
+  }
+
+  if (!enrollment) {
+    return {
+      startedAt: null,
+      completedAt: null,
+    };
+  }
+
+  return {
+    startedAt: formatImportedDate(enrollment.created_at || enrollment.createdAt || studentRecord?.createdAt),
+    completedAt: formatImportedDate(
+      enrollment.completed_at ||
+        enrollment.completedAt ||
+        (String(enrollment.status || "").toLowerCase() === "completed" ? (enrollment.updated_at || enrollment.updatedAt) : null)
+    ),
+  };
 }
 
 import {

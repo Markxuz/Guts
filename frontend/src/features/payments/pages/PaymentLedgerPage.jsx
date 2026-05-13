@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, List } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { resourceServices } from "../../../services/resources";
+import { fetchStudents } from "../../students/services/studentsApi";
 import {
   getEnrollmentPaymentSummary,
   getPaymentCategoryLabel,
@@ -11,6 +12,17 @@ import {
 } from "../../students/utils/studentsPageUtils";
 import AddPromoModal from "../components/AddPromoModal";
 import RecordPaymentModal from "../components/RecordPaymentModal";
+
+const PAYMENT_LEDGER_VIEWS = {
+  overall: { label: "Overall Payment Ledger", includeExternal: true, source: null },
+  qr: { label: "QR Enrollment/Enrollment Page Payment Ledger", includeExternal: false, source: null },
+  otdc: { label: "OTDC Payment Ledger", includeExternal: true, source: "otdc" },
+  saferoads: { label: "Saferoads Payment Ledger", includeExternal: true, source: "saferoads" },
+};
+
+function resolveLedgerView(view) {
+  return PAYMENT_LEDGER_VIEWS[String(view || "overall").toLowerCase()] || PAYMENT_LEDGER_VIEWS.overall;
+}
 
 function money(value) {
   const numeric = Number(value || 0);
@@ -30,15 +42,18 @@ function StatusBadge({ label, tone }) {
 
 export default function PaymentLedgerPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [paymentFilter, setPaymentFilter] = useState("with_balance");
   const [paymentTarget, setPaymentTarget] = useState(null);
   const [promoTarget, setPromoTarget] = useState(null);
   const [banner, setBanner] = useState("");
+  const view = String(searchParams.get("view") || "overall").toLowerCase();
+  const ledgerView = resolveLedgerView(view);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["students", "payment-ledger"],
-    queryFn: () => resourceServices.students.list(),
+    queryKey: ["students", "payment-ledger", view],
+    queryFn: () => fetchStudents({ includeExternal: ledgerView.includeExternal, source: ledgerView.source }),
   });
 
   const { data: promoOffersData = [] } = useQuery({
@@ -57,14 +72,16 @@ export default function PaymentLedgerPage() {
   const students = useMemo(() => (Array.isArray(data) ? data : data?.data || []), [data]);
 
   const rows = useMemo(() => {
-        return students
+    return students
       .map((student) => {
         const enrollment = getLatestEnrollment(student);
-            if (!enrollment) return null;
-            // Do not include enrollments that are still pending approval in the payment ledger
-            if (String(enrollment.status || "").toLowerCase() === "pending") return null;
+        const sourceLabel = String(student?.source_channel || student?.external_source || student?.StudentProfile?.tdc_source || "").toLowerCase();
+        const isImportedTdc = sourceLabel === "saferoads" || sourceLabel === "otdc";
 
-        const summary = getEnrollmentPaymentSummary(enrollment);
+        if (!enrollment && !isImportedTdc) return null;
+        if (enrollment && String(enrollment.status || "").toLowerCase() === "pending" && !isImportedTdc) return null;
+
+        const summary = getEnrollmentPaymentSummary(enrollment, student);
         const category = getPaymentCategoryLabel(enrollment);
         const course = getCourseCode(student);
 
@@ -91,7 +108,7 @@ export default function PaymentLedgerPage() {
 
   const totals = useMemo(() => {
     const allLedgerRows = students
-      .map((student) => getEnrollmentPaymentSummary(getLatestEnrollment(student)))
+      .map((student) => getEnrollmentPaymentSummary(getLatestEnrollment(student), student))
       .filter(Boolean);
 
     return {
@@ -191,6 +208,23 @@ export default function PaymentLedgerPage() {
           </button>
         </div>
 
+        <div className="mt-4 flex flex-wrap gap-2">
+          {Object.entries(PAYMENT_LEDGER_VIEWS).map(([key, item]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSearchParams((current) => {
+                const next = new URLSearchParams(current);
+                next.set("view", key);
+                return next;
+              })}
+              className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${view === key ? "bg-[#800000] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 card-light">
             <p className="text-xs font-semibold uppercase text-rose-700">With Balance</p>
@@ -236,7 +270,7 @@ export default function PaymentLedgerPage() {
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-slate-900">Ledger Entries</p>
-            <p className="text-xs text-slate-500">Students grouped by remaining balance and completion</p>
+            <p className="text-xs text-slate-500">{ledgerView.label} - students grouped by remaining balance and completion</p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
             <List size={14} />
@@ -309,11 +343,11 @@ export default function PaymentLedgerPage() {
                       <p className="font-semibold">{money(row.summary.remainingBalance)}</p>
                     </td>
                     <td className="px-4 py-2.5 align-top text-slate-700">
-                      {Array.isArray(row.enrollment.payments) ? row.enrollment.payments.length : 0}
+                      {Array.isArray(row.enrollment?.payments) ? row.enrollment.payments.length : 0}
                     </td>
                     <td className="px-4 py-2.5 align-top">
                       <div className="flex flex-wrap gap-2">
-                        {row.summary.remainingBalance > 0 ? (
+                        {row.enrollment?.id && row.summary.remainingBalance > 0 ? (
                           <button
                             type="button"
                             onClick={() => setPaymentTarget(row)}
@@ -321,7 +355,7 @@ export default function PaymentLedgerPage() {
                           >
                             Add Payment
                           </button>
-                        ) : (
+                        ) : row.enrollment?.id ? (
                           <button
                             type="button"
                             onClick={() => setPromoTarget(row)}
@@ -329,7 +363,12 @@ export default function PaymentLedgerPage() {
                           >
                             Add Promo
                           </button>
-                        )}
+                        ) : null}
+                        {!row.enrollment?.id ? (
+                          <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500">
+                            Imported record
+                          </span>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => navigate(`/students?focusStudentId=${row.student.id}`)}

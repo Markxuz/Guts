@@ -1,9 +1,11 @@
 import {
   buildAddress,
   getCourseCode,
+  getImportedTdcDates,
   getLatestEnrollment,
   getLatestScheduleForEnrollment,
   getStudentScheduleRemarks,
+  getStudentSourceLabel,
   toTitleCase,
 } from "../utils/studentsPageUtils";
 import { getRegionLabel } from "../../enrollments/utils/phLocations";
@@ -19,6 +21,8 @@ export default function StudentDetailsModal({ student, onClose }) {
   const profile = student.StudentProfile || {};
   const enrollment = getLatestEnrollment(student);
   const latestSchedule = getLatestScheduleForEnrollment(enrollment);
+  const importedDates = getImportedTdcDates(student);
+  const isImported = getStudentSourceLabel(student) !== "Walk-in";
 
   return (
     <div style={modalViewportStyle} className="fixed inset-y-0 right-0 z-[120] flex items-center justify-center bg-black/40 p-4">
@@ -58,9 +62,25 @@ export default function StudentDetailsModal({ student, onClose }) {
               <p className="mt-1 text-sm text-slate-900">{getCourseCode(student)}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">Enrollment Status</p>
-              <p className="mt-1 text-sm text-slate-900">{toTitleCase(enrollment?.status)}</p>
+              <p className="text-xs font-semibold uppercase text-slate-500">Source</p>
+              <p className="mt-1 text-sm text-slate-900">{getStudentSourceLabel(student)}</p>
             </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-500">Enrollment Status</p>
+              <p className="mt-1 text-sm text-slate-900">{toTitleCase(enrollment?.status || (getStudentSourceLabel(student) === "Walk-in" ? "" : "imported"))}</p>
+            </div>
+            {isImported ? (
+              <>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-500">TDC Start Date</p>
+                  <p className="mt-1 text-sm text-slate-900">{importedDates.startedAt || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-500">TDC Completion Date</p>
+                  <p className="mt-1 text-sm text-slate-900">{importedDates.completedAt || "N/A"}</p>
+                </div>
+              </>
+            ) : null}
           </div>
 
           <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">

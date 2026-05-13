@@ -134,7 +134,8 @@ export function parseScoreValue(scoreValue) {
   };
 }
 
-export function getDisplayStatusLabel(courseCode, scoreValue, enrollmentStatus = "") {
+export function getDisplayStatusLabel(courseCode, scoreValue, enrollmentStatus = "", options = {}) {
+  const { isImportedTdc = false } = options || {};
   const parsed = parseScoreValue(scoreValue);
   const normalizedCourse = String(courseCode || "").toUpperCase();
   const normalizedStatus = String(enrollmentStatus || "").toLowerCase();
@@ -151,6 +152,10 @@ export function getDisplayStatusLabel(courseCode, scoreValue, enrollmentStatus =
 
   if (parsed.outcome) {
     return parsed.outcome;
+  }
+
+  if (normalizedStatus === "completed" || isImportedTdc) {
+    return "PASSED";
   }
 
   return "NOT SET";

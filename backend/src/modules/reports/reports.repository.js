@@ -21,7 +21,14 @@ async function findStudentsByDateRange(start, end) {
         [Op.lt]: end,
       },
     },
-    attributes: ["id", "first_name", "last_name", "createdAt"],
+    attributes: ["id", "first_name", "last_name", "source_channel", "external_source", "createdAt"],
+    include: [
+      {
+        model: require("../../../models").StudentProfile,
+        attributes: ["tdc_source"],
+        required: false,
+      },
+    ],
     order: [["createdAt", "DESC"], ["id", "DESC"]],
   });
 }
@@ -202,13 +209,23 @@ module.exports = {
   async findPaymentsByDateRange(start, end) {
     const { Payment, Enrollment } = require("../../../models");
     return Payment.findAll({
-      where: {
-        created_at: {
-          [Op.gte]: start,
-          [Op.lt]: end,
+        where: {
+          [Op.or]: [
+            {
+              created_at: {
+                [Op.gte]: start,
+                [Op.lt]: end,
+              },
+            },
+            {
+              '$Enrollment.created_at$': {
+                [Op.gte]: start,
+                [Op.lt]: end,
+              },
+            },
+          ],
+          payment_status: "paid",
         },
-        payment_status: "paid",
-      },
       include: [
         {
           model: Enrollment,

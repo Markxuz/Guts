@@ -13,6 +13,10 @@ export async function fetchDashboardLogs(dateIso) {
   return api.get(`/dashboard/logs?date=${dateIso}`);
 }
 
+export async function fetchPendingApprovals(limit = 100) {
+  return api.get(`/dashboard/pending-approvals?limit=${encodeURIComponent(String(limit))}`);
+}
+
 export async function fetchDailyReports(filter) {
   const params = new URLSearchParams();
   if (filter?.course) {

@@ -31,8 +31,18 @@ async function getDashboardOperations(req, res) {
   }
 }
 
+async function getPendingApprovals(req, res) {
+  try {
+    const payload = await service.getPendingApprovals(Number(req.query.limit || 100));
+    return res.status(200).json(payload);
+  } catch (error) {
+    return sendHttpError(res, error, 500, "Failed to fetch pending approvals");
+  }
+}
+
 module.exports = {
   getDashboardSummary,
   getDashboardLogs,
   getDashboardOperations,
+  getPendingApprovals,
 };

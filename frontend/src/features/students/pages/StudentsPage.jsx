@@ -13,11 +13,13 @@ const EditStudentModal = lazy(() => import("../components/EditStudentModal"));
 const DeleteConfirmationDialog = lazy(() => import("../components/DeleteConfirmationDialog"));
 const StatusUpdateModal = lazy(() => import("../components/StatusUpdateModal"));
 const BulkStatusUpdateModal = lazy(() => import("../components/BulkStatusUpdateModal"));
+const OnlineTdcImportModal = lazy(() => import("../components/OnlineTdcImportModal"));
 
 function StudentsPage() {
   const { role } = useAuth();
   const [searchParams] = useSearchParams();
   const focusedStudentId = searchParams.get("focusStudentId");
+  const view = searchParams.get("view") || "overall";
   const [isExporting, setIsExporting] = useState(false);
 
   const {
@@ -73,10 +75,14 @@ function StudentsPage() {
     quickApprovePendingStudent,
     confirmDelete,
     toggleTableSort,
-  } = useStudentsPageLogic({ focusedStudentId });
+    refetchStudents,
+  } = useStudentsPageLogic({ focusedStudentId, view });
 
   const [exportFormat, setExportFormat] = useState("csv");
   const [exportRange, setExportRange] = useState("overall");
+  const [isOnlineTdcUploadOpen, setIsOnlineTdcUploadOpen] = useState(false);
+  const [onlineTdcFile, setOnlineTdcFile] = useState(null);
+  const [onlineTdcSource, setOnlineTdcSource] = useState("saferoads");
 
   async function handleExport() {
     try {
@@ -194,6 +200,13 @@ function StudentsPage() {
             >
               Bulk Update Status ({selectedStudentIds.length})
             </button>
+            <button
+              type="button"
+              onClick={() => setIsOnlineTdcUploadOpen(true)}
+              className="h-10 rounded-lg bg-green-600 px-3 text-xs font-semibold text-white transition hover:bg-green-700"
+            >
+              Upload Students
+            </button>
             <div className="flex items-center gap-2">
               <select
                 value={exportRange}
@@ -292,6 +305,24 @@ function StudentsPage() {
           onClose={closeBulkStatusModal}
           onSubmit={submitBulkStatusUpdate}
           isPending={isBulkUpdatingStatus}
+        />
+        <OnlineTdcImportModal
+          isOpen={isOnlineTdcUploadOpen}
+          onClose={() => {
+            setIsOnlineTdcUploadOpen(false);
+            setOnlineTdcFile(null);
+            setOnlineTdcSource("saferoads");
+          }}
+          file={onlineTdcFile}
+          onFileChange={setOnlineTdcFile}
+          source={onlineTdcSource}
+          onSourceChange={setOnlineTdcSource}
+          onImportSuccess={() => {
+            setIsOnlineTdcUploadOpen(false);
+            setOnlineTdcFile(null);
+            setOnlineTdcSource("saferoads");
+            refetchStudents();
+          }}
         />
       </Suspense>
     </section>

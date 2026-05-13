@@ -6,7 +6,6 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   const proxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:5000';
-  const hmrClientPort = Number(env.VITE_HMR_CLIENT_PORT || 0) || undefined;
 
   return {
     plugins: [
@@ -29,12 +28,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: true,
+      host: '0.0.0.0',
       port: 5173,
       watch: {
         usePolling: true,
       },
-      ...(hmrClientPort ? { hmr: { clientPort: hmrClientPort } } : {}),
       proxy: {
         '/api': {
           target: proxyTarget,

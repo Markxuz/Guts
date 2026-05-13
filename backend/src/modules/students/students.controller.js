@@ -13,10 +13,26 @@ function enrollmentStatusLabel(value) {
 
 async function getAllStudents(req, res) {
   try {
-    const rows = await service.listStudents();
+    const rows = await service.listStudents(req.query || {});
     return res.status(200).json(rows);
   } catch (error) {
     return sendHttpError(res, error, 500, "Failed to fetch students");
+  }
+}
+
+async function importOnlineTdcStudents(req, res) {
+  try {
+    if (!req.file) {
+      return sendHttpError(res, new Error("An Excel or CSV file is required"), 400, "Failed to import online TDC file");
+    }
+
+    const result = await service.importOnlineTdcStudents(req.file, req.body || {}, req.user);
+    return res.status(201).json({
+      message: "Online TDC file imported successfully",
+      result,
+    });
+  } catch (error) {
+    return sendHttpError(res, error, error.status || 400, "Failed to import online TDC file");
   }
 }
 
@@ -144,6 +160,7 @@ async function updateEnrollmentStatus(req, res) {
 
 module.exports = {
   getAllStudents,
+  importOnlineTdcStudents,
   exportStudents,
   getStudentById,
   createStudent,

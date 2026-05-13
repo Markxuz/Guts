@@ -10,6 +10,7 @@ import {
   mapOutcomeToEnrollmentStatus,
   parseScoreValue,
 } from "../utils/statusUpdateConfig";
+import { hasPromoStatusContext } from "../utils/studentsPageUtils";
 
 const PAGE_SIZE = 10;
 const STATUS_RANK = {
@@ -153,6 +154,23 @@ function matchesCourseFilter(student, filter) {
 
 export function useStudentsPageLogic(options = {}) {
   const focusedStudentId = options.focusedStudentId ? Number(options.focusedStudentId) : null;
+  const view = String(options.view || "overall").toLowerCase();
+  let includeExternal = options.includeExternal ?? false;
+  let source = options.source || null;
+
+  if (view === "overall") {
+    includeExternal = true;
+    source = null;
+  } else if (view === "qr") {
+    includeExternal = false;
+    source = null;
+  } else if (view === "otdc") {
+    includeExternal = true;
+    source = "otdc";
+  } else if (view === "saferoads") {
+    includeExternal = true;
+    source = "saferoads";
+  }
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
@@ -183,7 +201,7 @@ export function useStudentsPageLogic(options = {}) {
   });
   const [toasts, addToast, removeToast] = useToast();
 
-  const { data, isLoading, isError, error } = useStudentsList();
+  const { data, isLoading, isError, error } = useStudentsList({ includeExternal, source });
   const students = useMemo(() => data || [], [data]);
 
 
@@ -285,22 +303,23 @@ export function useStudentsPageLogic(options = {}) {
     const filtered = students.filter((student) => matchesCourseFilter(student, courseFilter));
 
     const currentlyEnrolled = filtered.filter((student) => {
-      const status = getEnrollmentLifecycleStatus(getLatestEnrollment(student));
+      const latestEnrollment = getLatestEnrollment(student);
+      const status = getEnrollmentLifecycleStatus(latestEnrollment, student);
       return status === "pending" || status === "confirmed";
     }).length;
 
     const tdc = filtered.filter((student) => getCourseMembership(student).tdc).length;
     const pdcBeginner = filtered.filter((student) => getCourseMembership(student).pdcBeginner).length;
     const pdcExperience = filtered.filter((student) => getCourseMembership(student).pdcExperience).length;
-    const paymentPending = filtered.filter((student) => getEnrollmentPaymentSummary(getLatestEnrollment(student)).paymentStatus !== "completed_payment").length;
-    const paymentCompleted = filtered.filter((student) => getEnrollmentPaymentSummary(getLatestEnrollment(student)).paymentStatus === "completed_payment").length;
+    const paymentPending = filtered.filter((student) => getEnrollmentPaymentSummary(getLatestEnrollment(student), student).paymentStatus !== "completed_payment").length;
+    const paymentCompleted = filtered.filter((student) => getEnrollmentPaymentSummary(getLatestEnrollment(student), student).paymentStatus === "completed_payment").length;
 
     return {
       total: filtered.length,
       currentlyEnrolled,
       tdc,
       pdc: pdcBeginner + pdcExperience,
-      completed: filtered.filter((student) => getEnrollmentLifecycleStatus(getLatestEnrollment(student)) === "completed").length,
+      completed: filtered.filter((student) => getEnrollmentLifecycleStatus(getLatestEnrollment(student), student) === "completed").length,
       paymentPending,
       paymentCompleted,
       thisMonth: filtered.filter((student) => {
@@ -321,9 +340,10 @@ export function useStudentsPageLogic(options = {}) {
       const matchesSearch = matchesStudentSearch(student, search);
 
       const matchesCourse = matchesCourseFilter(student, courseFilter);
-      const enrollmentStatus = getEnrollmentLifecycleStatus(getLatestEnrollment(student));
+      const latestEnrollment = getLatestEnrollment(student);
+      const enrollmentStatus = getEnrollmentLifecycleStatus(latestEnrollment, student);
       const matchesStatus = statusFilter === "all" || enrollmentStatus === statusFilter;
-      const paymentStatus = getEnrollmentPaymentSummary(getLatestEnrollment(student)).paymentStatus;
+      const paymentStatus = getEnrollmentPaymentSummary(latestEnrollment, student).paymentStatus;
       const matchesPayment =
         paymentFilter === "all"
         || (paymentFilter === "with_balance" && paymentStatus !== "completed_payment" && paymentStatus !== "not_set")
@@ -340,8 +360,8 @@ export function useStudentsPageLogic(options = {}) {
       const contactB = `${String(b.email || "").toLowerCase()} ${String(b.phone || "").toLowerCase()}`.trim();
       const courseA = String(getCourseCode(a) || "").toLowerCase();
       const courseB = String(getCourseCode(b) || "").toLowerCase();
-      const statusA = getEnrollmentLifecycleStatus(getLatestEnrollment(a));
-      const statusB = getEnrollmentLifecycleStatus(getLatestEnrollment(b));
+      const statusA = getEnrollmentLifecycleStatus(getLatestEnrollment(a), a);
+      const statusB = getEnrollmentLifecycleStatus(getLatestEnrollment(b), b);
 
       if (sortBy === "name_asc") {
         return nameA.localeCompare(nameB);
@@ -600,15 +620,16 @@ export function useStudentsPageLogic(options = {}) {
     const latestEnrollment = getLatestEnrollment(student);
     const courseCode = getCourseCode(student);
     const parsedScore = parseScoreValue(latestEnrollment?.score);
+    const supportsPromoSections = courseCode === "PROMO" || hasPromoStatusContext(student);
     setStatusForm({
-      enrollmentStatus: getEnrollmentLifecycleStatus(latestEnrollment),
+      enrollmentStatus: getEnrollmentLifecycleStatus(latestEnrollment, student),
       courseOutcome:
-        courseCode === "PROMO"
+        supportsPromoSections
           ? parsedScore.promoCategory === "PDC"
             ? parsedScore.promoPdcOutcome || ""
             : parsedScore.promoTdcOutcome || ""
           : parsedScore.outcome || "",
-      promoCategory: courseCode === "PROMO" ? parsedScore.promoCategory || "TDC" : courseCode,
+      promoCategory: supportsPromoSections ? parsedScore.promoCategory || "TDC" : courseCode,
       promoTdcOutcome: parsedScore.promoTdcOutcome || "",
       promoPdcOutcome: parsedScore.promoPdcOutcome || "",
     });
@@ -630,8 +651,9 @@ export function useStudentsPageLogic(options = {}) {
     if (!updatingStatusStudent?.id) return;
 
     const courseCode = getCourseCode(updatingStatusStudent);
+    const supportsPromoSections = courseCode === "PROMO" || hasPromoStatusContext(updatingStatusStudent);
 
-    if (courseCode === "PROMO") {
+    if (supportsPromoSections) {
       // Allow saving when at least one of TDC or PDC outcome is set.
       // This enables saving TDC outcome even when PDC is not yet set.
       if (!statusForm.promoTdcOutcome && !statusForm.promoPdcOutcome) {
@@ -650,7 +672,7 @@ export function useStudentsPageLogic(options = {}) {
     let mappedEnrollmentStatus;
     if (isCancellingEnrollment) {
       mappedEnrollmentStatus = "cancelled";
-    } else if (courseCode === "PROMO") {
+    } else if (supportsPromoSections) {
       // If PDC outcome is present, use it to determine final enrollment status.
       // If only TDC outcome is set (PDC pending), keep existing enrollment status to avoid marking enrollment completed.
       if (statusForm.promoPdcOutcome) {
@@ -667,7 +689,7 @@ export function useStudentsPageLogic(options = {}) {
 
     const scoreValue = isCancellingEnrollment
       ? "CANCELLED"
-      : courseCode === "PROMO"
+      : supportsPromoSections
         ? formatPromoScoreValue(statusForm.promoTdcOutcome, statusForm.promoPdcOutcome)
         : formatScoreValue(courseCode, statusForm.courseOutcome, statusForm.promoCategory);
 
@@ -684,7 +706,7 @@ export function useStudentsPageLogic(options = {}) {
     if (!student?.id) return;
 
     const latestEnrollment = getLatestEnrollment(student);
-    const currentStatus = getEnrollmentLifecycleStatus(latestEnrollment);
+    const currentStatus = getEnrollmentLifecycleStatus(latestEnrollment, student);
     if (currentStatus !== "pending") return;
 
     const fullName = [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`;
@@ -799,5 +821,6 @@ export function useStudentsPageLogic(options = {}) {
     quickApprovePendingStudent,
     confirmDelete,
     toggleTableSort,
+    refetchStudents: () => queryClient.invalidateQueries({ queryKey: ["students"] }),
   };
 }

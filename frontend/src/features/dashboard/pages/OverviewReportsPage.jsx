@@ -184,6 +184,7 @@ export default function OverviewReportsPage() {
   const vehiclesInUse = usageByVehicle.length;
   const totalOperatingCost = maintenanceSummary.totalCost + fuelSummary.totalExpense;
   const totalRevenue = Number((summary?.revenueSummary?.totalRevenue || 0).toFixed(2));
+  const pendingCollections = Number((summary?.revenueSummary?.pendingCollections || 0).toFixed(2));
   const netProfit = Number((totalRevenue - totalOperatingCost).toFixed(2));
 
   const handleDownloadReport = () => {
@@ -448,7 +449,7 @@ export default function OverviewReportsPage() {
             />
             <KPICard
               label="Pending Collections"
-              value={0}
+              value={pendingCollections}
               unit="PHP"
               bgColor="bg-amber-50"
               borderColor="border-amber-200"

@@ -24,7 +24,8 @@ import { formatDateToISO, parseDateValue } from "../../../shared/utils/date";
 import ToastStack from "../../../shared/utils/ToastStack";
 import { useToast } from "../../../shared/utils/toast";
 import { resourceServices } from "../../../services/resources";
-import { deleteStudent, fetchStudents, updateEnrollmentStatus } from "../../students/services/studentsApi";
+import { deleteStudent, updateEnrollmentStatus } from "../../students/services/studentsApi";
+import { fetchPendingApprovals } from "../services/dashboardApi";
 
 const CalendarScheduleModal = lazy(() => import("../components/CalendarScheduleModal"));
 const PrintReport = lazy(() => import("../components/PrintReport"));
@@ -226,9 +227,9 @@ export default function DashboardPage() {
     queryFn: () => resourceServices.promoOffers.list(),
     enabled: auth?.user?.role === "admin" || auth?.user?.role === "sub_admin",
   });
-  const { data: studentsData = [], isLoading: pendingEnrollmentsLoading } = useQuery({
-    queryKey: ["students", "pending-approvals"],
-    queryFn: fetchStudents,
+  const { data: pendingApprovalsData = { items: [] }, isLoading: pendingEnrollmentsLoading } = useQuery({
+    queryKey: ["dashboard", "pending-approvals"],
+    queryFn: () => fetchPendingApprovals(100),
     enabled: auth?.user?.role === "admin",
   });
 
@@ -243,24 +244,7 @@ export default function DashboardPage() {
     }));
   }, [promoOffersData]);
 
-  const pendingEnrollments = useMemo(() => {
-    return (studentsData || [])
-      .map((student) => {
-        const enrollment = student?.Enrollments?.[0];
-        if (!enrollment) return null;
-        if (String(enrollment.status || "").toLowerCase() !== "pending") return null;
-
-        return {
-          id: student.id,
-          enrollmentId: enrollment.id,
-          student,
-          enrollment,
-          studentName: [student.first_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`,
-          courseLabel: enrollment?.DLCode?.code || "Enrollment",
-        };
-      })
-      .filter(Boolean);
-  }, [studentsData]);
+  const pendingEnrollments = useMemo(() => pendingApprovalsData?.items || [], [pendingApprovalsData]);
 
   const approveEnrollmentWithPaymentMutation = useMutation({
     mutationFn: async ({ row, paymentData }) => {

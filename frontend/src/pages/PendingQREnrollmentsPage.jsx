@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, Clock3, Loader2, ShieldCheck } from "lucide-react";
 import QREnrollmentEditModal from "./QREnrollmentEditModal";
 import { api } from "../services/api";
+import { getStudentFullName } from "../features/students/utils/studentsPageUtils";
 
 function moneyLabel(value) {
   const numeric = Number(value || 0);
@@ -156,7 +157,7 @@ export default function PendingQREnrollmentsPage() {
                       </td>
                       <td className="px-5 py-4">
                         <div className="font-semibold text-slate-900">
-                          {enrollment.student?.first_name || ""} {enrollment.student?.last_name || ""}
+                          {getStudentFullName(enrollment.student || enrollment.Student)}
                         </div>
                         <div className="text-xs text-slate-500">{enrollment.student?.email || enrollment.profile?.gmail_account || "-"}</div>
                       </td>

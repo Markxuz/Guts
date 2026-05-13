@@ -5,6 +5,7 @@ import { resourceServices } from "../../../services/resources";
 import { api } from "../../../services/api";
 import PaymentDetailsModal from "../components/PaymentDetailsModal.jsx";
 import ToastStack from "../../../shared/utils/ToastStack";
+import { getStudentSourceLabel, getStudentFullName } from "../../students/utils/studentsPageUtils";
 
 export default function PendingEnrollmentsPage() {
   const [toastMsg, setToastMsg] = useState("");
@@ -19,7 +20,15 @@ export default function PendingEnrollmentsPage() {
     queryKey: ["enrollments", "pending"],
     queryFn: async () => {
       const all = await resourceServices.enrollments.list();
-      return (all || []).filter((e) => String(e?.status || "") === "pending" && (e?.student || e?.Student));
+      return (all || []).filter((e) => {
+        // Only include pending enrollments from QR/manual enrollment (not OTDC/SafeRoads)
+        const isPending = String(e?.status || "") === "pending";
+        const hasStudent = e?.student || e?.Student;
+        const studentRecord = e?.student || e?.Student;
+        const source = getStudentSourceLabel(studentRecord);
+        const isQrOrManual = source === "Walk-in"; // Only walk-in students (QR/manual enrollment)
+        return isPending && hasStudent && isQrOrManual;
+      });
     },
     staleTime: 5000,
   });
@@ -82,7 +91,7 @@ export default function PendingEnrollmentsPage() {
   }
 
   function handleReject(enrollment) {
-    if (window.confirm(`Reject enrollment for ${enrollment.student?.first_name} ${enrollment.student?.last_name}?`)) {
+    if (window.confirm(`Reject enrollment for ${getStudentFullName(enrollment.student || enrollment.Student)}?`)) {
       rejectMutation.mutate(enrollment.id);
     }
   }
@@ -135,7 +144,7 @@ export default function PendingEnrollmentsPage() {
                     <div className="flex items-center gap-2">
                       <GraduationCap size={16} className="shrink-0 text-slate-500" />
                       <p className="font-semibold text-slate-900">
-                        {enrollment.student?.first_name} {enrollment.student?.last_name}
+                        {getStudentFullName(enrollment.student || enrollment.Student)}
                       </p>
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
                         {enrollment.enrollment_type}
@@ -181,7 +190,7 @@ export default function PendingEnrollmentsPage() {
           enrollment={selectedForPayment}
           student={selectedForPayment.student || selectedForPayment.Student}
           studentProfile={(selectedForPayment.student || selectedForPayment.Student)?.StudentProfile}
-          studentName={`${(selectedForPayment.student || selectedForPayment.Student)?.first_name || ""} ${(selectedForPayment.student || selectedForPayment.Student)?.last_name || ""}`.trim()}
+          studentName={getStudentFullName(selectedForPayment.student || selectedForPayment.Student)}
           studentEmail={(selectedForPayment.student || selectedForPayment.Student)?.StudentProfile?.gmail_account || (selectedForPayment.student || selectedForPayment.Student)?.email}
           studentPhone={(selectedForPayment.student || selectedForPayment.Student)?.phone}
           enrollmentLabel={`Enrollment #${selectedForPayment.id}`}

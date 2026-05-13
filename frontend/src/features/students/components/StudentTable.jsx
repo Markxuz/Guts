@@ -2,12 +2,15 @@ import { ArrowUpDown, ChevronDown, ChevronUp, Clock, Eye, Pencil, Trash2 } from 
 import {
   buildAddress,
   getCourseCode,
+  getEnrollmentTimelineDates,
   getEnrollmentLifecycleStatus,
   getEnrollmentPaymentSummary,
   getPaymentCategoryLabel,
   getLatestEnrollment,
   getLatestScheduleForEnrollment,
+  getStudentFullName,
   getStudentScheduleRemarks,
+  getStudentSourceLabel,
 } from "../utils/studentsPageUtils";
 import { getDisplayStatusLabel } from "../utils/statusUpdateConfig";
 
@@ -132,7 +135,7 @@ export default function StudentTable({
   return (
     <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
       <div className="thin-scrollbar overflow-auto max-h-[440px]">
-        <table className="min-w-[2100px] table-fixed text-sm">
+        <table className="min-w-[2400px] table-fixed text-sm">
           <thead className="sticky top-0 z-10 bg-[#800000] text-left text-white">
             <tr>
               <th className="w-12 rounded-tl-xl px-4 py-3 font-semibold">
@@ -154,6 +157,8 @@ export default function StudentTable({
               <th className="w-[160px] px-4 py-3 font-semibold">Balance</th>
               <th className="w-[220px] px-4 py-3 font-semibold">Instructor Remarks</th>
               <th className="w-[220px] px-4 py-3 font-semibold">Student Remarks</th>
+              <th className="w-[170px] px-4 py-3 font-semibold">Starting / Registration Date</th>
+              <th className="w-[170px] px-4 py-3 font-semibold">End / Completion Date</th>
               <th className="w-[220px] px-4 py-3 font-semibold">Address</th>
               <th className="w-[210px] rounded-tr-xl px-4 py-3 font-semibold">Actions</th>
             </tr>
@@ -161,7 +166,7 @@ export default function StudentTable({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={13} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={15} className="px-4 py-8 text-center text-slate-500">
                   Loading students...
                 </td>
               </tr>
@@ -169,7 +174,7 @@ export default function StudentTable({
 
             {!isLoading && isError ? (
               <tr>
-                <td colSpan={13} className="px-4 py-8 text-center text-rose-700">
+                <td colSpan={15} className="px-4 py-8 text-center text-rose-700">
                   {error?.message || "Failed to load students"}
                 </td>
               </tr>
@@ -177,7 +182,7 @@ export default function StudentTable({
 
             {!isLoading && !isError && students.length === 0 ? (
               <tr>
-                <td colSpan={13} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={15} className="px-4 py-8 text-center text-slate-500">
                   No students found for the selected filters.
                 </td>
               </tr>
@@ -186,17 +191,22 @@ export default function StudentTable({
             {!isLoading && !isError
               ? students.map((student, index) => {
                   const latestEnrollment = getLatestEnrollment(student);
-                  const enrollmentStatus = getEnrollmentLifecycleStatus(latestEnrollment);
-                  const paymentSummary = getEnrollmentPaymentSummary(latestEnrollment);
+                  const enrollmentStatus = getEnrollmentLifecycleStatus(latestEnrollment, student);
+                  const paymentSummary = getEnrollmentPaymentSummary(latestEnrollment, student);
                   const paymentCategory = getPaymentCategoryLabel(latestEnrollment);
                   const latestSchedule = getLatestScheduleForEnrollment(latestEnrollment);
                   const course = getCourseCode(student);
                   const isPromo = course === "PROMO";
-                  const fullName = [student.first_name, student.middle_name, student.last_name]
-                    .filter(Boolean)
-                    .join(" ");
-                  const statusLabel = getDisplayStatusLabel(course, latestEnrollment?.score, enrollmentStatus);
-                  const statusTone = getStatusTone(statusLabel);
+                  const fullName = getStudentFullName(student);
+                  const sourceLabel = getStudentSourceLabel(student);
+                  const isImportedOnlineTdc = sourceLabel !== "Walk-in";
+                  const timelineDates = getEnrollmentTimelineDates(latestEnrollment, student);
+                  const statusLabel = !latestEnrollment && isImportedOnlineTdc
+                    ? "Imported"
+                    : getDisplayStatusLabel(course, latestEnrollment?.score, enrollmentStatus, {
+                        isImportedTdc: isImportedOnlineTdc && course === "TDC",
+                      });
+                  const statusTone = !latestEnrollment && isImportedOnlineTdc ? "slate" : getStatusTone(statusLabel);
 
                   return (
                     <tr
@@ -216,18 +226,20 @@ export default function StudentTable({
                         <p className="font-semibold text-slate-900 [overflow-wrap:anywhere]">
                           {fullName || "N/A"}
                           {isPromo ? <span className="ml-2 rounded-full bg-[#D4AF37]/20 px-2 py-0.5 text-[10px] font-bold text-[#800000]">Promo</span> : null}
+                          {isImportedOnlineTdc ? <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">Online TDC</span> : null}
                         </p>
                         <p className="text-xs text-slate-500">ID #{student.id}</p>
+                        {isImportedOnlineTdc ? <p className="mt-0.5 text-[11px] text-slate-400">{sourceLabel}</p> : null}
                       </td>
                       <td className="px-4 py-2.5 align-top text-slate-700">
                         <p className="truncate" title={student.email || "N/A"}>{student.email || "N/A"}</p>
                         <p className="truncate text-xs text-slate-500" title={student.phone || "No phone"}>{student.phone || "No phone"}</p>
                       </td>
                       <td className="px-4 py-2.5 align-top">
-                        <Badge label={course} tone="maroon" />
+                        <Badge label={course} tone={isImportedOnlineTdc ? "slate" : "maroon"} />
                       </td>
                       <td className="px-4 py-2.5 align-top">
-                        {enrollmentStatus === "pending" ? (
+                        {enrollmentStatus === "pending" && !isImportedOnlineTdc ? (
                           <button
                             type="button"
                             onClick={() => onClickPendingBadge?.(student)}
@@ -267,6 +279,12 @@ export default function StudentTable({
                       </td>
                       <td className="px-4 py-2.5 align-top text-slate-700">
                         <ClampedText value={getStudentScheduleRemarks(latestSchedule)} />
+                      </td>
+                      <td className="px-4 py-2.5 align-top text-slate-700">
+                        <p className="font-medium text-slate-900">{timelineDates.startedAt || "N/A"}</p>
+                      </td>
+                      <td className="px-4 py-2.5 align-top text-slate-700">
+                        <p className="font-medium text-slate-900">{timelineDates.completedAt || "N/A"}</p>
                       </td>
                       <td className="px-4 py-2.5 align-top text-slate-700">
                         <ClampedText value={buildAddress(student.StudentProfile)} />

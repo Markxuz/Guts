@@ -313,8 +313,9 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
   const end = new Date(`${endDate}T00:00:00.000Z`);
   end.setUTCDate(end.getUTCDate() + 1);
 
-  const [enrollments, activityLogs, maintenanceLogs, fuelLogs, , payments, instructorCount] = await Promise.all([
+  const [enrollments, importedStudents, activityLogs, maintenanceLogs, fuelLogs, , paymentsFromQuery, instructorCount] = await Promise.all([
     repository.findEnrollmentsByDateRange(start, end),
+    repository.findStudentsByDateRange(start, end),
     repository.findActivityLogsByDateRange(start, end, 30),
     repository.findMaintenanceLogsByDateRange(start, end),
     repository.findFuelLogsByDateRange(start, end),
@@ -322,6 +323,31 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
     repository.findPaymentsByDateRange(start, end),
     repository.countActiveInstructors(),
   ]);
+
+  // Ensure we also include payments that are linked to enrollments created in the range
+  const PaymentModel = require("../../../models").Payment;
+  const { Op } = require("sequelize");
+  const enrollmentIds = (Array.isArray(enrollments) ? enrollments.map((e) => e.id).filter(Boolean) : []);
+
+  let payments = Array.isArray(paymentsFromQuery) ? paymentsFromQuery.slice() : [];
+  console.info("reports.service: enrollmentIds.count=", enrollmentIds.length, "paymentsFromQuery.count=", payments.length);
+  if (enrollmentIds.length > 0) {
+    console.info("reports.service: fetching extra payments for enrollment ids...");
+    const extra = await PaymentModel.findAll({
+      where: {
+        enrollment_id: {
+          [Op.in]: enrollmentIds,
+        },
+        payment_status: "paid",
+      },
+      attributes: ["id", "enrollment_id", "amount", "payment_method", "payment_status", "reference_number", "account_number", "created_at"],
+    });
+    console.info("reports.service: extraPayments.count=", (Array.isArray(extra) ? extra.length : 0));
+
+    const byId = new Map((payments || []).map((p) => [p.id, p]));
+    for (const p of extra) byId.set(p.id, p);
+    payments = Array.from(byId.values());
+  }
 
   const normalizedFilter = String(courseFilter || "overall").toLowerCase();
   const includeByCourse = (row) => {
@@ -335,6 +361,20 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
   const filteredEnrollments = enrollments.filter((row) => includeByCourse(row));
   // Exclude enrollments without a student name (test data)
   const meaningfulEnrollments = filteredEnrollments.filter((row) => Boolean(row?.Student && (row.Student.first_name || row.Student.last_name)));
+  const importedSourceStudents = (Array.isArray(importedStudents) ? importedStudents : []).filter((student) => {
+    const source = String(
+      student?.source_channel || student?.external_source || (student?.StudentProfile && student.StudentProfile.tdc_source) || ""
+    ).toLowerCase();
+    return source === "saferoads" || source === "otdc";
+  });
+
+  const importedStudentMembership = importedSourceStudents.filter(() => {
+    if (normalizedFilter === "overall") return true;
+    return normalizedFilter === "tdc";
+  });
+
+  const enrolledStudentIds = new Set(meaningfulEnrollments.map((row) => row.student_id).filter(Boolean));
+  const importedStudentIds = new Set(importedStudentMembership.map((student) => student.id).filter((id) => !enrolledStudentIds.has(id)));
 
   const transactions = [
     ...meaningfulEnrollments.map(mapEnrollmentReport),
@@ -348,11 +388,14 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
   const currentlyEnrolled = meaningfulEnrollments.filter(
     (item) => item.status === "pending" || item.status === "confirmed"
   ).length;
-  const completed = meaningfulEnrollments.filter((item) => item.status === "completed").length;
+  const completed = meaningfulEnrollments.filter((item) => item.status === "completed").length + importedStudentIds.size;
   const pdcBeginner = meaningfulEnrollments.filter((item) => classifyCourseType(item) === "pdc_beginner").length;
   const pdcExperience = meaningfulEnrollments.filter((item) => classifyCourseType(item) === "pdc_experience").length;
 
-  const totalStudentsForFilter = new Set(meaningfulEnrollments.map((row) => row.student_id).filter(Boolean)).size;
+  const totalStudentsForFilter = new Set([
+    ...meaningfulEnrollments.map((row) => row.student_id).filter(Boolean),
+    ...importedStudentIds,
+  ]).size;
   const todayIso = new Date().toISOString().slice(0, 10);
 
   const maintenanceSummary = {
@@ -470,7 +513,40 @@ async function getOverviewReports({ startDate, endDate, courseFilter = "overall"
       pdcBeginner,
       pdcExperience,
     },
-    monthlyEnrollment: buildMonthlySeries(meaningfulEnrollments),
+    monthlyEnrollment: (() => {
+      const series = buildMonthlySeries(meaningfulEnrollments);
+
+      importedStudentMembership.forEach((student) => {
+        if (enrolledStudentIds.has(student.id)) {
+          return;
+        }
+
+        const profile = student.StudentProfile || {};
+        const dateCandidates = [
+          profile.year_completed_tdc,
+          profile.otdc_registration_date,
+          profile.payment_date,
+          student.createdAt,
+          student.created_at,
+        ];
+
+        let chosen = null;
+        for (const c of dateCandidates) {
+          if (!c) continue;
+          const d = new Date(c);
+          if (!Number.isNaN(d.valueOf())) {
+            chosen = d;
+            break;
+          }
+        }
+
+        if (!chosen) return;
+        const month = chosen.getMonth();
+        series[month].tdc += 1;
+      });
+
+      return series;
+    })(),
     activityDates: meaningfulEnrollments
       .map((item) => item.created_at || item.createdAt)
       .filter(Boolean),

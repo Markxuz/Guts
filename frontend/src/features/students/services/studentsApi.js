@@ -1,8 +1,31 @@
 import { resourceServices } from "../../../services/resources";
 import { API_BASE_URL, api } from "../../../services/api";
 
-export function fetchStudents() {
-  return resourceServices.students.list();
+function buildStudentsQuery(params = {}) {
+  const searchParams = new URLSearchParams();
+
+  if (params.includeExternal) {
+    searchParams.set("includeExternal", "true");
+  }
+
+  if (params.source) {
+    searchParams.set("source", String(params.source));
+  }
+
+  if (params.startDate) {
+    searchParams.set("startDate", String(params.startDate));
+  }
+
+  if (params.endDate) {
+    searchParams.set("endDate", String(params.endDate));
+  }
+
+  return searchParams;
+}
+
+export function fetchStudents(params = {}) {
+  const query = buildStudentsQuery(params).toString();
+  return resourceServices.students.list(query ? `?${query}` : "");
 }
 
 export function updateStudent(id, payload) {
@@ -17,6 +40,10 @@ export function updateEnrollmentStatus(id, payload) {
   return api.put(`/students/${id}/enrollment-status`, {
     ...payload,
   });
+}
+
+export async function importOnlineTdcStudents(formData) {
+  return api.postForm("/students/online-tdc/import", formData);
 }
 
 export async function exportStudents(format = "csv", range) {

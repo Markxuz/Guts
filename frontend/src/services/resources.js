@@ -2,7 +2,7 @@ import { api } from "./api";
 
 function createCrudService(basePath) {
   return {
-    list: () => api.get(basePath),
+    list: (query = "") => api.get(`${basePath}${query}`),
     create: (payload) => api.post(basePath, payload),
     update: (id, payload) => api.put(`${basePath}/${id}`, payload),
     remove: (id) => api.delete(`${basePath}/${id}`),

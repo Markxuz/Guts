@@ -1,5 +1,36 @@
 const { Student, StudentProfile, Enrollment, DLCode, PromoOffer, Payment, Schedule, sequelize } = require("../../../models");
 
+async function findStudentBySourceIdentity(sourceChannel, externalStudentRef, transaction) {
+  if (!sourceChannel || !externalStudentRef) {
+    return null;
+  }
+
+  return Student.findOne({
+    where: {
+      source_channel: sourceChannel,
+      external_student_ref: externalStudentRef,
+    },
+    transaction,
+  });
+}
+
+async function findStudentsForImportDeduplication(transaction) {
+  const profileAttributes = await getSafeStudentProfileAttributes();
+
+  return Student.findAll({
+    attributes: ["id", "first_name", "middle_name", "last_name", "email", "phone", "source_channel", "external_source", "external_student_ref", "createdAt", "updatedAt"],
+    include: [
+      {
+        model: StudentProfile,
+        attributes: profileAttributes,
+        required: false,
+      },
+    ],
+    order: [["id", "ASC"]],
+    transaction,
+  });
+}
+
 let cachedStudentProfileAttributes = null;
 
 async function getSafeStudentProfileAttributes() {
@@ -139,8 +170,11 @@ const fullEnrollmentInclude = {
 };
 
 async function findAllStudents(options = {}) {
-  const { startDate, endDate } = options || {};
+  const { startDate, endDate, includeExternal = false, source } = options || {};
+  // Query params may arrive as strings ("true"/"false"). Normalize to boolean.
+  const includeExternalFlag = includeExternal === true || String(includeExternal).toLowerCase() === "true";
   const profileAttributes = await getSafeStudentProfileAttributes();
+  const normalizedSource = source ? String(source).trim().toLowerCase() : null;
 
   const students = await Student.findAll({
     include: [
@@ -153,35 +187,62 @@ async function findAllStudents(options = {}) {
     order: [["id", "DESC"]],
   });
 
-  // Filter out students who only have unpaid QR enrollments (pending with qrCodeId)
-  // Only include students who have at least one "confirmed" or "completed" enrollment
   return students.filter((student) => {
     const enrollments = student.Enrollments || [];
+    const latestEnrollment = Array.isArray(enrollments) && enrollments.length ? enrollments[0] : null;
+    const enrollmentSource = latestEnrollment && (latestEnrollment.tdc_source || latestEnrollment.enrollment_channel || latestEnrollment.external_application_ref);
 
-    // If no enrollments, don't show in list
-    if (enrollments.length === 0) {
+    const sourceChannel = String(
+      student.source_channel || student.external_source || (student.StudentProfile && student.StudentProfile.tdc_source) || enrollmentSource || ""
+    ).toLowerCase();
+    const isImportedExternal = includeExternalFlag && sourceChannel && sourceChannel !== "walk_in";
+
+    if (normalizedSource && sourceChannel !== normalizedSource) {
       return false;
     }
 
-    // Optionally filter by date range on enrollment.created_at
+    const studentCreatedAt = student.createdAt || student.created_at || null;
+    const hasMatchingEnrollment = enrollments.length > 0;
+
     if (startDate || endDate) {
       const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate) : null;
 
-      const inRange = enrollments.some((enrollment) => {
-        const created = enrollment.created_at || enrollment.createdAt || null;
-        if (!created) return false;
-        const createdDate = new Date(created);
-        if (Number.isNaN(createdDate.getTime())) return false;
-        if (start && createdDate < start) return false;
-        if (end && createdDate > end) return false;
-        return true;
-      });
+      const inRange = hasMatchingEnrollment
+        ? enrollments.some((enrollment) => {
+            const created = enrollment.created_at || enrollment.createdAt || null;
+            if (!created) return false;
+            const createdDate = new Date(created);
+            if (Number.isNaN(createdDate.getTime())) return false;
+            if (start && createdDate < start) return false;
+            if (end && createdDate > end) return false;
+            return true;
+          })
+        : (() => {
+            if (!studentCreatedAt) return false;
+            const createdDate = new Date(studentCreatedAt);
+            if (Number.isNaN(createdDate.getTime())) return false;
+            if (start && createdDate < start) return false;
+            if (end && createdDate > end) return false;
+            return true;
+          })();
 
       if (!inRange) return false;
     }
 
-    // Check if student has at least one paid (confirmed or completed) enrollment
+    if (isImportedExternal) {
+      return true;
+    }
+
+    // If includeExternal is explicitly false, exclude external/imported students
+    if (!includeExternalFlag && sourceChannel && sourceChannel !== "walk_in") {
+      return false;
+    }
+
+    if (enrollments.length === 0) {
+      return false;
+    }
+
     const hasPaidEnrollment = enrollments.some(
       (enrollment) => enrollment.status === "confirmed" || enrollment.status === "completed"
     );
@@ -204,8 +265,8 @@ async function findStudentById(id) {
   });
 }
 
-async function createStudent(payload) {
-  return Student.create(payload);
+async function createStudent(payload, transaction) {
+  return Student.create(payload, transaction ? { transaction } : undefined);
 }
 
 async function findStudentProfileByStudentId(studentId, transaction) {
@@ -231,6 +292,21 @@ async function findEnrollmentsByStudentId(studentId, transaction) {
   return Enrollment.findAll({
     where: { student_id: studentId },
     attributes: ["id", "schedule_id"],
+    transaction,
+    order: [["id", "DESC"]],
+  });
+}
+
+async function findTdcEnrollmentByStudentId(studentId, transaction) {
+  return Enrollment.findOne({
+    where: { student_id: studentId },
+    include: [
+      {
+        model: DLCode,
+        attributes: ["id", "code"],
+        required: true,
+      },
+    ],
     transaction,
     order: [["id", "DESC"]],
   });
@@ -293,12 +369,15 @@ async function updateEnrollmentStatus(studentId, payload, transaction) {
 module.exports = {
   findAllStudents,
   findStudentById,
+  findStudentBySourceIdentity,
+  findStudentsForImportDeduplication,
   createStudent,
   findStudentProfileByStudentId,
   updateStudent,
   createStudentProfile,
   updateStudentProfile,
   findEnrollmentsByStudentId,
+  findTdcEnrollmentByStudentId,
   detachEnrollmentsFromStudent,
   deleteStudentProfile,
   deleteStudent,

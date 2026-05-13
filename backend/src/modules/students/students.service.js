@@ -1,6 +1,15 @@
 const repository = require("./students.repository");
+const enrollmentRepository = require("../enrollments/enrollments.repository");
 const { sequelize } = require("../../../models");
+const { Payment } = require("../../../models");
 const schedulesService = require("../schedules/schedules.service");
+const {
+  buildComparableImportSignature,
+  getSourceLabel,
+  mapImportedOnlineTdcRow,
+  normalizeSource,
+  parseSpreadsheetRows,
+} = require("./onlineTdcImport");
 
 function normalizeText(value) {
   if (value === undefined) return undefined;
@@ -303,8 +312,220 @@ function buildProfileUpdatePayload(payload = {}) {
   }, {});
 }
 
-async function listStudents() {
-  return repository.findAllStudents();
+async function listStudents(options = {}) {
+  return repository.findAllStudents(options);
+}
+
+function buildImportedStudentUpdates(mappedRow) {
+  const student = mappedRow?.student || {};
+  const profile = mappedRow?.profile || {};
+  const lifecycle = mappedRow?.lifecycle || {};
+
+  if (lifecycle.completedAt && !profile.year_completed_tdc) {
+    profile.year_completed_tdc = lifecycle.completedAt.toISOString().slice(0, 10);
+  }
+
+  return {
+    student: {
+      first_name: student.first_name,
+      middle_name: student.middle_name,
+      last_name: student.last_name,
+      email: student.email,
+      phone: student.phone,
+      source_channel: student.source_channel,
+      external_source: student.external_source,
+      external_student_ref: student.external_student_ref,
+    },
+    profile,
+    raw_payload: mappedRow?.raw_payload || {},
+    external_ref: mappedRow?.external_ref || null,
+  };
+}
+
+async function ensureImportedTdcEnrollment(studentId, mappedRow, source, transaction) {
+  const existingTdcEnrollment = await repository.findTdcEnrollmentByStudentId(studentId, transaction);
+  if (existingTdcEnrollment && String(existingTdcEnrollment.DLCode?.code || "").toUpperCase() === "TDC") {
+    return false;
+  }
+
+  const lifecycle = mappedRow?.lifecycle || {};
+  const startedAt = lifecycle.startedAt || lifecycle.completedAt || new Date();
+  const completedAt = lifecycle.completedAt || startedAt;
+  // For imported students, always mark as completed since they're imported from an external source system
+  const existingDlCode = await enrollmentRepository.findDlCodeByCode("TDC", transaction);
+  const dlCode = existingDlCode || await enrollmentRepository.createDlCode({ code: "TDC", description: "TDC" }, transaction);
+  const feeAmount = 999;
+  const referenceNumber = mappedRow?.external_ref || null;
+  const paymentMethod = source === "otdc" ? "bank_transfer" : "cash";
+
+  const enrollment = await enrollmentRepository.createEnrollment(
+    {
+      student_id: studentId,
+      dl_code_id: dlCode.id,
+      schedule_id: null,
+      package_id: null,
+      promo_offer_id: null,
+      client_type: mappedRow?.profile?.client_type || null,
+      is_already_driver: Boolean(mappedRow?.profile?.is_already_driver),
+      target_vehicle: mappedRow?.profile?.target_vehicle || null,
+      transmission_type: mappedRow?.profile?.transmission_type || null,
+      motorcycle_type: mappedRow?.profile?.motorcycle_type || null,
+      training_method: mappedRow?.profile?.training_method || null,
+      pdc_type: null,
+      fee_amount: feeAmount,
+      discount_amount: 0,
+      payment_terms: "full_payment",
+      payment_reference_number: referenceNumber,
+      tdc_source: "external",
+      enrolling_for: "TDC",
+      score: mappedRow?.profile?.exam_result || mappedRow?.profile?.quiz_result || null,
+      enrollment_channel: source,
+      external_application_ref: referenceNumber,
+      pdc_start_mode: "later",
+      additional_promo_offer_ids: null,
+      enrollment_state: "active",
+      status: "completed",
+      created_at: startedAt,
+    },
+    transaction
+  );
+
+  // Always create a Payment record for imported students (they're pre-paid from the external system)
+  await Payment.create(
+    {
+      enrollment_id: enrollment.id,
+      amount: feeAmount,
+      payment_method: paymentMethod,
+      payment_status: "paid",
+      reference_number: referenceNumber,
+      account_number: null,
+      created_at: completedAt,
+    },
+    { transaction }
+  );
+
+  return true;
+}
+
+async function importOnlineTdcStudents(file, payload = {}, user = null) {
+  const source = normalizeSource(payload.source);
+  if (!source) {
+    const error = new Error("source must be saferoads or otdc");
+    error.status = 400;
+    throw error;
+  }
+
+  const rows = parseSpreadsheetRows(file);
+  if (!rows.length) {
+    const error = new Error("The uploaded file does not contain any data rows");
+    error.status = 400;
+    throw error;
+  }
+
+  const transaction = await sequelize.transaction();
+  const summary = {
+    source,
+    sourceLabel: getSourceLabel(source),
+    totalRows: rows.length,
+    imported: 0,
+    updated: 0,
+    skipped: 0,
+    items: [],
+  };
+  const existingStudents = await repository.findStudentsForImportDeduplication();
+  const seenFingerprints = new Set(existingStudents.map((student) => buildComparableImportSignature(student)));
+
+  try {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const mappedRow = mapImportedOnlineTdcRow(row, source, index + 1);
+
+      if (!mappedRow) {
+        summary.skipped += 1;
+        summary.items.push({ row: index + 1, action: "skipped", reason: "Missing required student name fields" });
+        continue;
+      }
+
+      const payloadToPersist = buildImportedStudentUpdates(mappedRow);
+      const fingerprint = buildComparableImportSignature(payloadToPersist);
+
+      if (seenFingerprints.has(fingerprint)) {
+        summary.skipped += 1;
+        summary.items.push({
+          row: index + 1,
+          action: "skipped",
+          reason: "Duplicate student data already exists in the database",
+        });
+        continue;
+      }
+
+      const existingStudent = await repository.findStudentBySourceIdentity(
+        payloadToPersist.student.external_source,
+        payloadToPersist.student.external_student_ref,
+        transaction
+      );
+
+      if (existingStudent) {
+        await repository.updateStudent(existingStudent, payloadToPersist.student, transaction);
+
+        const existingProfile = await repository.findStudentProfileByStudentId(existingStudent.id, transaction);
+        if (existingProfile) {
+          await repository.updateStudentProfile(existingProfile, payloadToPersist.profile, transaction);
+        } else if (Object.keys(payloadToPersist.profile).length > 0) {
+          await repository.createStudentProfile(
+            {
+              student_id: existingStudent.id,
+              ...payloadToPersist.profile,
+            },
+            transaction
+          );
+        }
+
+        await ensureImportedTdcEnrollment(existingStudent.id, payloadToPersist, source, transaction);
+
+        summary.updated += 1;
+        seenFingerprints.add(fingerprint);
+        summary.items.push({
+          row: index + 1,
+          action: "updated",
+          studentId: existingStudent.id,
+          externalRef: payloadToPersist.external_ref,
+        });
+        continue;
+      }
+
+      const createdStudent = await repository.createStudent(payloadToPersist.student, transaction);
+      if (Object.keys(payloadToPersist.profile).length > 0) {
+        await repository.createStudentProfile(
+          {
+            student_id: createdStudent.id,
+            ...payloadToPersist.profile,
+          },
+          transaction
+        );
+      }
+
+      await ensureImportedTdcEnrollment(createdStudent.id, payloadToPersist, source, transaction);
+
+      summary.imported += 1;
+      seenFingerprints.add(fingerprint);
+      summary.items.push({
+        row: index + 1,
+        action: "imported",
+        studentId: createdStudent.id,
+        externalRef: payloadToPersist.external_ref,
+      });
+    }
+
+    await transaction.commit();
+    return {
+      ...summary,
+      ingestedBy: user?.id || null,
+    };
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 }
 
 async function getStudent(id) {
@@ -459,6 +680,7 @@ async function exportStudentsExcel(options = {}) {
 
 module.exports = {
   listStudents,
+  importOnlineTdcStudents,
   getStudent,
   addStudent,
   editStudent,

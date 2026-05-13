@@ -9,5 +9,6 @@ const router = express.Router();
 router.get("/summary", authenticateToken, controller.getDashboardSummary);
 router.get("/logs", authenticateToken, validateRequest(dashboardLogsQuerySchema, "query"), controller.getDashboardLogs);
 router.get("/operations", authenticateToken, validateRequest(dashboardOperationsQuerySchema, "query"), controller.getDashboardOperations);
+router.get("/pending-approvals", authenticateToken, controller.getPendingApprovals);
 
 module.exports = router;

@@ -127,6 +127,40 @@ async function findOperationalEnrollments(limit = 500) {
   });
 }
 
+async function findPendingEnrollmentApprovals(limit = 100) {
+  return Enrollment.findAll({
+    where: {
+      student_id: {
+        [Op.ne]: null,
+      },
+      status: "pending",
+    },
+    include: [
+      {
+        model: Student,
+        attributes: ["id", "first_name", "middle_name", "last_name", "email", "phone", "source_channel", "external_source"],
+      },
+      {
+        model: DLCode,
+        attributes: ["id", "code", "description"],
+      },
+      {
+        model: PromoPackage,
+        as: "promoPackage",
+        required: false,
+      },
+      {
+        model: Schedule,
+        as: "scheduledSessions",
+        attributes: ["id", "start_time", "end_time", "schedule_date"],
+        required: false,
+      },
+    ],
+    order: [["created_at", "DESC"], ["id", "DESC"]],
+    limit,
+  });
+}
+
 async function countOnlineIntakeByStatus(status) {
   const where = status ? { import_status: status } : undefined;
   return OnlineImportQueue.count({ where });
@@ -145,6 +179,7 @@ module.exports = {
   findAllEnrollmentsWithCode,
   findEnrollmentsByDateRange,
   findOperationalEnrollments,
+  findPendingEnrollmentApprovals,
   countOnlineIntakeByStatus,
   findOnlineIntakeByStatus,
 };

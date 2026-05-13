@@ -296,8 +296,35 @@ async function getOperationsSnapshot({ daysAhead = 7, limit = 50 } = {}) {
   };
 }
 
+async function getPendingApprovals(limit = 100) {
+  const rows = await repository.findPendingEnrollmentApprovals(limit);
+
+  const items = rows.map((row) => {
+    const student = row.Student ? (row.Student.toJSON ? row.Student.toJSON() : row.Student) : null;
+    const enrollment = row.toJSON ? row.toJSON() : row;
+    const studentName = student
+      ? [student.first_name, student.middle_name, student.last_name].filter(Boolean).join(" ") || `Student #${student.id}`
+      : `Enrollment #${row.id}`;
+
+    return {
+      id: student?.id || row.student_id || row.id,
+      enrollmentId: row.id,
+      student,
+      enrollment,
+      studentName,
+      courseLabel: row?.DLCode?.code || row?.enrolling_for || "Enrollment",
+    };
+  });
+
+  return {
+    total: items.length,
+    items,
+  };
+}
+
 module.exports = {
   getSummary,
   getLogsByDate,
   getOperationsSnapshot,
+  getPendingApprovals,
 };

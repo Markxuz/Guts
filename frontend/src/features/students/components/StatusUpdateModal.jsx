@@ -1,5 +1,6 @@
 import { LoaderCircle, X } from "lucide-react";
 import { getCourseCode } from "../utils/studentsPageUtils";
+import { hasPromoStatusContext } from "../utils/studentsPageUtils";
 import { getOutcomeOptionsByCourse } from "../utils/statusUpdateConfig";
 
 export default function StatusUpdateModal({ student, form, onChange, onClose, onSubmit, isPending }) {
@@ -11,8 +12,10 @@ export default function StatusUpdateModal({ student, form, onChange, onClose, on
   };
 
   const courseCode = getCourseCode(student);
+  const supportsPromoSections = courseCode === "PROMO" || hasPromoStatusContext(student);
   const selectedPromoCategory = String(form.promoCategory || "TDC").toUpperCase();
-  const outcomeOptions = getOutcomeOptionsByCourse(courseCode, selectedPromoCategory);
+  const outcomeCourseCode = supportsPromoSections && courseCode !== "PROMO" ? selectedPromoCategory : courseCode;
+  const outcomeOptions = getOutcomeOptionsByCourse(outcomeCourseCode, selectedPromoCategory);
   const promoTdcOutcome = String(form.promoTdcOutcome || "").trim();
   const promoPdcOutcome = String(form.promoPdcOutcome || "").trim();
 
@@ -31,7 +34,7 @@ export default function StatusUpdateModal({ student, form, onChange, onClose, on
         enrollmentStatus: "",
         courseOutcome: outcome,
       };
-      if (courseCode === "PROMO") {
+      if (courseCode === "PROMO" || supportsPromoSections) {
         if (selectedPromoCategory === "PDC") {
           next.promoPdcOutcome = outcome;
         } else {
@@ -68,7 +71,7 @@ export default function StatusUpdateModal({ student, form, onChange, onClose, on
             <label className="mb-1 block text-sm font-semibold text-[#800000]">Course Type</label>
             <p className="mb-3 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">{courseCode}</p>
 
-            {courseCode === "PROMO" ? (
+            {supportsPromoSections ? (
               <>
                 <label className="mb-2 block text-sm font-semibold text-[#800000]">Promo Category</label>
                 <div className="mb-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Promo category options">
@@ -117,7 +120,7 @@ export default function StatusUpdateModal({ student, form, onChange, onClose, on
                 );
               })}
             </div>
-            {courseCode === "PROMO" ? (
+            {supportsPromoSections ? (
               <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                 <p className="font-semibold text-slate-800">Promo status preview</p>
                 <p className="mt-1">TDC: {promoTdcOutcome || "-"}</p>
