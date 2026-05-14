@@ -550,9 +550,9 @@ export default function PublicEnrollPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(128,0,0,0.08),_transparent_28%),linear-gradient(180deg,_#faf7f5_0%,_#ffffff_42%,_#f8fafc_100%)] px-4 py-10 text-slate-900">
+    <div className="public-qr-enrollment-page min-h-screen bg-[radial-gradient(circle_at_top,_rgba(128,0,0,0.08),_transparent_28%),linear-gradient(180deg,_#faf7f5_0%,_#ffffff_42%,_#f8fafc_100%)] px-4 py-10 text-slate-900">
       <div className="mx-auto flex flex-col-reverse gap-6 lg:grid lg:max-w-6xl lg:grid-cols-[1.15fr_0.85fr]">
-        <section className="rounded-[32px] border border-slate-200 bg-white/95 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur lg:order-1 card-light">
+        <section className="public-qr-surface rounded-[32px] border border-slate-200 bg-white/95 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur lg:order-1 card-light">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="inline-flex items-center gap-2 rounded-full bg-[#800000]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-[#800000]">
@@ -594,7 +594,7 @@ export default function PublicEnrollPage() {
                 
                 return (
                 <div key={section.title}>
-                  <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5 card-light">
+                  <div className="public-qr-section rounded-[28px] border border-slate-200 bg-slate-50 p-5 card-light">
                     <div className="flex flex-col gap-1 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
                       <div>
                         <h2 className="text-lg font-bold text-slate-950">{section.title}</h2>
@@ -737,7 +737,7 @@ export default function PublicEnrollPage() {
         </section>
 
         <aside className="space-y-6 lg:order-2">
-          <div className="rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+          <div className="public-qr-sidebar-card rounded-[28px] border border-slate-200 bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-200">Workflow</p>
             <ol className="mt-4 space-y-3 text-sm text-slate-200">
               <li className="rounded-2xl border border-white/10 bg-white/5 p-4">1. Scan the QR code from the admin desk or flyer.</li>
@@ -746,7 +746,7 @@ export default function PublicEnrollPage() {
             </ol>
           </div>
 
-          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm card-light">
+          <div className="public-qr-sidebar-card rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm card-light">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">What happens next</p>
             <div className="mt-4 space-y-4 text-sm text-slate-600">
               <div>
