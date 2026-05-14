@@ -350,8 +350,39 @@ export default function PublicEnrollPage() {
           loadedPromoOptions = [];
         }
 
+        // Fetch schedule options (instructors and vehicles)
+        let scheduleOptions = { instructors: [], vehicles: [] };
+        try {
+          const scheduleResponse = await fetch(`/api/enroll/schedule-options?token=${encodeURIComponent(token)}`);
+          const scheduleData = await readApiBody(scheduleResponse);
+          if (scheduleResponse.ok && scheduleData) {
+            scheduleOptions = scheduleData;
+          }
+        } catch {
+          scheduleOptions = { instructors: [], vehicles: [] };
+        }
+
+        // Enrich template with schedule options
+        let enrichedTemplate = normalizeTemplate(data.template);
+        if (enrichedTemplate.sections && Array.isArray(enrichedTemplate.sections)) {
+          enrichedTemplate.sections = enrichedTemplate.sections.map((section) => {
+            if (section.fields && Array.isArray(section.fields)) {
+              section.fields = section.fields.map((field) => {
+                if (field.name === "schedule.instructor_id" || field.name === "schedule.care_of_instructor_id") {
+                  return { ...field, options: scheduleOptions.instructors };
+                }
+                if (field.name === "schedule.vehicle_id") {
+                  return { ...field, options: scheduleOptions.vehicles };
+                }
+                return field;
+              });
+            }
+            return section;
+          });
+        }
+
         if (!cancelled) {
-          setTemplate(normalizeTemplate(data.template));
+          setTemplate(enrichedTemplate);
           setPromoOptions(loadedPromoOptions);
           setLoadError("");
         }

@@ -1,5 +1,5 @@
 const express = require("express");
-const { QRCode, PromoOffer } = require("../models");
+const { QRCode, PromoOffer, Instructor, Vehicle } = require("../models");
 const rateLimit = require("express-rate-limit");
 const enrollmentsService = require("../src/modules/enrollments/enrollments.service");
 
@@ -22,7 +22,7 @@ function createPublicLimiter(maxRequests) {
 // Use a higher read limit because opening a public form can trigger multiple requests in quick succession.
 const publicReadLimiter = createPublicLimiter(60);
 const publicSubmitLimiter = createPublicLimiter(20);
-router.use(["/enroll", "/enroll/promo-offers"], publicReadLimiter);
+router.use(["/enroll", "/enroll/promo-offers", "/enroll/schedule-options"], publicReadLimiter);
 router.use("/enroll/submit", publicSubmitLimiter);
 
 function resolveEnrollmentType(template) {
@@ -82,6 +82,38 @@ router.get("/enroll/promo-offers", async (req, res) => {
     );
   } catch (err) {
     res.status(500).json({ error: err.message || "Failed to load promo offers" });
+  }
+});
+
+// GET /enroll/schedule-options?token=... - fetch instructors and vehicles for scheduling fields
+router.get("/enroll/schedule-options", async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ error: "Missing token" });
+
+    const qr = await QRCode.findOne({ where: { token, revoked: false } });
+    if (!qr) return res.status(404).json({ error: "QR code not found or revoked" });
+
+    // Fetch active instructors (status is "Active" capitalized)
+    const instructors = await Instructor.findAll({
+      where: { status: "Active" },
+      attributes: ["id", "name"],
+      order: [["name", "ASC"]],
+    });
+
+    // Fetch available vehicles (status is "Available" capitalized)
+    const vehicles = await Vehicle.findAll({
+      where: { status: "Available" },
+      attributes: ["id", "plate_number", "vehicle_type"],
+      order: [["plate_number", "ASC"]],
+    });
+
+    res.json({
+      instructors: instructors.map((inst) => ({ value: String(inst.id), label: inst.name })),
+      vehicles: vehicles.map((veh) => ({ value: String(veh.id), label: `${veh.plate_number} (${veh.vehicle_type})` })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || "Failed to load schedule options" });
   }
 });
 

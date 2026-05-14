@@ -1,5 +1,7 @@
 # Guts - Quick Clone Setup
 
+For end-user guidance, see [docs/user-manual.md](docs/user-manual.md).
+
 Use this guide when moving to a new laptop/desktop for demos and presentations.
 
 ## Production Server (Docker + Tailscale)
