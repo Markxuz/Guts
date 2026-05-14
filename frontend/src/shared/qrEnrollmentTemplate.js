@@ -111,13 +111,6 @@ const templatesByType = {
       section("COURSE INFORMATION", "Select the enrollment purpose for this TDC intake.", [
         selectField("extras.enrolling_for", "ENROLLING FOR", enrollingForOptions, true),
       ]),
-      section("DRIVING INFORMATION", "TDC enrollments do not need extra driving-experience fields here. Promo selection is handled in Financial Details."),
-      section("Schedule Session", "Reserve the first session while saving the enrollment.", [
-        dateField("schedule.schedule_date", "Start Date", true),
-        selectField("schedule.care_of_instructor_id", "Care of", [], true),
-        selectField("schedule.instructor_id", "Instructor", [], true),
-        { type: "note", content: "Whole-day lecture session. Vehicle assignment is not required." }
-      ])
     ],
   },
   PDC: {
@@ -132,23 +125,9 @@ const templatesByType = {
       section("COURSE INFORMATION", "Pick the PDC track and related training details.", [
         selectField("extras.enrolling_for", "ENROLLING FOR", promoPdcEnrollingForOptions, true),
         selectField("enrollment.pdc_category", "PDC CLASSIFICATION", pdcClassificationOptions, true),
-        selectField("enrollment.tdc_source", "TDC SOURCE", tdcSourceOptions, true),
-        selectField("enrollment.training_method", "MODE OF TRAINING", trainingMethodOptions, true),
         selectField("enrollment.is_already_driver", "MARUNONG KA NA BANG MAGMANEHO?", yesNoOptions, false),
         selectField("enrollment.target_vehicle", "ANONG SASAKYAN ANG IMAMANEHO?", pdcVehicleTypeOptions, false),
-        selectField("enrollment.transmission_type", "ANONG KLASE NG TRANSMISSION?", pdcTransmissionTypeOptions, false),
-        selectField("enrollment.motorcycle_type", "MOTORCYCLE TYPE", ["Automatic", "Manual"], false),
-        selectField("extras.driving_school_tdc", "Driving School where you have taken your TDC", promoDrivingSchoolOptions, false),
-        textField("extras.driving_school_tdc_other", "Name of Driving School", false),
-        textField("extras.year_completed_tdc", "Year you completed your TDC", false),
       ]),
-      section("DRIVING INFORMATION", "Driving assessment fields appear in the course section for Experience applicants."),
-      section("Schedule Session", "Reserve the first session while saving the enrollment.", [
-        dateField("schedule.schedule_date", "Start Date", true),
-        selectField("schedule.care_of_instructor_id", "Care of", [], true),
-        selectField("schedule.instructor_id", "Instructor", [], true),
-        selectField("schedule.vehicle_id", "Vehicle", [], false),
-      ])
     ],
   },
   PROMO: {
@@ -181,15 +160,8 @@ const templatesByType = {
       section("PDC COURSE INFORMATION", "Pick the PDC track and related training details.", [
         selectField("extras.enrolling_for", "ENROLLING FOR", promoPdcEnrollingForOptions, true),
         selectField("enrollment.pdc_category", "PDC CLASSIFICATION", pdcClassificationOptions, true),
-        selectField("enrollment.tdc_source", "TDC SOURCE", tdcSourceOptions, true),
-        selectField("enrollment.training_method", "MODE OF TRAINING", trainingMethodOptions, true),
         selectField("enrollment.is_already_driver", "MARUNONG KA NA BANG MAGMANEHO?", yesNoOptions, false),
         selectField("enrollment.target_vehicle", "ANONG SASAKYAN ANG IMAMANEHO?", pdcVehicleTypeOptions, false),
-        selectField("enrollment.transmission_type", "ANONG KLASE NG TRANSMISSION?", pdcTransmissionTypeOptions, false),
-        selectField("enrollment.motorcycle_type", "MOTORCYCLE TYPE", ["Automatic", "Manual"], false),
-        selectField("extras.driving_school_tdc", "Driving School where you have taken your TDC", promoDrivingSchoolOptions, false),
-        textField("extras.driving_school_tdc_other", "Name of Driving School", false),
-        textField("extras.year_completed_tdc", "Year you completed your TDC", false),
         { type: "note", content: "IMPORTANT REMINDERS FOR PDC STUDENTS: PER DL CODES PO ANG ATING PDC. EVERY DL CODES MAGKAKAIBA ANG RATES AND SCHEDULE." }
       ]),
       section("PDC Schedule Session", "Set the PDC schedule for promo enrollment.", [

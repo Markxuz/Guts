@@ -13,6 +13,16 @@ function normalizeBooleanValue(value) {
 
 export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onSaveComplete }) {
   const queryClient = useQueryClient();
+  const enrollmentType = String(
+    enrollment?.enrollment_type
+      || enrollment?.Enrollment?.enrollment_type
+      || enrollment?.qrCode?.template?.enrollment_type
+      || enrollment?.qrCode?.name
+      || ""
+  ).trim().toUpperCase();
+  const isTdcEnrollment = enrollmentType === "TDC";
+  const isPdcEnrollment = enrollmentType === "PDC";
+  const isPromoEnrollment = enrollmentType === "PROMO";
   const [form, setForm] = useState({
     promo_schedule_tdc: {
       schedule_date: "",
@@ -79,7 +89,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
           care_of_instructor_id: enrollment?.promo_schedule_tdc?.care_of_instructor_id || null,
         },
         promo_schedule_pdc: {
-          enabled: enrollment?.promo_schedule_pdc?.enabled ? "Schedule Now" : "Schedule Later",
+          enabled: isPdcEnrollment || enrollment?.promo_schedule_pdc?.enabled ? "Schedule Now" : "Schedule Later",
           schedule_date: enrollment?.promo_schedule_pdc?.schedule_date || "",
           instructor_id: enrollment?.promo_schedule_pdc?.instructor_id || null,
           care_of_instructor_id: enrollment?.promo_schedule_pdc?.care_of_instructor_id || null,
@@ -167,7 +177,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
       return;
     }
 
-    if (normalizeBooleanValue(form.promo_schedule_pdc.enabled) && !form.promo_schedule_pdc.schedule_date) {
+    if ((isPdcEnrollment || normalizeBooleanValue(form.promo_schedule_pdc.enabled)) && !form.promo_schedule_pdc.schedule_date) {
       setErrorMessage("PDC desired date is required when Schedule Now is selected.");
       return;
     }
@@ -185,7 +195,7 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
   }
 
   const studentName = enrollment.student?.first_name || enrollment.Student?.first_name || "Student";
-  const schedulePdcNow = normalizeBooleanValue(form.promo_schedule_pdc.enabled);
+  const schedulePdcNow = isPdcEnrollment || normalizeBooleanValue(form.promo_schedule_pdc.enabled);
 
   return (
     <div
@@ -278,83 +288,55 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
               </div>
             </section>
 
-            {/* TDC Schedule Section */}
-            <section>
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">TDC Schedule Session</h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Desired Date *</span>
-                  <input
-                    type="date"
-                    value={form.promo_schedule_tdc.schedule_date}
-                    onChange={(event) => handleFieldChange("promo_schedule_tdc", "schedule_date", event.target.value)}
-                    className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Instructor (Optional)</span>
-                  <select
-                    value={form.promo_schedule_tdc.instructor_id ?? ""}
-                    onChange={(e) => handleFieldChange("promo_schedule_tdc", "instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
-                    className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                  >
-                    <option value="">Select instructor</option>
-                    {instructors.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Care of Instructor (Optional)</span>
-                  <select
-                    value={form.promo_schedule_tdc.care_of_instructor_id ?? ""}
-                    onChange={(e) => handleFieldChange("promo_schedule_tdc", "care_of_instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
-                    className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
-                  >
-                    <option value="">Select care-of instructor</option>
-                    {instructors.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <p className="mt-2 rounded-lg border border-[#d9c9a0] bg-white px-3 py-2 text-xs text-slate-600">
-                Encoder/staff will finalize the instructor, time slot, and schedule details after review.
-              </p>
-            </section>
-
-            {/* PDC Schedule Section */}
-            <section>
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">PDC Schedule Session</h3>
-              <div className="mb-4">
-                <p className="text-xs font-semibold text-slate-600 mb-3">PDC Start Option</p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleFieldChange("promo_schedule_pdc", "enabled", "Schedule Now")}
-                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                      schedulePdcNow
-                        ? "bg-[#800000] text-white"
-                        : "border border-[#d9c9a0] bg-white text-slate-700 hover:border-[#800000]"
-                    }`}
-                  >
-                    Schedule PDC Now
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFieldChange("promo_schedule_pdc", "enabled", "Schedule Later")}
-                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                      !schedulePdcNow
-                        ? "bg-[#800000] text-white"
-                        : "border border-[#d9c9a0] bg-white text-slate-700 hover:border-[#800000]"
-                    }`}
-                  >
-                    Schedule PDC Later
-                  </button>
+            {!isPdcEnrollment ? (
+              <section>
+                <h3 className="mb-4 text-sm font-semibold text-slate-900">TDC Schedule Session</h3>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Desired Date *</span>
+                    <input
+                      type="date"
+                      value={form.promo_schedule_tdc.schedule_date}
+                      onChange={(event) => handleFieldChange("promo_schedule_tdc", "schedule_date", event.target.value)}
+                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Instructor (Optional)</span>
+                    <select
+                      value={form.promo_schedule_tdc.instructor_id ?? ""}
+                      onChange={(e) => handleFieldChange("promo_schedule_tdc", "instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
+                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                    >
+                      <option value="">Select instructor</option>
+                      {instructors.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Care of Instructor (Optional)</span>
+                    <select
+                      value={form.promo_schedule_tdc.care_of_instructor_id ?? ""}
+                      onChange={(e) => handleFieldChange("promo_schedule_tdc", "care_of_instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
+                      className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                    >
+                      <option value="">Select care-of instructor</option>
+                      {instructors.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
-              </div>
+                <p className="mt-2 rounded-lg border border-[#d9c9a0] bg-white px-3 py-2 text-xs text-slate-600">
+                  Encoder/staff will finalize the instructor, time slot, and schedule details after review.
+                </p>
+              </section>
+            ) : null}
 
-              {schedulePdcNow ? (
+            {isPdcEnrollment ? (
+              <section>
+                <h3 className="mb-4 text-sm font-semibold text-slate-900">PDC Schedule Session</h3>
                 <div className="space-y-3">
                   <label className="flex flex-col gap-1">
                     <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Desired Date *</span>
@@ -393,19 +375,97 @@ export default function QREnrollmentEditModal({ isOpen, enrollment, onClose, onS
                       </select>
                     </label>
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-[#d9c9a0] bg-white px-4 py-3">
-                  <p className="text-sm text-slate-600">
-                    PDC is set to Schedule Later. The date can be filled once Schedule PDC Now is selected or updated later by staff.
+                  <p className="rounded-lg border border-[#d9c9a0] bg-white px-3 py-2 text-xs text-slate-600">
+                    Staff will assign the final schedule details after review.
                   </p>
                 </div>
-              )}
+              </section>
+            ) : null}
 
-              <p className="mt-2 rounded-lg border border-[#d9c9a0] bg-white px-3 py-2 text-xs text-slate-600">
-                If Schedule Now is selected, staff will use the preferred date and assign instructor, vehicle, and final slot after review.
-              </p>
-            </section>
+            {isPromoEnrollment ? (
+              <section>
+                <h3 className="mb-4 text-sm font-semibold text-slate-900">PDC Schedule Session</h3>
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-slate-600 mb-3">PDC Start Option</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleFieldChange("promo_schedule_pdc", "enabled", "Schedule Now")}
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                        schedulePdcNow
+                          ? "bg-[#800000] text-white"
+                          : "border border-[#d9c9a0] bg-white text-slate-700 hover:border-[#800000]"
+                      }`}
+                    >
+                      Schedule PDC Now
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleFieldChange("promo_schedule_pdc", "enabled", "Schedule Later")}
+                      className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                        !schedulePdcNow
+                          ? "bg-[#800000] text-white"
+                          : "border border-[#d9c9a0] bg-white text-slate-700 hover:border-[#800000]"
+                      }`}
+                    >
+                      Schedule PDC Later
+                    </button>
+                  </div>
+                </div>
+
+                {schedulePdcNow ? (
+                  <div className="space-y-3">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Desired Date *</span>
+                      <input
+                        type="date"
+                        value={form.promo_schedule_pdc.schedule_date}
+                        onChange={(event) => handleFieldChange("promo_schedule_pdc", "schedule_date", event.target.value)}
+                        className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                      />
+                    </label>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Instructor (Optional)</span>
+                        <select
+                          value={form.promo_schedule_pdc.instructor_id ?? ""}
+                          onChange={(e) => handleFieldChange("promo_schedule_pdc", "instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
+                          className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                        >
+                          <option value="">Select instructor</option>
+                          {instructors.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-[11px] font-bold tracking-wide text-[#6b5b4d]">Care of Instructor (Optional)</span>
+                        <select
+                          value={form.promo_schedule_pdc.care_of_instructor_id ?? ""}
+                          onChange={(e) => handleFieldChange("promo_schedule_pdc", "care_of_instructor_id", e.target.value ? parseInt(e.target.value, 10) : null)}
+                          className="h-10 rounded-xl border border-[#d9c9a0] bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[#800000]"
+                        >
+                          <option value="">Select care-of instructor</option>
+                          {instructors.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[#d9c9a0] bg-white px-4 py-3">
+                    <p className="text-sm text-slate-600">
+                      PDC is set to Schedule Later. The date can be filled once Schedule PDC Now is selected or updated later by staff.
+                    </p>
+                  </div>
+                )}
+
+                <p className="mt-2 rounded-lg border border-[#d9c9a0] bg-white px-3 py-2 text-xs text-slate-600">
+                  If Schedule Now is selected, staff will use the preferred date and assign instructor, vehicle, and final slot after review.
+                </p>
+              </section>
+            ) : null}
           </div>
         </form>
 

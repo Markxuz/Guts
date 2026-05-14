@@ -134,6 +134,10 @@ async function findPendingEnrollmentApprovals(limit = 100) {
         [Op.ne]: null,
       },
       status: "pending",
+      // Exclude QR-based public submissions from the generic Pending Approvals
+      qrCodeId: {
+        [Op.is]: null,
+      },
     },
     include: [
       {

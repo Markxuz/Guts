@@ -521,9 +521,14 @@ export default function PublicEnrollPage() {
   const sections = useMemo(() => {
     const sourceSections = template?.sections || [];
     const processedSections = [];
+    const effectiveEnrollmentType = resolveQrEnrollmentType(template);
     const isPDCScheduleNow = formData.promo_schedule_pdc?.enabled === "true" || formData.promo_schedule_pdc?.enabled === true;
 
     for (const section of sourceSections) {
+      if ((effectiveEnrollmentType === "TDC" || effectiveEnrollmentType === "PDC") && (section.title === "DRIVING INFORMATION" || section.title === "Schedule Session")) {
+        continue;
+      }
+
       let fields = (section.fields || []).map((field) => {
         if (field?.name === "enrollment.promo_offer_id" && field?.type === "select") {
           return {
